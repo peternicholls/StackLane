@@ -1,5 +1,5 @@
 # PHP-FPM Docker Image for 20i-style hosting
-ARG PHP_VERSION=8.4
+ARG PHP_VERSION=8.5
 FROM php:${PHP_VERSION}-fpm-alpine
 
 ARG PHPUNIT_VERSION=12.1.6
@@ -27,16 +27,14 @@ RUN apk add --no-cache \
     mysqli \
     pdo_mysql \
     zip \
-    curl \
     xml \
     mbstring \
     exif \
     bcmath \
-    opcache \
     && ln -sf /usr/bin/python3 /usr/local/bin/python \
     && ln -sf /usr/bin/pip3 /usr/local/bin/pip
 
-# Note: fileinfo and iconv are already built into PHP 8.4
+# Note: opcache, fileinfo, iconv, and curl are already built into PHP 8.5
 # No need to install them separately
 
 # Install WP-CLI
