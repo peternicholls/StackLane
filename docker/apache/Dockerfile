@@ -2,12 +2,15 @@
 ARG PHP_VERSION=8.4
 FROM php:${PHP_VERSION}-fpm-alpine
 
+ARG PHPUNIT_VERSION=12.1.6
+
 # Install common PHP extensions found in shared hosting
 RUN apk add --no-cache \
     freetype-dev \
     libjpeg-turbo-dev \
     libpng-dev \
     libwebp-dev \
+    libxml2-dev \
     libzip-dev \
     zip \
     unzip \
@@ -18,18 +21,28 @@ RUN apk add --no-cache \
     make \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) \
-        gd \
-        mysqli \
-        pdo_mysql \
-        zip \
-        curl \
-        mbstring \
-        exif \
-        bcmath \
-        opcache
+    gd \
+    mysqli \
+    pdo_mysql \
+    zip \
+    curl \
+    xml \
+    mbstring \
+    exif \
+    bcmath \
+    opcache
 
 # Note: fileinfo and iconv are already built into PHP 8.4
 # No need to install them separately
+
+# Install WP-CLI
+RUN curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && chmod +x /usr/local/bin/wp
+
+# Install PHPUnit globally for all PHP containers
+RUN curl -L -o /usr/local/bin/phpunit https://phar.phpunit.de/phpunit-${PHPUNIT_VERSION}.phar \
+    && chmod +x /usr/local/bin/phpunit \
+    && phpunit --version
 
 # Copy custom PHP configuration
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini

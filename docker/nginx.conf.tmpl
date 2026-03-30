@@ -43,7 +43,7 @@ server {
         fastcgi_buffering on;
         
         # Increased buffer sizes for Laravel session cookies + auth headers
-        fastcgi_buffer_size 16k;
+        fastcgi_buffer_size 32k;
         fastcgi_buffers 8 16k;
         fastcgi_busy_buffers_size 32k;
         fastcgi_temp_file_write_size 32k;
