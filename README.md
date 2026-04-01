@@ -1,196 +1,215 @@
 # 20i Stack - Docker Development Environment
 
 ## Overview
-A reusable, centralized Docker development stack for PHP projects using:
-- **PHP 8.5** with FPM on Alpine Linux, a global `phpunit` binary, and Python 3 + pip
-- **Nginx** as reverse proxy
-- **MariaDB** for database
-- **phpMyAdmin** for database management
+
+20i Stack is moving from a single-project localhost workflow toward a multi-project shared-front-door model. This repo now includes a real command/runtime layer plus a shared gateway split, so per-project runtimes are now fronted by one persistent gateway while the hostname and DNS work continues in later phases.
+
+What is implemented now:
+
+- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, and `20i-logs` are real repo scripts.
+- Project config is resolved consistently from `.env`, `.20i-local`, and CLI flags.
+- Project identity is standardized around a slug and a planned `.test` hostname.
+- Project state is recorded under `.20i-state` so status, detach, and global teardown have stable semantics.
+- One shared gateway now owns the host web ports and routes to one attached project at a time.
+- Per-project web containers are isolated behind the shared Docker network instead of publishing host ports directly.
+- Project code is mounted internally at `/home/sites/<project-slug>/...` to better mirror the 20i-style hosting layout.
+
+What is not implemented yet:
+
+- Hostname routing via Nginx
+- Local DNS bootstrap for `.test`
+- Full GUI parity
 
 ## Quick Start
 
-### Shell Commands (Recommended)
-```bash
-# From any project directory:
-20i-up          # Start stack (uses current directory)
-20i-down        # Stop stack
-20i-status      # View status
-20i-gui         # Interactive menu [not fully developed yet]
+From the stack repo itself or a deployed copy of it, add the scripts to your shell path and run them from a project root:
 
-# Optional PHP version override for this launch
-20i-up --php-version 8.4
-20i-up version=8.4
+```bash
+export STACK_HOME="$HOME/docker/20i-stack"
+
+cd /path/to/project
+"$STACK_HOME/20i-up"
+"$STACK_HOME/20i-status"
+"$STACK_HOME/20i-down"
 ```
 
-### Manual Usage
+Optional overrides:
+
 ```bash
-cd /path/to/your/project
-export CODE_DIR=$(pwd)
-export COMPOSE_PROJECT_NAME=$(basename $(pwd))
-docker compose -f $HOME/docker/20i-stack/docker-compose.yml up -d
+"$STACK_HOME/20i-up" --php-version 8.4
+"$STACK_HOME/20i-up" --docroot web --site-name marketing-site
+"$STACK_HOME/20i-up" version=8.4
 ```
 
-## Features
+## Command Semantics
 
-✅ **Centralized Stack** - One stack serves any project  
-✅ **Project Isolation** - Each project gets isolated containers  
-✅ **Environment Variables** - Fully configurable via .env or .20i-local  
-✅ **Shell Integration** - Convenient aliases and functions  
-⚠️ **GUI Interface** - Experimental interactive menu, not fully developed yet  
-✅ **Live Reloading** - Volume mounting for development  
+- `20i-up`: Ensure the shared gateway exists, start the current project runtime, register it in `.20i-state`, and mark it `attached`.
+- `20i-attach`: Start another isolated project runtime and repoint the shared gateway default route to it.
+- `20i-down`: Stop only the current project runtime and retain its record with state `down`.
+- `20i-detach`: Stop only the current project runtime and remove its attachment record.
+- `20i-down --all`: Stop every known runtime and remove all recorded attachment state.
+- `20i-status`: Show shared gateway health plus recorded projects, their planned hostnames, shared access URL, container docroots, and Docker state.
+- `20i-logs [service]`: Follow logs for the current project runtime.
 
-## Access Points
+## Config Precedence
 
-- **Website**: http://localhost (or custom HOST_PORT)
-- **phpMyAdmin**: http://localhost:8081
-- **Database**: localhost:3306
+Config is resolved in this order:
+
+1. CLI flags such as `--php-version`, `--docroot`, or `--site-name`
+2. Project-local `.20i-local`
+3. Current shell environment
+4. Stack-wide `.env`
+5. Built-in defaults
+
+The stack-wide `.env` is for defaults. `.20i-local` is the project contract.
+
+## `.20i-local` Contract
+
+Create `.20i-local` in your project root using simple `KEY=value` or `export KEY=value` syntax:
+
+```bash
+export SITE_NAME=my-site
+export DOCROOT=public_html
+export PHP_VERSION=8.4
+export MYSQL_DATABASE=my_site
+export MYSQL_USER=my_site
+export MYSQL_PASSWORD=devpass
+```
+
+Supported keys:
+
+- `SITE_NAME`: Base value used to derive the project slug and planned hostname
+- `SITE_HOSTNAME`: Full hostname override when you do not want `<slug>.test`
+- `SITE_SUFFIX`: Hostname suffix override. Stage one defaults to `.test`
+- `DOCROOT`: Document root relative to the project root or an absolute path
+- `CODE_DIR`: Legacy alias for `DOCROOT`
+- `PHP_VERSION`
+- `MYSQL_VERSION`
+- `MYSQL_ROOT_PASSWORD`
+- `MYSQL_DATABASE`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_PORT`, `PMA_PORT`: Optional per-project published port overrides
+- `SHARED_GATEWAY_HTTP_PORT`, `SHARED_GATEWAY_HTTPS_PORT`: Shared gateway host port overrides
+
+Default document root behavior:
+
+- If `DOCROOT` or `CODE_DIR` is set, that value is used.
+- Otherwise, `public_html` is used when present.
+- Otherwise, the project root is mounted.
+
+Current container path model:
+
+- Project root mounts at `/home/sites/<project-slug>`
+- `public_html` becomes `/home/sites/<project-slug>/public_html`
+- A custom `DOCROOT` becomes `/home/sites/<project-slug>/<docroot-relative-path>`
+
+## Current Access Model
+
+The current implementation uses a shared front-door gateway on one host web port pair while the future hostname contract is recorded and exposed in status output.
+
+- Planned hostname: `my-project.test`
+- Current shared access URL: `http://localhost` or another configured shared gateway port
+- Project databases and phpMyAdmin still publish per-project host ports
+
+This keeps the shell-first workflow intact while removing direct per-project web port publishing from normal site access.
 
 ## Default Credentials
 
-- **MySQL Root**: `root` / `root`
-- **MySQL User**: `devuser` / `devpass`
-- **Default DB**: `devdb`
+- MySQL root: `root` / `root`
+- Project database user: defaults to the project slug
+- Project database name: defaults to the project slug
 
-## Configuration
+## Files of Interest
 
-### Global Settings (.env.example)
-```bash
-HOST_PORT=80
-PHP_VERSION=8.5
-MYSQL_VERSION=10.6
-MYSQL_PORT=3306
-PMA_PORT=8081
-```
-
-### Per-Project Settings (.20i-local)
-Create in your project root:
-```bash
-export HOST_PORT=8080
-export PHP_VERSION=8.4
-export MYSQL_DATABASE=myproject_db
-export MYSQL_USER=projectuser
-export MYSQL_PASSWORD=projectpass
-```
-
-CLI overrides take precedence for a single run:
-```bash
-20i-up --php-version 8.4
-20i-up version=8.4
-```
-
-## Architecture
-
-- **Nginx (Port 80)**: Front-end web server and reverse proxy
-- **Apache/PHP-FPM (Port 9000)**: PHP processing engine
-- **MariaDB (Port 3306)**: Database server
-- **phpMyAdmin (Port 8081)**: Database management interface
-
-## Files Structure
-
-```
+```text
 20i-stack/
-├── docker/
-│   ├── apache/
-│   │   ├── Dockerfile          # PHP 8.5 + extensions
-│   │   └── php.ini            # PHP configuration
-│   └── nginx.conf.tmpl        # Nginx reverse proxy config
-├── docker-compose.yml         # Main stack definition
-├── 20i-gui                   # Experimental interactive CLI menu
-├── .env.example              # Default configuration
-└── README.md                 # This file
+├── 20i-up
+├── 20i-attach
+├── 20i-down
+├── 20i-detach
+├── 20i-status
+├── 20i-logs
+├── lib/20i-common.sh
+├── docker-compose.yml
+├── docker-compose.shared.yml
+├── .env.example
+└── docs/plan.md
 ```
 
 ## Shell Integration
 
-Add to your `.zshrc`:
+Add this to `.zshrc` if you want the commands globally:
 
 ```bash
-# 20i stack configuration
-STACK_HOME="${STACK_HOME:-$HOME/docker/20i-stack}"
+export STACK_HOME="${STACK_HOME:-$HOME/docker/20i-stack}"
+export PATH="$STACK_HOME:$PATH"
 
-# Functions (see copy of zshrc.txt for full implementations)
-20i-up() { ... }     # Start stack
-20i-down() { ... }   # Stop stack
-20i-status() { ... } # View status
-20i-logs() { ... }   # View logs
-
-# Aliases
 alias 20i='20i-status'
 alias dcu='20i-up'
 alias dcd='20i-down'
-alias 20i-gui='$STACK_HOME/20i-gui'
 ```
 
 ## Workflow Examples
 
-### Start New Project
+Single project:
+
 ```bash
-cd /path/to/new-project
-dcu                    # Starts stack for this project
-# Site available at http://localhost
+cd /path/to/project-a
+20i-up
+20i-status
+20i-down
 ```
 
-### Switch Projects
+Concurrent shared-gateway attachment:
+
 ```bash
-dcd                    # Stop current stack
-cd /path/to/other-project
-dcu                    # Start stack for new project
+cd /path/to/project-a
+20i-up
+
+cd /path/to/project-b
+20i-attach --site-name project-b
+
+20i-status
 ```
 
-### Interactive Management
+Global teardown:
+
 ```bash
-20i-gui               # Experimental menu for basic stack actions
+20i-down --all
 ```
 
 ## Troubleshooting
 
-### Port Conflicts
+Check the resolved config without starting containers:
+
 ```bash
-# Use custom port
-export HOST_PORT=8080
-dcu
+20i-up --dry-run
 ```
 
-### Database Issues
+Follow logs:
+
 ```bash
-# Reset database
-dcd
-docker volume rm $(docker volume ls -q | grep db_data)
-dcu
+20i-logs
+20i-logs apache
 ```
 
-### View Logs
-```bash
-20i-logs              # Follow all logs
-20i-gui               # Experimental menu option for specific service logs
-```
+Reset a specific project by removing its state and volumes only after stopping it:
 
-### PHPUnit
 ```bash
-# Rebuild the PHP image after pulling stack changes
-docker compose -f $HOME/docker/20i-stack/docker-compose.yml build apache
-
-# Run PHPUnit inside the PHP container
-docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache phpunit --version
-```
-
-### Python
-```bash
-# Run Python inside the PHP container
-docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache python --version
-docker compose -f $HOME/docker/20i-stack/docker-compose.yml exec apache pip --version
+20i-down
+rm -f "$STACK_HOME/.20i-state/projects/<slug>.env"
+docker volume ls
 ```
 
 ## Requirements
 
 - Docker Desktop for Mac
-- Bash/Zsh shell
-- Optional: `dialog` package for prettier experimental GUI menus
+- Bash or Zsh
+- Optional: `dialog` for the experimental GUI wrapper
 
-## License
+## Phase Notes
 
-MIT License - Use freely for development purposes.
+Stage one fixes the contract first and keeps `.test` as the canonical future suffix. `.dev` is intentionally deferred until the stack has a proper HTTPS-capable local gateway.
 
----
-
-**Perfect for**: PHP development, Laravel projects, WordPress development, prototyping, and any web project needing a quick, reliable development environment.
+Phase 2 has now landed the shared gateway and hidden per-project web ports behind it. Hostname-aware routing and local DNS are still the next steps.

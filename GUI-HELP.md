@@ -1,6 +1,6 @@
 # 20i Stack GUI Manager
 
-The GUI is experimental and not fully developed yet. Prefer the shell commands for the most reliable workflow.
+The GUI is still experimental and currently trails the CLI. Use the shell commands for the implemented Phase 1 and Phase 2 multi-project contract.
 
 ## 🚀 Usage
 
@@ -16,18 +16,16 @@ This currently gives you an interactive menu with these options:
 
 1. **🚀 Start Stack (current directory)**
    - Uses the current directory as your project root
-   - Auto-detects project name from folder name
-   - Prompts for custom web port (defaults to 80)
-   - Loads `.20i-local` file if present for project-specific settings
+   - Still follows the older direct compose path
+   - Does not yet surface the shared gateway, attach, and detach semantics from the new CLI contract
 
 2. **🛑 Stop Stack**
-   - Shows list of running 20i stacks
-   - Choose specific project to stop or stop all
-   - Clean shutdown of containers
+   - Stops the selected compose project
+   - Does not retain the richer attachment state that the CLI now tracks
 
 3. **📊 View Status**
-   - Overview of all running Docker containers
-   - List of active 20i projects
+   - Shows Docker-oriented status only
+   - Does not yet report shared gateway health, planned hostnames, project docroots, or attachment state
 
 4. **📋 View Logs**
    - Shows running 20i stacks
@@ -36,17 +34,19 @@ This currently gives you an interactive menu with these options:
 
 ## 🎯 Current Use Cases:
 
-- **Basic project switching** without remembering commands
+- **Basic project switching** while CLI remains the authoritative workflow
 - **Lightweight inspection** of what is running
-- **Trying the experimental menu flow** while the shell commands remain primary
+- **Trying the experimental menu flow** if you do not need attach or detach yet
 
 ## 🛠 Integration with Existing Workflow:
 
-Your existing aliases still work perfectly:
-- `dcu` - Start stack (command line)
-- `dcd` - Stop stack (command line) 
-- `20i` - View status (command line)
-- `20i-gui` - Interactive menu (new!)
+Recommended command-line surface:
+- `20i-up` - Start and attach the current project
+- `20i-attach` - Attach an additional project
+- `20i-down` - Stop the current project and retain state
+- `20i-detach` - Stop the current project and remove its state
+- `20i-status` - Show attachment state and Docker status
+- `20i-gui` - Experimental wrapper with partial parity only
 
 ## 💡 Pro Tips:
 
@@ -58,7 +58,8 @@ Your existing aliases still work perfectly:
 - **Project Settings**: Create `.20i-local` in your project root:
 
    ```bash
-   export HOST_PORT=8080
+   export SITE_NAME=my-site
+   export DOCROOT=public_html
    export PHP_VERSION=8.4
    export MYSQL_DATABASE=myproject_db
    ```
@@ -72,4 +73,4 @@ Your existing aliases still work perfectly:
 
 - **From Anywhere**: The `20i-gui` command works from any project directory
 
-Use it as a secondary option alongside the shell workflow while the GUI is still being developed.
+Use it as a secondary option alongside the shell workflow while the GUI remains partial.
