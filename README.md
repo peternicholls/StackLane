@@ -270,3 +270,22 @@ docker volume ls
 Stage one fixes the contract first and keeps `.test` as the canonical future suffix. `.dev` is intentionally deferred until the stack has a proper HTTPS-capable local gateway.
 
 Phase 2 landed the shared gateway and hid per-project web ports behind it. Phase 3 made runtime naming, docroot mapping, PHP selection, and database config explicitly project-specific. Phase 4 added a stack-level registry snapshot plus post-start validation of live container identity. Phase 5 renders hostname-aware gateway rules from that registry. Phase 6 adds macOS `.test` DNS bootstrap around Homebrew `dnsmasq` plus resolver health checks.
+
+Notes:
+I’m recording that as a repo-level constraint so the next implementation pass treats Docker-managed DB volumes as legacy behavior and plans host-side persistence instead.
+
+Read memory
+
+I’ve confirmed memory layout; next I’m saving the spec intent so future work in this repo stays aligned with moving DB storage outside Docker in spec 3.
+
+Created memory file [](file:///Users/peternicholls/Library/Application%20Support/Code%20-%20Insiders/User/workspaceStorage/4d229edc4b0a0c71be19299d701f7894/GitHub.copilot-chat/memory-tool/memories/repo/stacklane-db-storage.md)
+
+That makes sense. Right now both `master` and this branch preserve MariaDB inside Docker-managed volumes, so if your intent is “database state should outlive Docker itself and be directly host-owned,” that is still unmet.
+
+For spec 3, the clean change is to replace `/var/lib/mysql`’s named volume with a bind mount to a project-scoped host path, for example a hidden state directory under the repo or a user-level Stacklane data directory outside the repo. The main tradeoff is portability versus control:
+
+1. Repo-local bind mount makes the data obvious and easy to back up, but it mixes runtime state into the project checkout.
+2. User-level data directory keeps repos clean, but you need explicit mapping and lifecycle rules.
+3. Either way, you’ll need to define ownership, permissions, backup/reset semantics, and whether `detach/down` should ever remove host database files.
+
+When you’re ready for spec 3, I can help turn that into concrete requirements and migration rules from existing Docker volumes.
