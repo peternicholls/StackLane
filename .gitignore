@@ -1,6 +1,7 @@
 # Environment files
 .env
 .20i-local
+.20i-state/
 
 # Docker volumes
 db_data/
