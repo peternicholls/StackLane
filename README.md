@@ -1,12 +1,15 @@
-# 20i Stack - Docker Development Environment
+# Stacklane - Docker Development Environment
 
 ## Overview
 
-20i Stack is moving from a single-project localhost workflow toward a multi-project shared-front-door model. This repo now includes a real command/runtime layer plus a shared gateway split, so per-project runtimes are now fronted by one persistent gateway while the hostname and DNS work continues in later phases.
+Stacklane is a workflow for local Docker development that aims to mirror the shared hosting environment of 20i webhosting services. To achieve this, it introduces a command/runtime layer plus a shared gateway split, so per-project runtimes are fronted by one persistent gateway while hostname and DNS setup continue to mature.
 
-What is implemented now:
+This is a work in progress. The CLI is the primary interface for the implemented runtime contract, while the macOS GUI automation is an experimental wrapper that provides a visual menu and system-wide Services access. 
 
-- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` are real repo scripts.
+### What is implemented now:
+
+- `stacklane` is the canonical CLI entrypoint, with action flags such as `--up`, `--attach`, `--status`, and `--down`.
+- Legacy wrappers such as `20i-up` and `20i-status` still exist temporarily and now forward to `stacklane` with deprecation guidance.
 - Project config is resolved consistently from `.env`, `.20i-local`, and CLI flags.
 - Project identity is standardized around a slug and a planned `.test` hostname.
 - Project state is recorded under `.20i-state`, with a stack-level `registry.tsv` snapshot for status, detach, and global teardown semantics.
@@ -15,31 +18,27 @@ What is implemented now:
 - Project code is mounted internally at `/home/sites/<project-slug>/...` to better mirror the 20i-style hosting layout.
 - Per-project runtimes now get deterministic Docker names: compose project `20i-<slug>`, network `20i-<slug>-runtime`, and DB volume `20i-<slug>-db-data`.
 
-What is not implemented yet:
-
-- Full GUI parity
-
 ## Quick Start
 
-From the stack repo itself or a deployed copy of it, add the scripts to your shell path and run them from a project root:
+From the stack repo itself or a deployed copy of it, add the scripts to your shell path and run Stacklane from a project root:
 
 ```bash
 export STACK_HOME="$HOME/docker/20i-stack"
 
 cd /path/to/project
-"$STACK_HOME/20i-dns-setup"
-"$STACK_HOME/20i-up"
-"$STACK_HOME/20i-status"
-"$STACK_HOME/20i-down"
+"$STACK_HOME/stacklane" --dns-setup
+"$STACK_HOME/stacklane" --up
+"$STACK_HOME/stacklane" --status
+"$STACK_HOME/stacklane" --down
 ```
 
 Optional overrides:
 
 ```bash
-"$STACK_HOME/20i-up" --php-version 8.4
-"$STACK_HOME/20i-up" --docroot web --site-name marketing-site
-"$STACK_HOME/20i-up" version=8.4
-"$STACK_HOME/20i-status" --project marketing-site
+"$STACK_HOME/stacklane" --up --php-version 8.4
+"$STACK_HOME/stacklane" --up --docroot web --site-name marketing-site
+"$STACK_HOME/stacklane" --up version=8.4
+"$STACK_HOME/stacklane" --status --project marketing-site
 ```
 
 ## First-time Setup
@@ -50,15 +49,17 @@ Requirements: macOS, Docker Desktop, and Homebrew.
 # 1. Clone or copy the stack
 git clone https://github.com/peternicholls/20i-stack ~/docker/20i-stack
 
-# 2. Add stack commands to your path — add to ~/.zshrc and reload
+# 2. Add Stacklane to your path — add to ~/.zshrc and reload
 export STACK_HOME="$HOME/docker/20i-stack"
 export PATH="$STACK_HOME:$PATH"
 
 # 3. Bootstrap local DNS (once per machine)
-20i-dns-setup
+stacklane --dns-setup
 ```
 
-If `20i-dns-setup` requires elevated privileges it prints the exact `sudo` command to finish the resolver file installation. Run it once — it persists across reboots.
+The GitHub repository and the local folder that contains it are separate concerns. If the remote repository is renamed later, your local checkout directory does not rename itself. Keep `STACK_HOME` pointed at the folder you actually run, whether that folder is still named `20i-stack` or you rename it manually.
+
+If `stacklane --dns-setup` requires elevated privileges it prints the exact `sudo` command to finish the resolver file installation. Run it once — it persists across reboots.
 
 If you use `.dev`, the local HTTPS URL defaults to port `8443`. This avoids collisions with other local services that commonly use `443`, such as Tailscale Serve, while keeping the route stable and predictable.
 
@@ -66,16 +67,16 @@ For a migration walk-through if you are coming from the old single-project local
 
 ## Command Semantics
 
-- `20i-up`: Ensure the shared gateway exists, start the current project runtime, validate the live containers, register it in `.20i-state`, and mark it `attached`.
-- `20i-attach`: Attach-or-bootstrap the current project runtime and regenerate hostname-aware gateway routes from the registry.
-- `20i-down`: Stop only the current project runtime and retain its record with state `down`.
-- `20i-detach`: Stop only the current project runtime and remove its attachment record.
-- `20i-down --all`: Stop every known runtime and remove all recorded attachment state.
-- `20i-status [--project SELECTOR]`: Show shared gateway health plus recorded projects, their planned hostnames, hostname route URLs, gateway probe URL, container docroots, registry file path, recorded live container identity, registry drift, and Docker state.
-- `20i-logs [--project SELECTOR] [service]`: Follow logs for a selected project runtime.
-- `20i-dns-setup`: Bootstrap local `.test` resolution on macOS using Homebrew `dnsmasq` on `127.0.0.1:53535` and an `/etc/resolver/<suffix>` file.
+- `stacklane --up`: Ensure the shared gateway exists, start the current project runtime, validate the live containers, register it in `.20i-state`, and mark it `attached`.
+- `stacklane --attach`: Attach-or-bootstrap the current project runtime and regenerate hostname-aware gateway routes from the registry.
+- `stacklane --down`: Stop only the current project runtime and retain its record with state `down`.
+- `stacklane --detach`: Stop only the current project runtime and remove its attachment record.
+- `stacklane --down --all`: Stop every known runtime and remove all recorded attachment state.
+- `stacklane --status [--project SELECTOR]`: Show shared gateway health plus recorded projects, their planned hostnames, hostname route URLs, gateway probe URL, container docroots, registry file path, recorded live container identity, registry drift, and Docker state.
+- `stacklane --logs [--project SELECTOR] [service]`: Follow logs for a selected project runtime.
+- `stacklane --dns-setup`: Bootstrap local `.test` resolution on macOS using Homebrew `dnsmasq` on `127.0.0.1:53535` and an `/etc/resolver/<suffix>` file.
 
-When `.dev` TLS is enabled, `20i-up` and `20i-status` surface the route as `https://<hostname>:8443` unless you explicitly override `SHARED_GATEWAY_HTTPS_PORT`.
+When `.dev` TLS is enabled, `stacklane --up` and `stacklane --status` surface the route as `https://<hostname>:8443` unless you explicitly override `SHARED_GATEWAY_HTTPS_PORT`.
 
 ## Config Precedence
 
@@ -149,7 +150,7 @@ The current implementation now generates hostname-aware gateway rules from the s
 - Manual gateway probe URL: `http://localhost` or another configured shared gateway port
 - DNS implementation: `dnsmasq` on `127.0.0.1:53535`
 - Resolver file: `/etc/resolver/test` by default
-- Bootstrap command: `20i-dns-setup`
+- Bootstrap command: `stacklane --dns-setup`
 - If resolver installation still needs elevated privileges, the command prints the exact `sudo` copy step to finish setup
 - Project databases and phpMyAdmin still publish per-project host ports
 - MariaDB credentials, database name, and data volume are resolved per project, so `.20i-local` overrides stay isolated to that runtime
@@ -166,6 +167,7 @@ This keeps the shell-first workflow intact while removing direct per-project web
 
 ```text
 20i-stack/
+├── stacklane
 ├── 20i-up
 ├── 20i-attach
 ├── 20i-down
@@ -192,7 +194,7 @@ This keeps the shell-first workflow intact while removing direct per-project web
 └── GUI-HELP.md               # GUI wrapper notes (CLI leads)
 ```
 
-The `20i-gui-depricated` script in the repo root is the original pre-Phase-1 GUI wrapper. It is kept for reference but does not integrate with the shared gateway or project registry; use the CLI commands instead.
+The `20i-gui-depricated` script in the repo root is the original pre-Phase-1 GUI wrapper. It is kept for reference but does not integrate with the shared gateway or project registry; use `stacklane` instead.
 
 ## Shell Integration
 
@@ -202,9 +204,10 @@ Add this to `.zshrc` if you want the commands globally:
 export STACK_HOME="${STACK_HOME:-$HOME/docker/20i-stack}"
 export PATH="$STACK_HOME:$PATH"
 
-alias 20i='20i-status'
-alias dcu='20i-up'
-alias dcd='20i-down'
+alias sl='stacklane'
+alias sstatus='stacklane --status'
+alias sup='stacklane --up'
+alias sdown='stacklane --down'
 ```
 
 ## Workflow Examples
@@ -213,28 +216,28 @@ Single project:
 
 ```bash
 cd /path/to/project-a
-20i-up
-20i-status
-20i-down
+stacklane --up
+stacklane --status
+stacklane --down
 ```
 
 Concurrent shared-gateway attachment:
 
 ```bash
 cd /path/to/project-a
-20i-up
+stacklane --up
 
 cd /path/to/project-b
-20i-attach --site-name project-b
+stacklane --attach --site-name project-b
 
-20i-status
-20i-status --project project-b
+stacklane --status
+stacklane --status --project project-b
 ```
 
 Global teardown:
 
 ```bash
-20i-down --all
+stacklane --down --all
 ```
 
 ## Troubleshooting
@@ -242,20 +245,20 @@ Global teardown:
 Check the resolved config without starting containers:
 
 ```bash
-20i-up --dry-run
+stacklane --up --dry-run
 ```
 
 Follow logs:
 
 ```bash
-20i-logs
-20i-logs apache
+stacklane --logs
+stacklane --logs apache
 ```
 
 Reset a specific project by removing its state and volumes only after stopping it:
 
 ```bash
-20i-down
+stacklane --down
 rm -f "$STACK_HOME/.20i-state/projects/<slug>.env"
 docker volume ls
 ```

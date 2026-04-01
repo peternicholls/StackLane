@@ -40,3 +40,13 @@ Validate the Stacklane rename and unified command surface without changing the u
 2. Confirm Stacklane is the active project name across those surfaces.
 3. Confirm the repo rename and manual containing-folder rename are described separately.
 4. Confirm examples use `stacklane --up`, `stacklane --down`, and related action-flag syntax.
+
+## Validation Notes
+
+- 2026-04-01: Validated `stacklane --help`, `stacklane --status`, `stacklane --status --project 20i-stack`, `stacklane --up --dry-run`, and `stacklane --down --dry-run` from the repository root.
+- 2026-04-01: Validated failure handling for `stacklane` with no primary action and with conflicting primary actions (`--up --down`).
+- 2026-04-01: Validated `20i-up --dry-run` forwards to `stacklane --up` and prints deprecation guidance.
+- 2026-04-01: Recompiled `20i Stack Manager.app/Contents/Resources/Scripts/main.scpt` from the updated AppleScript source.
+- 2026-04-01: Untested caveat: the macOS app and workflow packaging were not exercised through Finder or Services UI during this implementation pass.
+- 2026-04-01: Untested caveat: `shellcheck` was not available in the current environment.
+- 2026-04-01: Unresolved external step: GitHub repository rename and post-rename clone URL updates require repository administration outside this workspace.

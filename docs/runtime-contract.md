@@ -1,6 +1,6 @@
-# Runtime Contract
+# Stacklane Runtime Contract
 
-This document locks the implemented Phase 1 through Phase 6 command semantics and state model.
+This document locks the Stacklane command semantics and state model.
 
 ## Goals
 
@@ -8,10 +8,11 @@ This document locks the implemented Phase 1 through Phase 6 command semantics an
 - Make repeated command runs reliable and predictable.
 - Keep the stack robust under partial failure and stale state.
 - Make `up`, `attach`, `down`, `detach`, and status behavior explicit.
+- Keep `20i-*` wrappers in a migration-only role.
 
 ## Command Behavior
 
-### `20i-up`
+### `stacklane --up`
 
 - Works from a project root.
 - Resolves config from `.env`, `.20i-local`, environment variables, and CLI flags.
@@ -23,38 +24,44 @@ This document locks the implemented Phase 1 through Phase 6 command semantics an
 - Writes a project state file, refreshes the stack registry, and marks the project as `attached`.
 - Refreshes the shared gateway's hostname-aware route set from the registry.
 
-### `20i-attach`
+### `stacklane --attach`
 
-- Uses the same runtime resolution as `20i-up`.
+- Uses the same runtime resolution as `stacklane --up`.
 - Is the explicit command for bringing an additional repo into the managed set.
 - Bootstraps the shared layer if it is not already running.
 - Starts a second isolated per-project runtime and refreshes the hostname-aware shared gateway rules.
 
-### `20i-down`
+### `stacklane --down`
 
 - Stops only the current project runtime by default.
 - Retains the project record and marks it `down`.
 - Repoints the shared gateway to another attached project when one exists, otherwise leaves the gateway on a no-route response.
-- Supports `20i-down --all` for global teardown.
+- Supports `stacklane --down --all` for global teardown.
 
-### `20i-detach`
+### `stacklane --detach`
 
 - Stops only the current project runtime.
 - Removes the project record entirely.
 - Repoints the shared gateway to another attached project when one exists.
 
-### `20i-status`
+### `stacklane --status`
 
 - Reports tracked projects from the state directory.
 - Supports `--project <selector>` where selector may be a project slug, project name, hostname, or repo path.
 - Shows shared gateway health, local DNS health, planned hostname, hostname route URL, localhost probe URL, document root, container docroot, project path, registry file path, recorded live container identity, registry drift, and Docker status.
 
-### `20i-logs`
+### `stacklane --logs`
 
 - Follows logs for the current project runtime by default.
 - Supports `--project <selector>` to target another recorded project by slug, project name, hostname, or repo path.
 
-### `20i-dns-setup`
+### `stacklane --dns-setup`
+
+## Legacy Wrappers
+
+- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` remain temporarily available.
+- Each wrapper forwards to the equivalent `stacklane --action` command and prints concise deprecation guidance.
+- Wrappers are retained for migration only and are not the primary documented interface.
 
 - Writes stack-managed `dnsmasq` config for the chosen suffix.
 - Starts or restarts Homebrew `dnsmasq` on the configured local port.

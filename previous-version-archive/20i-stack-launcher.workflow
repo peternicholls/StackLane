@@ -1,12 +1,12 @@
 #!/usr/bin/osascript
 
-# 20i Stack Launcher - macOS Services Menu Automation
-# This AppleScript creates dialogs to manage your 20i Docker stack
+# Stacklane Launcher - macOS Services Menu Automation
+# This AppleScript creates dialogs to manage your Stacklane workflow
 
 on run {input, parameters}
     try
         # Main menu dialog
-        set menuChoice to choose from list {"Start Stack", "Stop Stack", "View Status", "View Logs", "Cancel"} with title "20i Stack Manager" with prompt "Choose an action:" default items {"Start Stack"}
+        set menuChoice to choose from list {"Start Stack", "Stop Stack", "View Status", "View Logs", "Cancel"} with title "Stacklane Manager" with prompt "Choose an action:" default items {"Start Stack"}
         
         if menuChoice is false or menuChoice = {"Cancel"} then
             return
@@ -36,7 +36,7 @@ on startStack()
     set projectPath to POSIX path of projectPath
     
     # Get optional settings
-    set customSettings to display dialog "Optional: Custom settings (leave blank for defaults)" default answer "HOST_PORT=80" with title "20i Stack Settings"
+    set customSettings to display dialog "Optional: Custom settings (leave blank for defaults)" default answer "HOST_PORT=80" with title "Stacklane Settings"
     set settings to text returned of customSettings
     
     # Build the command
@@ -57,13 +57,13 @@ on startStack()
     end tell
     
     # Show success message
-    display notification "Starting 20i stack for: " & (basename(projectPath)) with title "20i Stack"
+    display notification "Starting Stacklane for: " & (basename(projectPath)) with title "Stacklane"
 end startStack
 
 # Function to stop the stack
 on stopStack()
     # Get project name
-    set projectName to text returned of (display dialog "Enter project name to stop:" default answer "" with title "Stop 20i Stack")
+    set projectName to text returned of (display dialog "Enter project name to stop:" default answer "" with title "Stop Stacklane Project")
     
     if projectName = "" then
         display alert "Error" message "Project name is required"
@@ -77,7 +77,7 @@ on stopStack()
         do script shellScript
     end tell
     
-    display notification "Stopping 20i stack: " & projectName with title "20i Stack"
+    display notification "Stopping Stacklane project: " & projectName with title "Stacklane"
 end stopStack
 
 # Function to view status
@@ -93,7 +93,7 @@ end viewStatus
 # Function to view logs
 on viewLogs()
     # Get project name
-    set projectName to text returned of (display dialog "Enter project name for logs:" default answer "" with title "View 20i Stack Logs")
+    set projectName to text returned of (display dialog "Enter project name for logs:" default answer "" with title "View Stacklane Logs")
     
     if projectName = "" then
         display alert "Error" message "Project name is required"

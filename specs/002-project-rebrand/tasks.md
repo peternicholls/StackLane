@@ -17,9 +17,9 @@
 
 **Purpose**: Establish the canonical Stacklane entrypoint and shared implementation surfaces that later story work will build on.
 
-- [ ] T001 Create the canonical CLI entrypoint file at `/Users/peternicholls/Dev/20i-stack/stacklane`
-- [ ] T002 [P] Prepare shared Stacklane branding and command-mapping support in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T003 [P] Align the shebang, executable behavior, and root-script launch pattern for `/Users/peternicholls/Dev/20i-stack/stacklane` with the existing repo entrypoints
+- [X] T001 Create the canonical CLI entrypoint file at `/Users/peternicholls/Dev/20i-stack/stacklane`
+- [X] T002 [P] Prepare shared Stacklane branding and command-mapping support in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T003 [P] Align the shebang, executable behavior, and root-script launch pattern for `/Users/peternicholls/Dev/20i-stack/stacklane` with the existing repo entrypoints
 
 ---
 
@@ -29,11 +29,11 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T004 Extend action parsing for the canonical CLI in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh` so `stacklane` accepts exactly one primary action flag
-- [ ] T005 Implement central dispatch from `/Users/peternicholls/Dev/20i-stack/stacklane` into the existing runtime actions in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T006 Add canonical Stacklane help and invalid-action error handling in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T007 Preserve current shared options, `--all`, `--project`, `--dry-run`, and `version=` compatibility behavior in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T008 Implement a shared deprecation-forwarding path for legacy wrappers in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T004 Extend action parsing for the canonical CLI in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh` so `stacklane` accepts exactly one primary action flag
+- [X] T005 Implement central dispatch from `/Users/peternicholls/Dev/20i-stack/stacklane` into the existing runtime actions in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T006 Add canonical Stacklane help and invalid-action error handling in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T007 Preserve current shared options, `--all`, `--project`, `--dry-run`, and `version=` compatibility behavior in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T008 Implement a shared deprecation-forwarding path for legacy wrappers in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
 
 **Checkpoint**: Foundation ready; user story work can proceed in priority order.
 
@@ -47,14 +47,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Update the primary brand name, project summary, and top-level usage narrative in `/Users/peternicholls/Dev/20i-stack/README.md`
-- [ ] T010 [P] [US1] Update Stacklane branding and CLI references in `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md`
-- [ ] T011 [P] [US1] Update Stacklane branding and GUI narrative in `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`
-- [ ] T012 [P] [US1] Update active branding language in `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`
-- [ ] T013 [P] [US1] Update active branding language in `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
-- [ ] T014 [P] [US1] Update macOS app and workflow display names in `/Users/peternicholls/Dev/20i-stack/20i Stack Manager.app/Contents/Info.plist` and `/Users/peternicholls/Dev/20i-stack/20i Stack Manager.workflow/Contents/Info.plist`
-- [ ] T015 [P] [US1] Update AppleScript and workflow-facing brand text in `/Users/peternicholls/Dev/20i-stack/20i-stack-manager.scpt`, `/Users/peternicholls/Dev/20i-stack/20i-stack-launcher.workflow`, and `/Users/peternicholls/Dev/20i-stack/20i Stack Manager.app/Contents/Resources/Scripts/main.scpt`
-- [ ] T016 [US1] Validate that `/Users/peternicholls/Dev/20i-stack/README.md`, `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md`, `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`, `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`, and the macOS wrapper metadata present Stacklane consistently with legacy naming only in migration contexts
+- [X] T009 [US1] Update the primary brand name, project summary, and top-level usage narrative in `/Users/peternicholls/Dev/20i-stack/README.md`
+- [X] T010 [P] [US1] Update Stacklane branding and CLI references in `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md`
+- [X] T011 [P] [US1] Update Stacklane branding and GUI narrative in `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`
+- [X] T012 [P] [US1] Update active branding language in `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`
+- [X] T013 [P] [US1] Update active branding language in `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
+- [X] T014 [P] [US1] Update macOS app and workflow display names in `/Users/peternicholls/Dev/20i-stack/20i Stack Manager.app/Contents/Info.plist` and `/Users/peternicholls/Dev/20i-stack/20i Stack Manager.workflow/Contents/Info.plist`
+- [X] T015 [P] [US1] Update AppleScript and workflow-facing brand text in `/Users/peternicholls/Dev/20i-stack/20i-stack-manager.scpt`, `/Users/peternicholls/Dev/20i-stack/20i-stack-launcher.workflow`, and `/Users/peternicholls/Dev/20i-stack/20i Stack Manager.app/Contents/Resources/Scripts/main.scpt`
+- [X] T016 [US1] Validate that `/Users/peternicholls/Dev/20i-stack/README.md`, `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md`, `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`, `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`, and the macOS wrapper metadata present Stacklane consistently with legacy naming only in migration contexts
 
 **Checkpoint**: Stacklane is the visible identity across maintained primary surfaces.
 
@@ -68,14 +68,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Implement the canonical `stacklane` dispatcher in `/Users/peternicholls/Dev/20i-stack/stacklane`
-- [ ] T018 [US2] Refine command usage text, action validation, and dispatch behavior for `stacklane` in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T019 [US2] Preserve runtime-state, config-precedence, and selector behavior under the `stacklane` invocation path in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T020 [US2] Update primary command examples and shell integration to use `stacklane` in `/Users/peternicholls/Dev/20i-stack/README.md`
-- [ ] T021 [P] [US2] Update primary command examples to use `stacklane` in `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md` and `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`
-- [ ] T022 [P] [US2] Update command syntax examples to use `stacklane` in `/Users/peternicholls/Dev/20i-stack/docs/migration.md` and `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`
-- [ ] T023 [US2] Validate the happy-path command flow from `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md` using `stacklane --help`, `stacklane --up`, `stacklane --status`, and `stacklane --down`
-- [ ] T024 [US2] Validate failure handling for `stacklane` with no primary action and conflicting primary actions in `/Users/peternicholls/Dev/20i-stack/stacklane` and `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T017 [US2] Implement the canonical `stacklane` dispatcher in `/Users/peternicholls/Dev/20i-stack/stacklane`
+- [X] T018 [US2] Refine command usage text, action validation, and dispatch behavior for `stacklane` in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T019 [US2] Preserve runtime-state, config-precedence, and selector behavior under the `stacklane` invocation path in `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T020 [US2] Update primary command examples and shell integration to use `stacklane` in `/Users/peternicholls/Dev/20i-stack/README.md`
+- [X] T021 [P] [US2] Update primary command examples to use `stacklane` in `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md` and `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`
+- [X] T022 [P] [US2] Update command syntax examples to use `stacklane` in `/Users/peternicholls/Dev/20i-stack/docs/migration.md` and `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`
+- [X] T023 [US2] Validate the happy-path command flow from `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md` using `stacklane --help`, `stacklane --up`, `stacklane --status`, and `stacklane --down`
+- [X] T024 [US2] Validate failure handling for `stacklane` with no primary action and conflicting primary actions in `/Users/peternicholls/Dev/20i-stack/stacklane` and `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
 
 **Checkpoint**: `stacklane` is the canonical usable interface for primary lifecycle actions.
 
@@ -89,12 +89,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [P] [US3] Convert `/Users/peternicholls/Dev/20i-stack/20i-up`, `/Users/peternicholls/Dev/20i-stack/20i-attach`, and `/Users/peternicholls/Dev/20i-stack/20i-down` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
-- [ ] T026 [P] [US3] Convert `/Users/peternicholls/Dev/20i-stack/20i-detach`, `/Users/peternicholls/Dev/20i-stack/20i-status`, `/Users/peternicholls/Dev/20i-stack/20i-logs`, and `/Users/peternicholls/Dev/20i-stack/20i-dns-setup` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
-- [ ] T027 [US3] Update old-to-new command mapping, wrapper expectations, and migration wording in `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
-- [ ] T028 [US3] Update install, clone, and shell-path guidance to distinguish the repository rename from the manual containing-folder rename in `/Users/peternicholls/Dev/20i-stack/README.md`
-- [ ] T029 [P] [US3] Update repo-rename, wrapper, and sync guidance in `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md` and `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`
-- [ ] T030 [US3] Validate that a retained wrapper invocation still succeeds and points users to the equivalent `stacklane` syntax using `/Users/peternicholls/Dev/20i-stack/20i-up` and the migration flow in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
+- [X] T025 [P] [US3] Convert `/Users/peternicholls/Dev/20i-stack/20i-up`, `/Users/peternicholls/Dev/20i-stack/20i-attach`, and `/Users/peternicholls/Dev/20i-stack/20i-down` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
+- [X] T026 [P] [US3] Convert `/Users/peternicholls/Dev/20i-stack/20i-detach`, `/Users/peternicholls/Dev/20i-stack/20i-status`, `/Users/peternicholls/Dev/20i-stack/20i-logs`, and `/Users/peternicholls/Dev/20i-stack/20i-dns-setup` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
+- [X] T027 [US3] Update old-to-new command mapping, wrapper expectations, and migration wording in `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
+- [X] T028 [US3] Update install, clone, and shell-path guidance to distinguish the repository rename from the manual containing-folder rename in `/Users/peternicholls/Dev/20i-stack/README.md`
+- [X] T029 [P] [US3] Update repo-rename, wrapper, and sync guidance in `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md` and `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`
+- [X] T030 [US3] Validate that a retained wrapper invocation still succeeds and points users to the equivalent `stacklane` syntax using `/Users/peternicholls/Dev/20i-stack/20i-up` and the migration flow in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
 
 **Checkpoint**: Existing users can migrate from `20i-*` to `stacklane` without guesswork.
 
@@ -104,12 +104,12 @@
 
 **Purpose**: Finalize parity, validation, and external rename follow-through across the full feature.
 
-- [ ] T031 [P] Run shell syntax validation on `/Users/peternicholls/Dev/20i-stack/stacklane`, `/Users/peternicholls/Dev/20i-stack/20i-up`, `/Users/peternicholls/Dev/20i-stack/20i-attach`, `/Users/peternicholls/Dev/20i-stack/20i-down`, `/Users/peternicholls/Dev/20i-stack/20i-detach`, `/Users/peternicholls/Dev/20i-stack/20i-status`, `/Users/peternicholls/Dev/20i-stack/20i-logs`, `/Users/peternicholls/Dev/20i-stack/20i-dns-setup`, and `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T032 [P] Run `shellcheck` on changed shell scripts if available and resolve relevant findings in `/Users/peternicholls/Dev/20i-stack/stacklane`, `/Users/peternicholls/Dev/20i-stack/20i-*`, and `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T033 Validate documentation and interface parity across `/Users/peternicholls/Dev/20i-stack/README.md`, `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md`, `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`, `/Users/peternicholls/Dev/20i-stack/docs/migration.md`, and `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`
-- [ ] T034 Validate configuration precedence and runtime isolation remain unchanged under `stacklane` for stack `.env`, project `.20i-local`, shell environment overrides, and CLI flags via `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
-- [ ] T035 Validate claimed friction reduction by comparing the old multi-command flow against the new `stacklane` flow using `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
-- [ ] T036 Run the complete validation flow in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md` and record any remaining untested macOS packaging caveats in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
+- [X] T031 [P] Run shell syntax validation on `/Users/peternicholls/Dev/20i-stack/stacklane`, `/Users/peternicholls/Dev/20i-stack/20i-up`, `/Users/peternicholls/Dev/20i-stack/20i-attach`, `/Users/peternicholls/Dev/20i-stack/20i-down`, `/Users/peternicholls/Dev/20i-stack/20i-detach`, `/Users/peternicholls/Dev/20i-stack/20i-status`, `/Users/peternicholls/Dev/20i-stack/20i-logs`, `/Users/peternicholls/Dev/20i-stack/20i-dns-setup`, and `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T032 [P] Run `shellcheck` on changed shell scripts if available and resolve relevant findings in `/Users/peternicholls/Dev/20i-stack/stacklane`, `/Users/peternicholls/Dev/20i-stack/20i-*`, and `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh` (tool unavailable in the current environment; no local findings remained after syntax validation)
+- [X] T033 Validate documentation and interface parity across `/Users/peternicholls/Dev/20i-stack/README.md`, `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md`, `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md`, `/Users/peternicholls/Dev/20i-stack/docs/migration.md`, and `/Users/peternicholls/Dev/20i-stack/docs/runtime-contract.md`
+- [X] T034 Validate configuration precedence and runtime isolation remain unchanged under `stacklane` for stack `.env`, project `.20i-local`, shell environment overrides, and CLI flags via `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
+- [X] T035 Validate claimed friction reduction by comparing the old multi-command flow against the new `stacklane` flow using `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
+- [X] T036 Run the complete validation flow in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md` and record any remaining untested macOS packaging caveats in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
 - [ ] T037 Complete the external GitHub repository rename to the Stacklane name and reconcile any remaining clone URLs or repository-name references in `/Users/peternicholls/Dev/20i-stack/README.md` and `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
 
 ---

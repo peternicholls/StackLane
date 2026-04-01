@@ -1,11 +1,11 @@
 #!/usr/bin/osascript
 
-# 20i Stack Manager - Standalone Application
-# Double-click this file to manage your 20i Docker stack
+# Stacklane Manager - Standalone Application
+# Double-click this file to manage your Stacklane workflow
 
 try
     # Main menu dialog
-    set menuChoice to choose from list {"🚀 Start Stack", "🛑 Stop Stack", "📊 View Status", "📋 View Logs", "❌ Cancel"} with title "20i Stack Manager" with prompt "What would you like to do?" default items {"🚀 Start Stack"}
+    set menuChoice to choose from list {"🚀 Start Stack", "🛑 Stop Stack", "📊 View Status", "📋 View Logs", "❌ Cancel"} with title "Stacklane Manager" with prompt "What would you like to do?" default items {"🚀 Start Stack"}
     
     if menuChoice is false or menuChoice = {"❌ Cancel"} then
         return
@@ -38,7 +38,7 @@ on startStack()
         set projectName to basename(projectPath)
         
         # Ask for custom settings
-        set settingsDialog to display dialog "⚙️ Custom settings (optional):" default answer "HOST_PORT=80" with title "20i Stack Settings" buttons {"Skip", "Use Settings"} default button "Skip"
+        set settingsDialog to display dialog "⚙️ Custom settings (optional):" default answer "HOST_PORT=80" with title "Stacklane Settings" buttons {"Skip", "Use Settings"} default button "Skip"
         
         set useCustomSettings to button returned of settingsDialog = "Use Settings"
         set customSettings to ""
@@ -55,7 +55,7 @@ on startStack()
         
         set shellScript to shellScript & "export COMPOSE_PROJECT_NAME='" & projectName & "';" & return
         set shellScript to shellScript & "export CODE_DIR='" & projectPath & "';" & return
-        set shellScript to shellScript & "echo '🚀 Starting 20i stack for project: " & projectName & "';" & return
+        set shellScript to shellScript & "echo '🚀 Starting Stacklane for project: " & projectName & "';" & return
         set shellScript to shellScript & "echo '📁 Code directory: " & projectPath & "';" & return
         set shellScript to shellScript & "docker compose -f '$HOME/docker/20i-stack/docker-compose.yml' up -d;" & return
         set shellScript to shellScript & "echo '✅ Stack started! Access your site at: http://localhost';" & return
@@ -68,7 +68,7 @@ on startStack()
         end tell
         
         # Show success notification
-        display notification "Stack starting for: " & projectName with title "🚀 20i Stack" subtitle "Check Terminal for details"
+        display notification "Stack starting for: " & projectName with title "🚀 Stacklane" subtitle "Check Terminal for details"
         
     on error errMsg
         display alert "❌ Error Starting Stack" message errMsg buttons {"OK"} default button "OK"
@@ -83,13 +83,13 @@ on stopStack()
         set runningProjects to do shell script shellScript
         
         if runningProjects = "" then
-            display alert "ℹ️ No Running Stacks" message "No 20i stacks appear to be running." buttons {"OK"} default button "OK"
+            display alert "ℹ️ No Running Stacks" message "No Stacklane projects appear to be running." buttons {"OK"} default button "OK"
             return
         end if
         
         # Convert to list for dialog
         set projectList to paragraphs of runningProjects
-        set selectedProject to choose from list projectList with title "🛑 Stop 20i Stack" with prompt "Select project to stop:" default items {item 1 of projectList}
+        set selectedProject to choose from list projectList with title "🛑 Stop Stacklane Project" with prompt "Select project to stop:" default items {item 1 of projectList}
         
         if selectedProject is false then
             return
@@ -98,7 +98,7 @@ on stopStack()
         set projectName to item 1 of selectedProject
         
         set shellScript to "export COMPOSE_PROJECT_NAME='" & projectName & "';" & return
-        set shellScript to shellScript & "echo '🛑 Stopping 20i stack: " & projectName & "';" & return
+        set shellScript to shellScript & "echo '🛑 Stopping Stacklane project: " & projectName & "';" & return
         set shellScript to shellScript & "docker compose -f '$HOME/docker/20i-stack/docker-compose.yml' down;" & return
         set shellScript to shellScript & "echo '✅ Stack stopped: " & projectName & "';"
         
@@ -107,7 +107,7 @@ on stopStack()
             do script shellScript
         end tell
         
-        display notification "Stack stopped: " & projectName with title "🛑 20i Stack"
+        display notification "Stack stopped: " & projectName with title "🛑 Stacklane"
         
     on error errMsg
         display alert "❌ Error Stopping Stack" message errMsg buttons {"OK"} default button "OK"
@@ -117,7 +117,7 @@ end stopStack
 # Function to view status
 on viewStatus()
     try
-        set shellScript to "echo '📊 20i Stack Status:';" & return
+        set shellScript to "echo '📊 Stacklane Status:';" & return
         set shellScript to shellScript & "docker compose -f '$HOME/docker/20i-stack/docker-compose.yml' ps;" & return
         set shellScript to shellScript & "echo '';" & return
         set shellScript to shellScript & "echo '🐳 All Docker containers:';" & return
@@ -141,13 +141,13 @@ on viewLogs()
         set runningProjects to do shell script shellScript
         
         if runningProjects = "" then
-            display alert "ℹ️ No Running Stacks" message "No 20i stacks appear to be running." buttons {"OK"} default button "OK"
+            display alert "ℹ️ No Running Stacks" message "No Stacklane projects appear to be running." buttons {"OK"} default button "OK"
             return
         end if
         
         # Convert to list for dialog
         set projectList to paragraphs of runningProjects
-        set selectedProject to choose from list projectList with title "📋 View 20i Stack Logs" with prompt "Select project to view logs:" default items {item 1 of projectList}
+        set selectedProject to choose from list projectList with title "📋 View Stacklane Logs" with prompt "Select project to view logs:" default items {item 1 of projectList}
         
         if selectedProject is false then
             return

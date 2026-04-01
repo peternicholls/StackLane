@@ -1,13 +1,13 @@
-# 20i Stack GUI Manager
+# Stacklane GUI Manager
 
-The GUI is still experimental and currently trails the CLI. Use the shell commands for the implemented Phase 1 and Phase 2 multi-project contract.
+The GUI is still experimental and trails the CLI. Use `stacklane` for the implemented multi-project contract.
 
 ## 🚀 Usage
 
-From any project directory, simply run:
+Use the installed app or Services workflow for the current GUI path:
 
 ```bash
-20i-gui
+open "$HOME/docker/20i-stack/20i Stack Manager.app"
 ```
 
 This currently gives you an interactive menu with these options:
@@ -28,7 +28,7 @@ This currently gives you an interactive menu with these options:
    - Does not yet report shared gateway health, planned hostnames, project docroots, or attachment state
 
 4. **📋 View Logs**
-   - Shows running 20i stacks
+   - Shows running Stacklane projects
    - Follow real-time logs for selected project
    - Press Ctrl+C to stop following
 
@@ -41,16 +41,18 @@ This currently gives you an interactive menu with these options:
 ## 🛠 Integration with Existing Workflow:
 
 Recommended command-line surface:
-- `20i-up` - Start and attach the current project
-- `20i-attach` - Attach an additional project concurrently
-- `20i-down` - Stop the current project and retain state
-- `20i-detach` - Stop the current project and remove its state
-- `20i-status` - Show attachment state, hostname, and Docker status
-- `20i-dns-setup` - One-time local DNS bootstrap (run once per machine)
+- `stacklane --up` - Start and attach the current project
+- `stacklane --attach` - Attach an additional project concurrently
+- `stacklane --down` - Stop the current project and retain state
+- `stacklane --detach` - Stop the current project and remove its state
+- `stacklane --status` - Show attachment state, hostname, and Docker status
+- `stacklane --dns-setup` - One-time local DNS bootstrap (run once per machine)
 
 For a full workflow walk-through including concurrent projects and migration from the old model, see [docs/migration.md](docs/migration.md).
 
-> **Note on `20i-gui-depricated`**: The `20i-gui-depricated` script in the repo root is the original pre-shared-gateway GUI wrapper. It is kept for historical reference but does not integrate with the shared gateway, hostname routing, or the project registry. Prefer the CLI commands above.
+If your live stack runs from a deployed copy such as `/Users/peternicholls/docker/20i-stack`, sync changes from your dev workspace before using the GUI wrappers. The GUI launches whatever copy is on disk at runtime.
+
+> **Note on `20i-gui-depricated`**: The `20i-gui-depricated` script in the repo root is the original pre-shared-gateway GUI wrapper. It is kept for historical reference but does not integrate with the shared gateway, hostname routing, or the project registry. Prefer `stacklane` instead.
 
 ## 💡 Pro Tips:
 
@@ -71,10 +73,12 @@ For a full workflow walk-through including concurrent projects and migration fro
 - **One-off CLI override**: Start with a different PHP version without editing project config:
 
    ```bash
-   20i-up --php-version 8.4
-   20i-up version=8.4
+   stacklane --up --php-version 8.4
+   stacklane --up version=8.4
    ```
 
-- **From Anywhere**: The `20i-gui` command works from any project directory
+- **From Anywhere**: The installed app and Services workflow can be launched outside the repo root
+
+Legacy `20i-*` wrappers still forward during migration, but the primary shell workflow is now `stacklane --action`.
 
 Use it as a secondary option alongside the shell workflow while the GUI remains partial.

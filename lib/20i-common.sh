@@ -660,7 +660,7 @@ twentyi_warn_if_dns_not_ready() {
     [[ "$dns_status" == "ready" || "$dns_status" == "unsupported-os" ]] && return 0
 
     printf 'Local DNS: %s\n' "$(twentyi_dns_status_message)" >&2
-    printf 'Run 20i-dns-setup to bootstrap .%s resolution on macOS.\n' "$LOCAL_DNS_SUFFIX" >&2
+    printf 'Run stacklane --dns-setup to bootstrap .%s resolution on macOS.\n' "$LOCAL_DNS_SUFFIX" >&2
 }
 
 twentyi_dns_setup() {
@@ -1573,6 +1573,111 @@ twentyi_note_phase_status() {
     fi
 }
 
+twentyi_stacklane_action_flag() {
+    case "$1" in
+        up)
+            printf '%s' '--up'
+            ;;
+        attach)
+            printf '%s' '--attach'
+            ;;
+        down)
+            printf '%s' '--down'
+            ;;
+        detach)
+            printf '%s' '--detach'
+            ;;
+        status)
+            printf '%s' '--status'
+            ;;
+        logs)
+            printf '%s' '--logs'
+            ;;
+        dns-setup)
+            printf '%s' '--dns-setup'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+twentyi_legacy_command_name() {
+    case "$1" in
+        up)
+            printf '%s' '20i-up'
+            ;;
+        attach)
+            printf '%s' '20i-attach'
+            ;;
+        down)
+            printf '%s' '20i-down'
+            ;;
+        detach)
+            printf '%s' '20i-detach'
+            ;;
+        status)
+            printf '%s' '20i-status'
+            ;;
+        logs)
+            printf '%s' '20i-logs'
+            ;;
+        dns-setup)
+            printf '%s' '20i-dns-setup'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+twentyi_stacklane_usage() {
+    cat <<EOF
+Stacklane
+
+Usage: stacklane --ACTION [options]
+
+Primary actions (choose exactly one):
+  --up                     Start the current project and ensure shared infrastructure
+  --attach                 Attach an additional project to the shared gateway
+  --down                   Stop the current project runtime
+  --detach                 Stop the current project runtime and remove its state record
+  --status                 Show shared gateway, DNS, and project runtime state
+  --logs                   Follow logs for the current or selected project
+  --dns-setup              Bootstrap local DNS on macOS using Homebrew dnsmasq
+
+Shared options:
+  --project-dir PATH       Use a project directory other than the current directory
+  --project SELECTOR       Target a recorded project for status/logs
+  --site-name NAME         Override the hostname/project basename source
+  --site-hostname HOST     Override the full planned hostname
+  --site-suffix SUFFIX     Override the suffix used for planned hostnames (default: test)
+  --docroot PATH           Override the document root (default: public_html when present)
+  --php-version VERSION    Override the PHP image version
+  --mysql-database NAME    Override the project database name
+  --mysql-user USER        Override the project database user
+  --mysql-password PASS    Override the project database password
+  --mysql-port PORT        Override the database port used in the runtime
+  --pma-port PORT          Override the phpMyAdmin port used in the runtime
+  --all                    Apply supported commands globally (for example, --down --all)
+  --dry-run                Resolve config and print the docker command without executing it
+  --help                   Show this help
+
+Compatibility aliases:
+  version=8.4              Same as --php-version 8.4
+
+Examples:
+  stacklane --up
+  stacklane --status --project marketing-site
+  stacklane --down --all
+  stacklane --logs apache
+
+Migration:
+  Legacy wrappers such as 20i-up and 20i-status still work temporarily, but they now forward to Stacklane.
+  Prefer stacklane $(twentyi_stacklane_action_flag up), stacklane $(twentyi_stacklane_action_flag status), and related action flags in all new docs and shell aliases.
+EOF
+}
+
 twentyi_usage() {
     cat <<EOF
 Usage: $(basename "$0") [options]
@@ -1606,6 +1711,14 @@ Additional commands:
 EOF
 }
 
+twentyi_print_usage() {
+    if [[ "${TWENTYI_ENTRYPOINT_MODE:-legacy}" == "stacklane" ]]; then
+        twentyi_stacklane_usage
+    else
+        twentyi_usage
+    fi
+}
+
 twentyi_parse_initial_args() {
     local args=("$@")
     local index=0
@@ -1624,6 +1737,27 @@ twentyi_parse_initial_args() {
 twentyi_parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --up)
+                TWENTYI_PRIMARY_ACTIONS+=("up")
+                ;;
+            --attach)
+                TWENTYI_PRIMARY_ACTIONS+=("attach")
+                ;;
+            --down)
+                TWENTYI_PRIMARY_ACTIONS+=("down")
+                ;;
+            --detach)
+                TWENTYI_PRIMARY_ACTIONS+=("detach")
+                ;;
+            --status)
+                TWENTYI_PRIMARY_ACTIONS+=("status")
+                ;;
+            --logs)
+                TWENTYI_PRIMARY_ACTIONS+=("logs")
+                ;;
+            --dns-setup)
+                TWENTYI_PRIMARY_ACTIONS+=("dns-setup")
+                ;;
             --project-dir)
                 shift
                 PROJECT_DIR="$1"
@@ -1679,7 +1813,7 @@ twentyi_parse_args() {
                 TWENTYI_DRY_RUN=1
                 ;;
             --help|-h)
-                twentyi_usage
+                twentyi_print_usage
                 exit 0
                 ;;
             version=*)
@@ -1702,8 +1836,33 @@ twentyi_parse_args() {
     done
 }
 
+twentyi_validate_stacklane_action_selection() {
+    local action_count="${#TWENTYI_PRIMARY_ACTIONS[@]}"
+
+    if [[ "$action_count" -eq 0 ]]; then
+        printf 'Error: stacklane requires exactly one primary action flag.\n\n' >&2
+        twentyi_stacklane_usage >&2
+        exit 1
+    fi
+
+    if [[ "$action_count" -gt 1 ]]; then
+        printf 'Error: primary actions are mutually exclusive:' >&2
+        local action
+        for action in "${TWENTYI_PRIMARY_ACTIONS[@]}"; do
+            printf ' %s' "$(twentyi_stacklane_action_flag "$action")" >&2
+        done
+        printf '\n\n' >&2
+        twentyi_stacklane_usage >&2
+        exit 1
+    fi
+
+    TWENTYI_COMMAND="${TWENTYI_PRIMARY_ACTIONS[0]}"
+}
+
 twentyi_init_defaults() {
     PROJECT_DIR="$PWD"
+    TWENTYI_ENTRYPOINT_MODE="${TWENTYI_ENTRYPOINT_MODE:-legacy}"
+    TWENTYI_PRIMARY_ACTIONS=()
     STACK_HOME="$(twentyi_default_stack_home)"
     TWENTYI_STATE_DIR="${STACK_STATE_DIR:-$STACK_HOME/.20i-state}"
     TWENTYI_STACK_FILE="$STACK_HOME/docker-compose.yml"
@@ -1886,7 +2045,11 @@ twentyi_status() {
 
     twentyi_refresh_registry
 
-    printf '20i stack status\n'
+    if [[ "${TWENTYI_ENTRYPOINT_MODE:-legacy}" == "stacklane" ]]; then
+        printf 'Stacklane status\n'
+    else
+        printf '20i stack status\n'
+    fi
     printf 'Stack home: %s\n' "$STACK_HOME"
     printf 'State dir: %s\n' "$TWENTYI_STATE_DIR"
     printf 'Registry file: %s\n' "$(twentyi_registry_file)"
@@ -1965,7 +2128,59 @@ twentyi_logs() {
     fi
 }
 
+twentyi_legacy_forward() {
+    local runtime_action="$1"
+    shift
+
+    local preferred_flag legacy_command
+    preferred_flag="$(twentyi_stacklane_action_flag "$runtime_action")"
+    legacy_command="$(twentyi_legacy_command_name "$runtime_action")"
+
+    printf 'Notice: %s is deprecated. Use stacklane %s instead.\n' "$legacy_command" "$preferred_flag" >&2
+
+    TWENTYI_ENTRYPOINT_MODE="stacklane"
+    stacklane_main "$preferred_flag" "$@"
+}
+
+stacklane_main() {
+    TWENTYI_ENTRYPOINT_MODE="stacklane"
+
+    twentyi_init_defaults
+    twentyi_parse_initial_args "$@"
+    twentyi_load_stack_and_project_config
+    twentyi_parse_args "$@"
+    twentyi_validate_stacklane_action_selection
+    twentyi_finalize_context
+
+    case "$TWENTYI_COMMAND" in
+        up|attach)
+            twentyi_up_like
+            ;;
+        down|detach)
+            if [[ "$TWENTYI_ALL" -eq 1 ]]; then
+                twentyi_down_all
+            else
+                twentyi_down_like
+            fi
+            ;;
+        status)
+            twentyi_status
+            ;;
+        dns-setup)
+            twentyi_dns_setup
+            ;;
+        logs)
+            twentyi_logs
+            ;;
+        *)
+            printf 'Error: unsupported Stacklane action %s\n' "$TWENTYI_COMMAND" >&2
+            exit 1
+            ;;
+    esac
+}
+
 twentyi_main() {
+    TWENTYI_ENTRYPOINT_MODE="legacy"
     TWENTYI_COMMAND="$1"
     shift
 

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# shellcheck source=lib/20i-common.sh
+source "$(cd "$(dirname "$0")" && pwd -P)/lib/20i-common.sh"
+
+twentyi_legacy_forward attach "$@"

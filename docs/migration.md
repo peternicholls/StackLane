@@ -1,6 +1,6 @@
-# Migration Guide: Single-Project to Multi-Project Stack
+# Migration Guide: 20i Commands to Stacklane
 
-This guide covers the transition from the original localhost-centric single-project workflow to the shared-gateway multi-project model introduced across Phases 1–7.
+This guide covers the transition from the original localhost-centric single-project workflow and `20i-*` commands to Stacklane and the shared-gateway multi-project model.
 
 ## What Changed
 
@@ -37,7 +37,7 @@ Switching to a second project meant stopping the first.
 ### One-time per-machine setup
 
 ```bash
-20i-dns-setup
+stacklane --dns-setup
 ```
 
 This installs Homebrew `dnsmasq`, configures it to resolve `*.test` to `127.0.0.1`, and writes `/etc/resolver/test`. The last step may require `sudo`; the command prints the exact copy-paste if so. Run once — it persists across reboots.
@@ -48,53 +48,65 @@ If you switch to `.dev`, the same command also generates a local wildcard TLS ce
 
 ```bash
 cd /path/to/project
-20i-up            # shared gateway starts if not running; project registers at project-name.test
+stacklane --up            # shared gateway starts if not running; project registers at project-name.test
 # visit http://project-name.test
-20i-status        # shows hostname, container health, gateway and DNS state
-20i-down          # stops the project runtime; retains its state record
+stacklane --status        # shows hostname, container health, gateway and DNS state
+stacklane --down          # stops the project runtime; retains its state record
 ```
 
-The muscle memory for `20i-up` and `20i-down` is unchanged. The difference is what you type in the browser.
+Legacy `20i-*` wrappers still work during the migration window, but Stacklane is the primary workflow and the documented path.
 
 ### Running two projects concurrently
 
 ```bash
 cd /path/to/project-a
-20i-up            # http://project-a.test is live
+stacklane --up            # http://project-a.test is live
 
 cd /path/to/project-b
-20i-attach        # http://project-b.test starts alongside project-a.test
+stacklane --attach        # http://project-b.test starts alongside project-a.test
 
-20i-status        # both projects shown
+stacklane --status        # both projects shown
 ```
 
-`20i-attach` is the explicit multi-project command. `20i-up` in a new repo also attaches if the shared layer is already running.
+`stacklane --attach` is the explicit multi-project command. `stacklane --up` in a new repo also attaches if the shared layer is already running.
 
 ### Teardown
 
 ```bash
 # Stop one project and retain its state record
-20i-down
+stacklane --down
 
 # Stop one project and remove its state record entirely
-20i-detach
+stacklane --detach
 
 # Stop all projects and clear all state
-20i-down --all
+stacklane --down --all
 ```
 
 ## Command Mapping
 
-| Old command | New equivalent | Notes |
+| Old command | Stacklane equivalent | Notes |
 |---|---|---|
-| `docker compose up -d` | `20i-up` | Also starts shared gateway, registers hostname |
-| `docker compose down` | `20i-down` | Project-scoped; retains record by default |
-| `docker compose logs -f` | `20i-logs` | Project-aware; use `--project` to switch scope |
-| `docker compose ps` | `20i-status` | Now shows gateway, DNS, hostnames, and drift |
-| Stop A, then start B | `20i-attach` from project B | Both run concurrently |
-| _(no equivalent)_ | `20i-detach` | Removes project record and routing |
-| _(no equivalent)_ | `20i-down --all` | Global teardown |
-| _(no equivalent)_ | `20i-dns-setup` | One-time local DNS bootstrap |
+| `docker compose up -d` | `stacklane --up` | Also starts shared gateway, registers hostname |
+| `docker compose down` | `stacklane --down` | Project-scoped; retains record by default |
+| `docker compose logs -f` | `stacklane --logs` | Project-aware; use `--project` to switch scope |
+| `docker compose ps` | `stacklane --status` | Now shows gateway, DNS, hostnames, and drift |
+| Stop A, then start B | `stacklane --attach` from project B | Both run concurrently |
+| _(no equivalent)_ | `stacklane --detach` | Removes project record and routing |
+| _(no equivalent)_ | `stacklane --down --all` | Global teardown |
+| _(no equivalent)_ | `stacklane --dns-setup` | One-time local DNS bootstrap |
+
+Retained compatibility wrappers:
+
+| Legacy wrapper | Forwards to |
+|---|---|
+| `20i-up` | `stacklane --up` |
+| `20i-attach` | `stacklane --attach` |
+| `20i-down` | `stacklane --down` |
+| `20i-detach` | `stacklane --detach` |
+| `20i-status` | `stacklane --status` |
+| `20i-logs` | `stacklane --logs` |
+| `20i-dns-setup` | `stacklane --dns-setup` |
 
 ## Config Migration
 
@@ -128,11 +140,17 @@ export SITE_HOSTNAME=exact.test  # full override, no suffix appended
 
 ## What Stays the Same
 
-- `20i-up` and `20i-down` work exactly as before for single-project use.
+- Runtime behavior, config precedence, and state isolation are unchanged under `stacklane`.
 - Config resolution order (CLI flags → `.20i-local` → environment → `.env` → defaults) is unchanged.
 - PHP version, database credentials, and document root overrides all work as before.
 - The `public_html` default document root fallback is unchanged.
 - The GUI layer (`20i Stack Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting — see [GUI-HELP.md](../GUI-HELP.md).
+
+## Repository Rename vs Local Folder Rename
+
+- A GitHub repository rename and your local checkout folder name are separate changes.
+- If the remote repository is renamed to Stacklane, existing local clones do not rename themselves.
+- If you want your local stack folder to be named `stacklane`, rename that directory manually and then update `STACK_HOME`, shell aliases, launchers, and any deployment copy that still points at `~/docker/20i-stack`.
 
 ## Wordfence / `.user.ini` Note
 
@@ -172,11 +190,11 @@ echo 'export PATH="$STACK_HOME:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
 # 3. Bootstrap local DNS (once per machine)
-20i-dns-setup
+stacklane --dns-setup
 
 # 4. Start your first project
 cd /path/to/your-project
-20i-up
+stacklane --up
 ```
 
-If `20i-dns-setup` requires elevated privileges it prints the exact `sudo` command to run to finish the resolver file installation. After that single manual step everything resolves automatically.
+If `stacklane --dns-setup` requires elevated privileges it prints the exact `sudo` command to run to finish the resolver file installation. After that single manual step everything resolves automatically.

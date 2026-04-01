@@ -1,10 +1,10 @@
-# 🚀 20i Stack Manager - macOS Automation
+# 🚀 Stacklane Manager - macOS Automation
 
-This automation provides experimental GUI interfaces to manage your 20i Docker stack on macOS. The CLI is now the primary interface for the implemented Phase 1 and Phase 2 project contract.
+This automation provides experimental GUI interfaces for Stacklane on macOS. The CLI is the primary interface for the implemented runtime contract.
 
 ## 📱 What You Get
 
-### 1. **20i Stack Manager.app** 
+### 1. **Stacklane Manager.app** 
 - **Location**: `/Users/peternicholls/docker/20i-stack/20i Stack Manager.app`
 - **Usage**: Double-click to launch
 - **Features**: 
@@ -14,7 +14,7 @@ This automation provides experimental GUI interfaces to manage your 20i Docker s
   - 📋 View Logs (follow logs in Terminal)
 
 ### 2. **Services Menu Integration**
-- **Access**: Right-click anywhere → Services → "20i Stack Manager"
+- **Access**: Right-click anywhere → Services → "Stacklane Manager"
 - **Usage**: Available system-wide in any application
 - **Same features** as the standalone app
 
@@ -54,6 +54,8 @@ The automation is already set up! Here's what was installed:
 5. **Watch Terminal** as your stack starts
 6. **Access your site** at the URL printed in Terminal. The CLI now uses the shared gateway port rather than a per-project web port.
 
+If you edit this repository in one location and run the live stack from another, sync the changes into the deployed copy first. The common setup here is editing in `/Users/peternicholls/Dev/20i-stack` and launching from `/Users/peternicholls/docker/20i-stack`.
+
 ## 💡 Pro Tips
 
 - **Services Menu**: Access from any app via right-click → Services
@@ -79,13 +81,13 @@ MYSQL_DATABASE=mydb    # Custom database name
    - Start stack → Select `/path/to/project-a` → site becomes available through the shared gateway at `project-a.test`
 
 2. **Add a concurrent project**:
-   - The GUI does not yet expose `20i-attach`. Use the CLI: `cd /path/to/project-b && 20i-attach`
+   - The GUI does not yet expose `stacklane --attach`. Use the CLI: `cd /path/to/project-b && stacklane --attach`
    - Both sites then run simultaneously. The GUI's stop and start actions operate on one project at a time and do not disrupt the other.
 
 3. **Debug Issues**:
    - View Status → See all containers
    - View Logs → Follow real-time logs for a selected project
 
-For full multi-project workflows, concurrent attach/detach, and global teardown see [docs/migration.md](docs/migration.md) and use the CLI commands directly.
+For full multi-project workflows, concurrent attach/detach, and global teardown see [docs/migration.md](docs/migration.md) and use `stacklane` directly.
 
-Use the automation as a convenience layer, not the source of truth for the new runtime contract.
+Use the automation as a convenience layer, not the source of truth for the Stacklane runtime contract.
