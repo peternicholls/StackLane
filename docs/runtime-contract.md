@@ -57,16 +57,17 @@ This document locks the Stacklane command semantics and state model.
 
 ### `stacklane --dns-setup`
 
+- Writes stack-managed `dnsmasq` config for the chosen suffix.
+- Starts or restarts Homebrew `dnsmasq` on the configured local port.
+- Installs or instructs the user to install the matching `/etc/resolver/<suffix>` file.
+- When `SITE_SUFFIX=dev`, generates a local wildcard TLS certificate via `mkcert` and configures the shared gateway HTTPS port (default `8443`).
+- Fails with a clear message when Homebrew is missing, `dnsmasq` is not installed, `mkcert` is required but absent, privileges are needed for `/etc/resolver`, or the resulting DNS health check is not ready.
+
 ## Legacy Wrappers
 
 - `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` are deprecated compatibility wrappers retained only for the migration window.
 - Each wrapper forwards to the equivalent `stacklane --action` command and prints concise deprecation guidance, including that the wrapper will be removed in a future update.
 - Wrappers are retained for migration only and are not the primary documented interface.
-
-- Writes stack-managed `dnsmasq` config for the chosen suffix.
-- Starts or restarts Homebrew `dnsmasq` on the configured local port.
-- Installs or instructs the user to install the matching `/etc/resolver/<suffix>` file.
-- Fails with a clear message when Homebrew is missing, `dnsmasq` is not installed, privileges are needed for `/etc/resolver`, or the resulting DNS health check is not ready.
 
 ## Config Precedence
 
@@ -82,7 +83,7 @@ This document locks the Stacklane command semantics and state model.
 - Override source: `SITE_NAME`
 - Full override: `SITE_HOSTNAME`
 - Default suffix: `.test`
-- `.dev` remains deferred until the stack gains local HTTPS support
+- `.dev` uses HTTPS on port `8443` by default and requires `mkcert` (`brew install mkcert && mkcert -install`); a local wildcard TLS cert is generated automatically by `stacklane --dns-setup`
 
 ## Document Root Contract
 

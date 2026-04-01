@@ -146,7 +146,7 @@ export SITE_HOSTNAME=exact.test  # full override, no suffix appended
 - Config resolution order (CLI flags → `.20i-local` → environment → `.env` → defaults) is unchanged.
 - PHP version, database credentials, and document root overrides all work as before.
 - The `public_html` default document root fallback is unchanged.
-- The GUI layer (`20i Stack Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting — see [GUI-HELP.md](../GUI-HELP.md).
+- The GUI layer (`20i Stack Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting. GUI assets and documentation have been moved to `previous-version-archive/GUI-HELP.md`.
 
 ## Repository Rename vs Local Folder Rename
 
@@ -174,8 +174,7 @@ This was true in the old model and remains true in the new one.
 
 ## Known Deferred Items
 
-- **`.dev` support**: requires local TLS; deferred until the stack gains HTTPS support.
-- **Full GUI parity**: the GUI trails the CLI. See [GUI-HELP.md](../GUI-HELP.md).
+- **Full GUI parity**: the GUI trails the CLI.
 - **Windows / Linux DNS**: the `dnsmasq` bootstrap is macOS-only for now.
 
 ## Clean-Machine Bootstrap
@@ -184,6 +183,8 @@ Requirements: macOS, Docker Desktop, Homebrew.
 
 ```bash
 # 1. Clone or copy the stack
+# Note: the GitHub repository is named StackLane; the local folder remains ~/docker/20i-stack
+# until you choose to rename it and update STACK_HOME accordingly.
 git clone https://github.com/peternicholls/StackLane.git ~/docker/20i-stack
 
 # 2. Add stack commands to your path — add to ~/.zshrc and reload

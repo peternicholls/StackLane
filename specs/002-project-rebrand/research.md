@@ -2,7 +2,7 @@
 
 ## Decision 1: Keep the current runtime engine and add a single dispatcher command
 
-- Decision: Implement `stacklane` as the new canonical entrypoint while continuing to route lifecycle behavior through the existing helper engine in `lib/20i-common.sh`.
+- Decision: Implement `stacklane` as the new canonical entrypoint while continuing to route lifecycle behavior through the existing helper engine in `lib/stacklane-common.sh`.
 - Rationale: The current command family is already thin wrappers around `twentyi_main`. Reusing that runtime engine minimizes behavior drift and isolates the change to command dispatch, help text, migration messaging, and documentation.
 - Alternatives considered: Rewriting the runtime API around a new helper library was rejected because it adds avoidable risk to startup, state handling, gateway routing, and DNS behavior during what is primarily a rename and UX-surface change.
 

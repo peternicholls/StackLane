@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-04-01
-**Feature**: [/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/spec.md](/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/spec.md)
+**Feature**: [specs/002-project-rebrand/spec.md](../spec.md)
 
 ## Content Quality
 

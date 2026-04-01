@@ -1,16 +1,16 @@
 # Implementation Plan: Stacklane Rebrand And Unified Command Surface
 
-**Branch**: `002-project-rebrand` | **Date**: 2026-04-01 | **Spec**: `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/spec.md`
-**Input**: Feature specification from `/specs/002-project-rebrand/spec.md`
+**Branch**: `002-project-rebrand` | **Date**: 2026-04-01 | **Spec**: `specs/002-project-rebrand/spec.md`
+**Input**: Feature specification from `specs/002-project-rebrand/spec.md`
 
 ## Summary
 
-Rebrand the project to Stacklane, replace the current family of `20i-*` entrypoints with a single `stacklane` command that uses action modifiers such as `--up` and `--down`, and update all maintained user-facing surfaces in the same delivery unit. Implementation will preserve the existing runtime model in `lib/20i-common.sh`, introduce one canonical command dispatcher, retain `20i-*` scripts temporarily as deprecation wrappers, and update docs plus GUI-facing text so the rename and migration are explicit and low-friction.
+Rebrand the project to Stacklane, replace the current family of `20i-*` entrypoints with a single `stacklane` command that uses action modifiers such as `--up` and `--down`, and update all maintained user-facing surfaces in the same delivery unit. Implementation will preserve the existing runtime model in `lib/stacklane-common.sh`, introduce one canonical command dispatcher, retain `20i-*` scripts temporarily as deprecation wrappers, and update docs plus GUI-facing text so the rename and migration are explicit and low-friction.
 
 ## Technical Context
 
 **Language/Version**: Bash on macOS with POSIX shell workflow, Docker Compose YAML, AppleScript/Automator assets for GUI wrappers  
-**Primary Dependencies**: Docker Desktop, Docker Compose, Homebrew `dnsmasq`, Bash helper library in `lib/20i-common.sh`, macOS Automator/workflow assets  
+**Primary Dependencies**: Docker Desktop, Docker Compose, Homebrew `dnsmasq`, Bash helper library in `lib/stacklane-common.sh`, macOS Automator/workflow assets  
 **Storage**: File-based project and stack state under `.20i-state/`, documentation files, shell wrapper scripts, app/workflow metadata  
 **Testing**: Manual CLI validation for startup/status/teardown and failure messaging, plus shell-level syntax validation where practical (`bash -n`; `shellcheck` if available)  
 **Target Platform**: macOS developer machines using Docker Desktop
@@ -80,17 +80,17 @@ docs/
 ├── runtime-contract.md
 └── plan.md
 lib/
-└── 20i-common.sh
-20i Stack Manager.app/
-20i Stack Manager.workflow/
-20i-stack-launcher.workflow
-20i-stack-manager.scpt
+└── stacklane-common.sh
+20i Stack Manager.app/ (archived → previous-version-archive/)
+20i Stack Manager.workflow/ (archived → previous-version-archive/)
+20i-stack-launcher.workflow (archived → previous-version-archive/)
+20i-stack-manager.scpt (archived → previous-version-archive/)
 docker-compose.yml
 docker-compose.shared.yml
 docker/
 ```
 
-**Structure Decision**: This is a single-repository shell and documentation feature. Core implementation will center on `lib/20i-common.sh`, a new top-level `stacklane` dispatcher script at the repo root, the existing `20i-*` wrapper scripts, and the maintained documentation and GUI-facing text surfaces listed above.
+**Structure Decision**: This is a single-repository shell and documentation feature. Core implementation will center on `lib/stacklane-common.sh`, a new top-level `stacklane` dispatcher script at the repo root, the existing `20i-*` wrapper scripts, and the maintained documentation and GUI-facing text surfaces listed above.
 
 ## Post-Design Constitution Check
 

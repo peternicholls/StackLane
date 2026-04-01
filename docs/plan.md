@@ -1,14 +1,14 @@
 ## Plan: Multi-site Attachable Stack
 
-Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `20i-up` stays the main entrypoint, but under the hood it becomes "ensure shared infra exists, start this project, register its hostname". `20i-attach` and `20i-detach` then manage additional repos against that same shared layer.
+Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stacklane` is the canonical entrypoint; `stacklane --up` becomes "ensure shared infra exists, start this project, register its hostname". `stacklane --attach` and `stacklane --detach` then manage additional repos against that same shared layer. The legacy `20i-up`, `20i-attach`, and `20i-detach` wrappers are retained for the migration window only.
 
 I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is preferred only if it stays low-friction, and on macOS `.dev` becomes awkward fast because of HSTS and the implied need for local TLS.
 
 ## Outcome
 
-- `20i-up` works from a project root and exposes that project at a stable local hostname.
+- `stacklane --up` works from a project root and exposes that project at a stable local hostname.
 - Multiple projects can coexist concurrently through one shared gateway and DNS layer.
-- `20i-attach` and `20i-detach` manage project registration without breaking other attached projects.
+- `stacklane --attach` and `stacklane --detach` manage project registration without breaking other attached projects.
 - Monitoring reports both Docker state and logical attachment state.
 
 ## Principles
@@ -198,22 +198,22 @@ Pass criteria:
 
 **Relevant files**
 
-- `/Users/peternicholls/Dev/20i-stack/docker-compose.yml` — current all-in-one runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
-- `/Users/peternicholls/Dev/20i-stack/docker/nginx.conf.tmpl` — current single-site `localhost` routing template to evolve into hostname-aware behavior.
-- `/Users/peternicholls/Dev/20i-stack/20i-gui` — current command semantics and status patterns to extend with attach/detach and registry-backed monitoring.
-- `/Users/peternicholls/Dev/20i-stack/20i-stack-manager.scpt` — macOS automation entrypoint to keep aligned with revised command behavior.
-- `/Users/peternicholls/Dev/20i-stack/README.md` — current user contract still describing localhost and one-project switching.
-- `/Users/peternicholls/Dev/20i-stack/AUTOMATION-README.md` — automation docs that currently assume stop/start project switching.
-- `/Users/peternicholls/Dev/20i-stack/.env.example` — environment contract to update for shared-layer and project-layer settings.
-- `/Users/peternicholls/Dev/20i-stack/GUI-HELP.md` — help text that still assumes one active project at a time.
+- `docker-compose.yml` — current all-in-one runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
+- `docker/nginx.conf.tmpl` — current single-site `localhost` routing template to evolve into hostname-aware behavior.
+- `previous-version-archive/20i-gui` — legacy command semantics and status patterns extended with attach/detach and registry-backed monitoring.
+- `previous-version-archive/20i-stack-manager.scpt` — macOS automation entrypoint (archived); kept aligned with revised command behavior in `previous-version-archive/`.
+- `README.md` — current user contract describing localhost and one-project switching.
+- `previous-version-archive/AUTOMATION-README.md` — automation docs that currently assume stop/start project switching.
+- `.env.example` — environment contract to update for shared-layer and project-layer settings.
+- `previous-version-archive/GUI-HELP.md` — help text that still assumes one active project at a time (archived).
 
 **Verification**
 
 1. From a clean state, bootstrap the local DNS setup and verify wildcard resolution before any project is attached.
-2. Run `20i-up` in one repo and confirm it is reachable by hostname rather than `localhost`.
-3. Run `20i-attach` in a second repo and confirm both sites remain reachable concurrently.
+2. Run `stacklane --up` in one repo and confirm it is reachable by hostname rather than `localhost`.
+3. Run `stacklane --attach` in a second repo and confirm both sites remain reachable concurrently.
 4. Run monitoring/status and confirm it reports attached repo path, hostname, container health, and DNS/gateway health together.
-5. Run `20i-detach` in one repo and verify only that project disappears while the other stays live.
+5. Run `stacklane --detach` in one repo and verify only that project disappears while the other stays live.
 6. Run the global teardown path and verify shared infra and registrations are removed cleanly.
 7. Reattach a previously detached project and verify its database data remains isolated and intact.
 
