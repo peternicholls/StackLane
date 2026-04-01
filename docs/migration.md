@@ -151,7 +151,7 @@ export SITE_HOSTNAME=exact.test  # full override, no suffix appended
 ## Repository Rename vs Local Folder Rename
 
 - A GitHub repository rename and your local checkout folder name are separate changes.
-- If the remote repository is renamed to Stacklane, existing local clones do not rename themselves.
+- The GitHub repository is now named `StackLane`, but existing local clones do not rename themselves.
 - If you want your local stack folder to be named `stacklane`, rename that directory manually and then update `STACK_HOME`, shell aliases, launchers, and any deployment copy that still points at `~/docker/20i-stack`.
 
 ## Wordfence / `.user.ini` Note
@@ -184,7 +184,7 @@ Requirements: macOS, Docker Desktop, Homebrew.
 
 ```bash
 # 1. Clone or copy the stack
-git clone https://github.com/peternicholls/20i-stack ~/docker/20i-stack
+git clone https://github.com/peternicholls/StackLane.git ~/docker/20i-stack
 
 # 2. Add stack commands to your path — add to ~/.zshrc and reload
 echo 'export STACK_HOME="$HOME/docker/20i-stack"' >> ~/.zshrc

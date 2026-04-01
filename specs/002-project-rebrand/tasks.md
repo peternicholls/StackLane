@@ -110,7 +110,7 @@
 - [X] T034 Validate configuration precedence and runtime isolation remain unchanged under `stacklane` for stack `.env`, project `.20i-local`, shell environment overrides, and CLI flags via `/Users/peternicholls/Dev/20i-stack/lib/20i-common.sh`
 - [X] T035 Validate claimed friction reduction by comparing the old multi-command flow against the new `stacklane` flow using `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
 - [X] T036 Run the complete validation flow in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md` and record any remaining untested macOS packaging caveats in `/Users/peternicholls/Dev/20i-stack/specs/002-project-rebrand/quickstart.md`
-- [ ] T037 Complete the external GitHub repository rename to the Stacklane name and reconcile any remaining clone URLs or repository-name references in `/Users/peternicholls/Dev/20i-stack/README.md` and `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
+- [X] T037 Complete the external GitHub repository rename to the Stacklane name and reconcile any remaining clone URLs or repository-name references in `/Users/peternicholls/Dev/20i-stack/README.md` and `/Users/peternicholls/Dev/20i-stack/docs/migration.md`
 
 ---
 
@@ -200,4 +200,4 @@ Task: "Update repo-rename, wrapper, and sync guidance in /Users/peternicholls/De
 - `[P]` tasks touch different files and can be worked in parallel.
 - Story labels map each task back to the specification for traceability.
 - Every story ends with an independent validation task so it can be demonstrated on its own.
-- The external repository rename remains a real implementation step even though the local containing-folder rename is explicitly manual.
+- The external repository rename is complete; the local containing-folder rename remains a separate manual operator step.

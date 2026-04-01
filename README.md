@@ -47,7 +47,7 @@ Requirements: macOS, Docker Desktop, and Homebrew.
 
 ```bash
 # 1. Clone or copy the stack
-git clone https://github.com/peternicholls/20i-stack ~/docker/20i-stack
+git clone https://github.com/peternicholls/StackLane.git ~/docker/20i-stack
 
 # 2. Add Stacklane to your path — add to ~/.zshrc and reload
 export STACK_HOME="$HOME/docker/20i-stack"
@@ -57,7 +57,7 @@ export PATH="$STACK_HOME:$PATH"
 stacklane --dns-setup
 ```
 
-The GitHub repository and the local folder that contains it are separate concerns. If the remote repository is renamed later, your local checkout directory does not rename itself. Keep `STACK_HOME` pointed at the folder you actually run, whether that folder is still named `20i-stack` or you rename it manually.
+The GitHub repository and the local folder that contains it are separate concerns. The remote repository is now named `StackLane`, but existing local checkout directories do not rename themselves. Keep `STACK_HOME` pointed at the folder you actually run, whether that folder is still named `20i-stack` or you rename it manually.
 
 If `stacklane --dns-setup` requires elevated privileges it prints the exact `sudo` command to finish the resolver file installation. Run it once — it persists across reboots.
 

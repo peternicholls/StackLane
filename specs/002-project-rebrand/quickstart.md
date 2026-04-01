@@ -49,4 +49,4 @@ Validate the Stacklane rename and unified command surface without changing the u
 - 2026-04-01: Recompiled `20i Stack Manager.app/Contents/Resources/Scripts/main.scpt` from the updated AppleScript source.
 - 2026-04-01: Untested caveat: the macOS app and workflow packaging were not exercised through Finder or Services UI during this implementation pass.
 - 2026-04-01: Untested caveat: `shellcheck` was not available in the current environment.
-- 2026-04-01: Unresolved external step: GitHub repository rename and post-rename clone URL updates require repository administration outside this workspace.
+- 2026-04-01: GitHub repository rename completed to `StackLane`; clone URL guidance was updated while keeping the local containing-folder rename manual.
