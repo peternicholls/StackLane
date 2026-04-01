@@ -42,6 +42,28 @@ Optional overrides:
 "$STACK_HOME/20i-status" --project marketing-site
 ```
 
+## First-time Setup
+
+Requirements: macOS, Docker Desktop, and Homebrew.
+
+```bash
+# 1. Clone or copy the stack
+git clone https://github.com/peternicholls/20i-stack ~/docker/20i-stack
+
+# 2. Add stack commands to your path — add to ~/.zshrc and reload
+export STACK_HOME="$HOME/docker/20i-stack"
+export PATH="$STACK_HOME:$PATH"
+
+# 3. Bootstrap local DNS (once per machine)
+20i-dns-setup
+```
+
+If `20i-dns-setup` requires elevated privileges it prints the exact `sudo` command to finish the resolver file installation. Run it once — it persists across reboots.
+
+If you use `.dev`, the local HTTPS URL defaults to port `8443`. This avoids collisions with other local services that commonly use `443`, such as Tailscale Serve, while keeping the route stable and predictable.
+
+For a migration walk-through if you are coming from the old single-project localhost workflow, see [docs/migration.md](docs/migration.md).
+
 ## Command Semantics
 
 - `20i-up`: Ensure the shared gateway exists, start the current project runtime, validate the live containers, register it in `.20i-state`, and mark it `attached`.
@@ -52,6 +74,8 @@ Optional overrides:
 - `20i-status [--project SELECTOR]`: Show shared gateway health plus recorded projects, their planned hostnames, hostname route URLs, gateway probe URL, container docroots, registry file path, recorded live container identity, registry drift, and Docker state.
 - `20i-logs [--project SELECTOR] [service]`: Follow logs for a selected project runtime.
 - `20i-dns-setup`: Bootstrap local `.test` resolution on macOS using Homebrew `dnsmasq` on `127.0.0.1:53535` and an `/etc/resolver/<suffix>` file.
+
+When `.dev` TLS is enabled, `20i-up` and `20i-status` surface the route as `https://<hostname>:8443` unless you explicitly override `SHARED_GATEWAY_HTTPS_PORT`.
 
 ## Config Precedence
 
@@ -145,16 +169,30 @@ This keeps the shell-first workflow intact while removing direct per-project web
 ├── 20i-up
 ├── 20i-attach
 ├── 20i-down
-├── 20i-dns-setup
 ├── 20i-detach
+├── 20i-dns-setup
 ├── 20i-status
 ├── 20i-logs
-├── lib/20i-common.sh
-├── docker-compose.yml
-├── docker-compose.shared.yml
-├── .env.example
-└── docs/plan.md
+├── lib/
+│   └── 20i-common.sh        # shared config resolution, state helpers
+├── docker-compose.yml        # per-project runtime template
+├── docker-compose.shared.yml # shared gateway and network
+├── docker/
+│   └── nginx.conf.tmpl      # gateway route template
+├── .env.example              # stack-wide defaults reference
+├── .20i-state/               # runtime state (git-ignored)
+│   ├── projects/<slug>.env   # per-project state file
+│   ├── registry.tsv          # registry snapshot
+│   └── shared/               # generated gateway config
+├── docs/
+│   ├── migration.md          # old-to-new workflow guide
+│   ├── runtime-contract.md   # command semantics and state model
+│   └── plan.md               # implementation plan and progress
+├── AUTOMATION-README.md      # macOS GUI automation docs
+└── GUI-HELP.md               # GUI wrapper notes (CLI leads)
 ```
+
+The `20i-gui-depricated` script in the repo root is the original pre-Phase-1 GUI wrapper. It is kept for reference but does not integrate with the shared gateway or project registry; use the CLI commands instead.
 
 ## Shell Integration
 

@@ -75,15 +75,17 @@ MYSQL_DATABASE=mydb    # Custom database name
 
 ## 🎨 Example Workflow
 
-1. **Working on Project A**:
-   - Start stack → Select `/path/to/project-a` → CLI-backed flows now front the site through the shared gateway
+1. **Start a project**:
+   - Start stack → Select `/path/to/project-a` → site becomes available through the shared gateway at `project-a.test`
 
-2. **Switch to Project B**:
-   - For the implemented attach workflow, prefer the CLI: `20i-attach`
-   - GUI switching still behaves like the older stop/start flow
+2. **Add a concurrent project**:
+   - The GUI does not yet expose `20i-attach`. Use the CLI: `cd /path/to/project-b && 20i-attach`
+   - Both sites then run simultaneously. The GUI's stop and start actions operate on one project at a time and do not disrupt the other.
 
 3. **Debug Issues**:
    - View Status → See all containers
-   - View Logs → Follow real-time logs
+   - View Logs → Follow real-time logs for a selected project
+
+For full multi-project workflows, concurrent attach/detach, and global teardown see [docs/migration.md](docs/migration.md) and use the CLI commands directly.
 
 Use the automation as a convenience layer, not the source of truth for the new runtime contract.

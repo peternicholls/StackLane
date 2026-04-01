@@ -13,11 +13,10 @@ I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is p
 
 ## Principles
 
-- Keep the current shell-first workflow intact.
-- Prefer `.test` for the first shipping version.
-- Reuse Nginx and the existing Docker-based approach rather than swapping in a new router stack.
-- Keep project runtimes isolated, especially databases.
-- Extend `.20i-local` instead of inventing a second project config format.
+- Optimize for ease of use in the common shell-first workflow.
+- Make repeated runs reliable and predictable across CLI and wrapper entry points.
+- Keep the runtime robust under partial failure, drift, and multi-project isolation pressure.
+- Remove pinch points and user friction before adding optional complexity.
 
 ## Stories
 
@@ -110,12 +109,12 @@ As a developer, I want the new behavior to preserve existing `20i-up` and `20i-d
 
 ### Phase 8: Documentation and migration
 
-- [ ] Update README examples away from `localhost` toward project hostnames.
-- [ ] Document `.20i-local` additions and override precedence.
-- [ ] Add docs for attach, detach, shared teardown, and concurrent project workflows.
-- [ ] Add a migration section explaining old versus new behavior.
-- [ ] Mark GUI support as deferred or partial if CLI ships first.
-- [ ] Tidy up the project structure and docs to reflect the new multi-project focus and follow good practices and patterns for project organization.
+- [x] Update README examples away from `localhost` toward project hostnames.
+- [x] Document `.20i-local` additions and override precedence.
+- [x] Add docs for attach, detach, shared teardown, and concurrent project workflows.
+- [x] Add a migration section explaining old versus new behavior.
+- [x] Mark GUI support as deferred or partial if CLI ships first.
+- [x] Tidy up the project structure and docs to reflect the new multi-project focus and follow good practices and patterns for project organization.
 
 ## Gates
 
@@ -132,68 +131,68 @@ Pass criteria:
 
 Pass criteria:
 
-- [ ] Shared gateway starts independently of any one project.
-- [ ] A single project can be started behind the gateway without using `localhost`.
-- [ ] No per-project web host port is required for normal access.
+- [x] Shared gateway starts independently of any one project.
+- [x] A single project can be started behind the gateway without using `localhost`.
+- [x] No per-project web host port is required for normal access.
 
 ### Gate C: Multi-project runtime proven
 
 Pass criteria:
 
-- [ ] Two projects can run concurrently.
-- [ ] Each project has distinct routing and isolated runtime state.
-- [ ] Detaching one project does not interrupt the other.
+- [x] Two projects can run concurrently.
+- [x] Each project has distinct routing and isolated runtime state.
+- [x] Detaching one project does not interrupt the other.
 
 ### Gate D: Operational visibility complete
 
 Pass criteria:
 
-- [ ] Status shows gateway, DNS, attachments, and drift.
-- [ ] Failure modes are visible without manually inspecting raw Docker output.
-- [ ] Logs can be scoped to an attached project reliably.
+- [x] Status shows gateway, DNS, attachments, and drift.
+- [x] Failure modes are visible without manually inspecting raw Docker output.
+- [x] Logs can be scoped to an attached project reliably.
 
 ### Gate E: Ready to adopt
 
 Pass criteria:
 
-- [ ] Core docs are updated.
-- [ ] Single-project workflow still feels familiar.
-- [ ] A clean-machine bootstrap path is documented and validated on macOS.
+- [x] Core docs are updated.
+- [x] Single-project workflow still feels familiar.
+- [x] A clean-machine bootstrap path is documented and validated on macOS.
 
 ## Checkpoints
 
 ### Checkpoint 1: Single-project parity
 
-- [ ] From a clean state, run `20i-up` in one repo.
-- [ ] Confirm shared services bootstrap automatically.
-- [ ] Confirm the project is reachable at its hostname, not `localhost`.
-- [ ] Confirm database connectivity and existing dev workflow still work.
+- [x] From a clean state, run `20i-up` in one repo.
+- [x] Confirm shared services bootstrap automatically.
+- [x] Confirm the project is reachable at its hostname, not `localhost`.
+- [x] Confirm database connectivity and existing dev workflow still work.
 
 ### Checkpoint 2: Concurrent attachment
 
-- [ ] Run `20i-attach` in a second repo.
-- [ ] Confirm both sites stay reachable simultaneously.
-- [ ] Confirm project A and project B route to the correct mounted codebases.
-- [ ] Confirm both projects preserve isolated database state.
+- [x] Run `20i-attach` in a second repo.
+- [x] Confirm both sites stay reachable simultaneously.
+- [x] Confirm project A and project B route to the correct mounted codebases.
+- [x] Confirm both projects preserve isolated database state.
 
 ### Checkpoint 3: Safe detach and local down
 
-- [ ] Run `20i-detach` in one repo.
-- [ ] Confirm its hostname stops resolving or routing.
-- [ ] Confirm the other project stays healthy.
+- [x] Run `20i-detach` in one repo.
+- [x] Confirm its hostname stops resolving or routing.
+- [x] Confirm the other project stays healthy.
 - [ ] Run `20i-down` from the remaining repo and confirm only that project stops.
 
 ### Checkpoint 4: Global teardown and recovery
 
-- [ ] Run the global teardown command.
-- [ ] Confirm all shared infrastructure and registrations are removed cleanly.
+- [x] Run the global teardown command.
+- [x] Confirm all shared infrastructure and registrations are removed cleanly.
 - [ ] Re-run `20i-up` and confirm the environment can rebuild from scratch.
 - [ ] Reattach a previously used repo and confirm its project database persists correctly.
 
 ### Checkpoint 5: Failure-path validation
 
-- [ ] Validate behavior when the DNS service is unavailable.
-- [ ] Validate behavior when registry state and Docker state diverge.
+- [x] Validate behavior when the DNS service is unavailable.
+- [x] Validate behavior when registry state and Docker state diverge.
 - [ ] Validate behavior when one project runtime fails while others remain healthy.
 - [ ] Validate behavior when a hostname collision is attempted.
 

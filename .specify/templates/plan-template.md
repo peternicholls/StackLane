@@ -31,14 +31,15 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [ ] Command and workflow impact is documented, including backward
-  compatibility or migration behavior for affected shell and GUI entry
-  points.
-- [ ] Configuration changes list canonical variable names, defaults, required
-  values, and precedence order (CLI override -> `.20i-local` -> global
+- [ ] Ease-of-use impact is documented, including whether the change preserves
+  the shortest obvious operator path and what friction it removes or adds.
+- [ ] Reliability expectations are explicit, including backward compatibility or
+  migration behavior, canonical variable names, defaults, required values, and
+  precedence order (CLI override -> `.20i-local` -> shell environment -> stack
   defaults).
-- [ ] Isolation and state boundaries are defined for containers, volumes,
-  networks, shared services, and any migrated runtime data.
+- [ ] Robustness boundaries are defined for containers, volumes, networks,
+  shared services, runtime data, isolation, and recovery from partial failure
+  or drift.
 - [ ] Documentation surfaces requiring same-change updates are identified
   (`README.md`, `AUTOMATION-README.md`, `GUI-HELP.md`, shell help text,
   automation messaging, and other affected docs).

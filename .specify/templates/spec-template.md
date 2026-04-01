@@ -77,12 +77,14 @@
 
 ## Operational Impact *(mandatory)*
 
-### Command & Workflow Impact
+### Ease Of Use & Workflow Impact
 
 - Affected commands, wrappers, or entry points: [e.g., `20i-up`, `20i-gui`,
   AppleScript app, workflow service, none]
 - Backward compatibility or migration expectation: [describe what remains stable
   and what operators must change]
+- Operator friction removed or introduced: [describe repeated pain points,
+  extra steps, prompts, or sync requirements created or eliminated]
 
 ### Configuration & Precedence
 
@@ -96,8 +98,8 @@
   database data, registry files, none]
 - Isolation risk and mitigation: [describe cross-project risks and how they are
   prevented]
-- Recovery or rollback path: [operator steps or explicit statement if not
-  needed]
+- Reliability and recovery path: [repeatability expectations plus operator
+  rollback or recovery steps, or explicit statement if not needed]
 
 ### Documentation Surfaces
 
@@ -138,10 +140,10 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-001**: [Ease-of-use metric, e.g., "Operators complete the primary workflow in one obvious command path with no undocumented prerequisite"]
+- **SC-002**: [Reliability metric, e.g., "Repeated runs with the same inputs produce the same recorded state and operator-visible result"]
+- **SC-003**: [Robustness metric, e.g., "A relevant failure path surfaces actionable recovery guidance without corrupting unrelated state"]
+- **SC-004**: [Friction metric, e.g., "The change removes or avoids a recurring manual step, support issue, or recovery action"]
 
 ## Assumptions
 

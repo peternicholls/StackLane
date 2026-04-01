@@ -42,11 +42,15 @@ This currently gives you an interactive menu with these options:
 
 Recommended command-line surface:
 - `20i-up` - Start and attach the current project
-- `20i-attach` - Attach an additional project
+- `20i-attach` - Attach an additional project concurrently
 - `20i-down` - Stop the current project and retain state
 - `20i-detach` - Stop the current project and remove its state
-- `20i-status` - Show attachment state and Docker status
-- `20i-gui` - Experimental wrapper with partial parity only
+- `20i-status` - Show attachment state, hostname, and Docker status
+- `20i-dns-setup` - One-time local DNS bootstrap (run once per machine)
+
+For a full workflow walk-through including concurrent projects and migration from the old model, see [docs/migration.md](docs/migration.md).
+
+> **Note on `20i-gui-depricated`**: The `20i-gui-depricated` script in the repo root is the original pre-shared-gateway GUI wrapper. It is kept for historical reference but does not integrate with the shared gateway, hostname routing, or the project registry. Prefer the CLI commands above.
 
 ## 💡 Pro Tips:
 

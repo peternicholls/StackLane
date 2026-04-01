@@ -168,10 +168,17 @@ twentyi_port_in_use() {
     local port="$1"
 
     if command -v lsof >/dev/null 2>&1; then
-        lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
-    else
-        return 1
+        if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+            return 0
+        fi
     fi
+
+    if command -v netstat >/dev/null 2>&1; then
+        netstat -anv -p tcp 2>/dev/null | grep -E "[.:]$port[[:space:]]" | grep -q LISTEN
+        return $?
+    fi
+
+    return 1
 }
 
 twentyi_port_reserved() {
@@ -204,6 +211,44 @@ twentyi_find_available_port() {
     done
 
     return 1
+}
+
+twentyi_resolve_shared_gateway_ports() {
+    local requested_https_port="${SHARED_GATEWAY_HTTPS_PORT:-}"
+    local shared_env_file existing_https_port
+
+    TWENTYI_HTTPS_PORT_AUTO_FALLBACK=0
+
+    if ! twentyi_tls_available; then
+        return 0
+    fi
+
+    if [[ "${LOCAL_DNS_SUFFIX:-${SITE_SUFFIX:-}}" == "dev" ]]; then
+        if [[ -z "$requested_https_port" || "$requested_https_port" == "443" ]]; then
+            SHARED_GATEWAY_HTTPS_PORT=8443
+            TWENTYI_HTTPS_PORT_AUTO_FALLBACK=1
+        fi
+        return 0
+    fi
+
+    requested_https_port="${SHARED_GATEWAY_HTTPS_PORT:-443}"
+
+    shared_env_file="$(twentyi_shared_env_file)"
+    if [[ -f "$shared_env_file" ]]; then
+        existing_https_port="$(grep '^SHARED_GATEWAY_HTTPS_PORT=' "$shared_env_file" | head -1 | cut -d= -f2-)"
+        if [[ -n "$existing_https_port" && "$requested_https_port" == "443" ]]; then
+            SHARED_GATEWAY_HTTPS_PORT="$existing_https_port"
+            if [[ "$existing_https_port" != "443" ]]; then
+                TWENTYI_HTTPS_PORT_AUTO_FALLBACK=1
+            fi
+            return 0
+        fi
+    fi
+
+    if [[ "$requested_https_port" == "443" ]] && twentyi_port_in_use 443; then
+        SHARED_GATEWAY_HTTPS_PORT="$(twentyi_find_available_port SHARED_GATEWAY_HTTPS_PORT 8443)"
+        TWENTYI_HTTPS_PORT_AUTO_FALLBACK=1
+    fi
 }
 
 twentyi_resolve_docroot() {
@@ -485,6 +530,18 @@ twentyi_dnsmasq_conf_dir() {
     printf '%s/etc/dnsmasq.d' "$brew_prefix"
 }
 
+twentyi_dnsmasq_main_conf_file() {
+    local brew_prefix
+
+    if ! command -v brew >/dev/null 2>&1; then
+        return 1
+    fi
+
+    brew_prefix="$(brew --prefix 2>/dev/null)"
+    [[ -n "$brew_prefix" ]] || return 1
+    printf '%s/etc/dnsmasq.conf' "$brew_prefix"
+}
+
 twentyi_dnsmasq_managed_file() {
     local conf_dir
 
@@ -607,7 +664,7 @@ twentyi_warn_if_dns_not_ready() {
 }
 
 twentyi_dns_setup() {
-    local preview_config preview_resolver managed_file resolver_file resolver_dir
+    local preview_config preview_resolver managed_file resolver_file resolver_dir dnsmasq_main_conf conf_dir include_line
 
     if [[ "$(uname -s)" != "Darwin" ]]; then
         printf 'Error: local DNS bootstrap is currently implemented for macOS only\n' >&2
@@ -632,7 +689,21 @@ twentyi_dns_setup() {
     resolver_dir="$(dirname "$resolver_file")"
 
     mkdir -p "$(dirname "$managed_file")"
+    rm -f "$(dirname "$managed_file")"/20i-stack-*.conf
     cp "$preview_config" "$managed_file"
+
+    dnsmasq_main_conf="$(twentyi_dnsmasq_main_conf_file)"
+    conf_dir="$(twentyi_dnsmasq_conf_dir)"
+    include_line="conf-dir=$conf_dir,*.conf"
+
+    if [[ ! -f "$dnsmasq_main_conf" ]]; then
+        printf 'Error: dnsmasq main config not found: %s\n' "$dnsmasq_main_conf" >&2
+        exit 1
+    fi
+
+    if ! grep -Fqx "$include_line" "$dnsmasq_main_conf"; then
+        printf '\n# 20i stack managed include\n%s\n' "$include_line" >> "$dnsmasq_main_conf"
+    fi
 
     if ! brew services restart dnsmasq >/dev/null 2>&1; then
         brew services start dnsmasq >/dev/null 2>&1 || {
@@ -641,16 +712,35 @@ twentyi_dns_setup() {
         }
     fi
 
-    if [[ -w "$resolver_dir" || ( ! -e "$resolver_dir" && -w /etc ) ]]; then
-        mkdir -p "$resolver_dir"
-        cp "$preview_resolver" "$resolver_file"
-    elif command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-        sudo mkdir -p "$resolver_dir"
-        sudo cp "$preview_resolver" "$resolver_file"
-    else
-        printf 'Resolver file needs elevated privileges. Run:\n' >&2
-        printf '  sudo mkdir -p %s && sudo cp %s %s\n' "$resolver_dir" "$preview_resolver" "$resolver_file" >&2
-        exit 1
+    # For .dev (HSTS-preloaded TLD), generate an exact-hostname TLS cert
+    # before the privileged resolver copy. That way a fresh machine still gets
+    # the expected cert artifacts even if /etc/resolver/<suffix> needs a manual
+    # approval step.
+    twentyi_ensure_tls_cert
+
+    _twentyi_resolver_needs_update() {
+        [[ ! -f "$resolver_file" ]] || ! diff -q "$preview_resolver" "$resolver_file" >/dev/null 2>&1
+    }
+
+    if _twentyi_resolver_needs_update; then
+        if [[ -w "$resolver_dir" || ( ! -e "$resolver_dir" && -w /etc ) ]]; then
+            mkdir -p "$resolver_dir"
+            cp "$preview_resolver" "$resolver_file"
+        elif command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+            sudo mkdir -p "$resolver_dir"
+            sudo cp "$preview_resolver" "$resolver_file"
+        elif command -v osascript >/dev/null 2>&1; then
+            local admin_command
+            admin_command="mkdir -p $(printf '%q' "$resolver_dir") && cp $(printf '%q' "$preview_resolver") $(printf '%q' "$resolver_file")"
+            if ! osascript -e "do shell script \"$admin_command\" with administrator privileges" >/dev/null 2>&1; then
+                printf 'Error: administrator approval was required to install %s\n' "$resolver_file" >&2
+                exit 1
+            fi
+        else
+            printf 'Resolver file needs elevated privileges. Run:\n' >&2
+            printf '  sudo mkdir -p %s && sudo cp %s %s\n' "$resolver_dir" "$preview_resolver" "$resolver_file" >&2
+            exit 1
+        fi
     fi
 
     if [[ "$(twentyi_dns_status)" != "ready" ]]; then
@@ -662,7 +752,13 @@ twentyi_dns_setup() {
 }
 
 twentyi_hostname_route_url() {
-    if [[ "$SHARED_GATEWAY_HTTP_PORT" == "80" ]]; then
+    if twentyi_tls_available; then
+        if [[ "$SHARED_GATEWAY_HTTPS_PORT" == "443" ]]; then
+            printf 'https://%s' "$HOSTNAME"
+        else
+            printf 'https://%s:%s' "$HOSTNAME" "$SHARED_GATEWAY_HTTPS_PORT"
+        fi
+    elif [[ "$SHARED_GATEWAY_HTTP_PORT" == "80" ]]; then
         printf 'http://%s' "$HOSTNAME"
     else
         printf 'http://%s:%s' "$HOSTNAME" "$SHARED_GATEWAY_HTTP_PORT"
@@ -728,35 +824,42 @@ twentyi_capture_runtime_identity() {
 }
 
 twentyi_refresh_registry() {
-    local registry_file state_file
+    local registry_file
 
     registry_file="$(twentyi_registry_file)"
     mkdir -p "$TWENTYI_STATE_DIR"
-    : > "$registry_file"
 
-    printf 'project_slug\tattachment_state\tproject_name\tproject_dir\thostname\tdocroot\tcompose_project\truntime_network\tdb_volume\tphp_version\tmysql_database\tmysql_port\tpma_port\tweb_network_alias\tcontainer_summary\n' >> "$registry_file"
+    # Run the state-file iteration in a subshell so that loading each project's
+    # env does not clobber the current project's exported variables in the
+    # parent shell (which is critical when called from within 20i-up/attach).
+    (
+        local state_file
+        : > "$registry_file"
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
-        [[ -e "$state_file" ]] || continue
-        twentyi_unset_project_state_vars
-        twentyi_load_state_file "$state_file"
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-            "$(twentyi_registry_escape "$PROJECT_SLUG")" \
-            "$(twentyi_registry_escape "$ATTACHMENT_STATE")" \
-            "$(twentyi_registry_escape "$PROJECT_NAME")" \
-            "$(twentyi_registry_escape "$PROJECT_DIR")" \
-            "$(twentyi_registry_escape "$HOSTNAME")" \
-            "$(twentyi_registry_escape "$DOCROOT")" \
-            "$(twentyi_registry_escape "$COMPOSE_PROJECT_NAME")" \
-            "$(twentyi_registry_escape "${PROJECT_RUNTIME_NETWORK:-${COMPOSE_PROJECT_NAME}-runtime}")" \
-            "$(twentyi_registry_escape "${PROJECT_DATABASE_VOLUME:-${COMPOSE_PROJECT_NAME}-db-data}")" \
-            "$(twentyi_registry_escape "$PHP_VERSION")" \
-            "$(twentyi_registry_escape "$MYSQL_DATABASE")" \
-            "$(twentyi_registry_escape "$MYSQL_PORT")" \
-            "$(twentyi_registry_escape "$PMA_PORT")" \
-            "$(twentyi_registry_escape "$WEB_NETWORK_ALIAS")" \
-            "$(twentyi_registry_escape "${RUNTIME_CONTAINER_SUMMARY:-}")" >> "$registry_file"
-    done
+        printf 'project_slug\tattachment_state\tproject_name\tproject_dir\thostname\tdocroot\tcompose_project\truntime_network\tdb_volume\tphp_version\tmysql_database\tmysql_port\tpma_port\tweb_network_alias\tcontainer_summary\n' >> "$registry_file"
+
+        for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+            [[ -e "$state_file" ]] || continue
+            twentyi_unset_project_state_vars
+            twentyi_load_state_file "$state_file"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+                "$(twentyi_registry_escape "$PROJECT_SLUG")" \
+                "$(twentyi_registry_escape "$ATTACHMENT_STATE")" \
+                "$(twentyi_registry_escape "$PROJECT_NAME")" \
+                "$(twentyi_registry_escape "$PROJECT_DIR")" \
+                "$(twentyi_registry_escape "$HOSTNAME")" \
+                "$(twentyi_registry_escape "$DOCROOT")" \
+                "$(twentyi_registry_escape "$COMPOSE_PROJECT_NAME")" \
+                "$(twentyi_registry_escape "${PROJECT_RUNTIME_NETWORK:-${COMPOSE_PROJECT_NAME}-runtime}")" \
+                "$(twentyi_registry_escape "${PROJECT_DATABASE_VOLUME:-${COMPOSE_PROJECT_NAME}-db-data}")" \
+                "$(twentyi_registry_escape "$PHP_VERSION")" \
+                "$(twentyi_registry_escape "$MYSQL_DATABASE")" \
+                "$(twentyi_registry_escape "$MYSQL_PORT")" \
+                "$(twentyi_registry_escape "$PMA_PORT")" \
+                "$(twentyi_registry_escape "$WEB_NETWORK_ALIAS")" \
+                "$(twentyi_registry_escape "${RUNTIME_CONTAINER_SUMMARY:-}")" >> "$registry_file"
+        done
+    )
 }
 
 twentyi_state_file_for_selector() {
@@ -796,7 +899,7 @@ twentyi_live_container_summary() {
 }
 
 twentyi_registry_drift_status() {
-    local live_summary
+    local live_summary normalized_recorded normalized_live
 
     if ! command -v docker >/dev/null 2>&1; then
         printf 'docker-unavailable'
@@ -809,8 +912,17 @@ twentyi_registry_drift_status() {
         printf 'attached-but-missing-runtime'
     elif [[ "$ATTACHMENT_STATE" == "down" && -n "$live_summary" ]]; then
         printf 'state-down-but-runtime-present'
-    elif [[ -n "${RUNTIME_CONTAINER_SUMMARY:-}" && -n "$live_summary" && "$RUNTIME_CONTAINER_SUMMARY" != "$live_summary" ]]; then
-        printf 'recorded-container-identity-mismatch'
+    elif [[ -n "${RUNTIME_CONTAINER_SUMMARY:-}" && -n "$live_summary" ]]; then
+        # Strip the mutable Docker status text (e.g. "Up 33 seconds") from both
+        # sides before comparing so normal uptime changes don't trigger false
+        # identity-mismatch warnings.
+        normalized_recorded="$(printf '%s' "${RUNTIME_CONTAINER_SUMMARY}" | sed 's/ \[[^]]*\]//g')"
+        normalized_live="$(printf '%s' "$live_summary" | sed 's/ \[[^]]*\]//g')"
+        if [[ "$normalized_recorded" != "$normalized_live" ]]; then
+            printf 'recorded-container-identity-mismatch'
+        else
+            printf 'none'
+        fi
     else
         printf 'none'
     fi
@@ -984,7 +1096,7 @@ twentyi_wait_for_gateway_route() {
     fi
 
     for attempt in $(seq 1 25); do
-        if twentyi_shared_compose exec -T gateway sh -c "wget -qO- --header='Host: $route_hostname' http://127.0.0.1/ >/dev/null 2>&1" >/dev/null 2>&1; then
+        if twentyi_shared_compose exec -T gateway sh -c "wget -S --spider --header='Host: $route_hostname' http://127.0.0.1/ 2>&1 | grep -Eq 'HTTP/[0-9.]+ (200|301)'" >/dev/null 2>&1; then
             return 0
         fi
         sleep 0.2
@@ -1049,8 +1161,59 @@ twentyi_gateway_route_lines() {
 twentyi_gateway_block_for_route() {
     local hostname="$1"
     local route_target="$2"
+    local https_redirect_host='https://$host$request_uri'
 
-    cat <<EOF
+    if [[ "$SHARED_GATEWAY_HTTPS_PORT" != "443" ]]; then
+        https_redirect_host="https://\$host:$SHARED_GATEWAY_HTTPS_PORT\$request_uri"
+    fi
+
+    if twentyi_tls_available; then
+        # HTTP → HTTPS redirect
+        cat <<EOF
+server {
+    listen 80;
+    server_name $hostname;
+    return 301 $https_redirect_host;
+}
+EOF
+
+        # HTTPS proxy block
+        cat <<EOF
+server {
+    listen 443 ssl;
+    server_name $hostname;
+
+    ssl_certificate     /etc/nginx/certs/tls.pem;
+    ssl_certificate_key /etc/nginx/certs/tls-key.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
+
+    add_header X-20i-Gateway "shared" always;
+    add_header X-20i-Route-Target "$route_target" always;
+    add_header X-20i-Hostname "$hostname" always;
+
+    location / {
+        resolver 127.0.0.11 valid=5s;
+        set \$upstream http://$route_target:80;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 600s;
+        proxy_pass \$upstream;
+    }
+}
+
+EOF
+    else
+        cat <<EOF
 server {
     listen 80;
     listen 443;
@@ -1064,6 +1227,12 @@ server {
     add_header X-20i-Hostname "$hostname" always;
 
     location / {
+        # Use Docker's embedded DNS so the upstream is resolved at request-time,
+        # not at nginx startup. This lets the gateway start before project
+        # containers exist and recover automatically when they come up.
+        resolver 127.0.0.11 valid=5s;
+        set \$upstream http://$route_target:80;
+
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-Host \$host;
@@ -1072,27 +1241,21 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_connect_timeout 2s;
         proxy_read_timeout 600s;
-        proxy_pass http://$route_target:80;
-
-        error_page 502 503 504 = @route_unavailable;
-    }
-
-    location @route_unavailable {
-        default_type text/plain;
-        add_header X-20i-Route-State "registered-but-unavailable" always;
-        return 503 "20i shared gateway knows '$hostname' but could not reach '$route_target'.\\n";
+        proxy_pass \$upstream;
     }
 }
 
 EOF
+    fi
 }
 
 twentyi_write_gateway_config() {
     local preferred_slug="$1"
-    local config_file route_lines=() route_line preferred_hostname="" preferred_target="" hostname route_target route_slug
+    local config_file temp_config route_lines=() route_line preferred_hostname="" preferred_target="" hostname route_target route_slug
 
     config_file="$(twentyi_shared_gateway_config_file)"
     mkdir -p "$(dirname "$config_file")"
+    temp_config="$(mktemp "${config_file}.tmp.XXXXXX")"
 
     while IFS= read -r route_line; do
         [[ -n "$route_line" ]] || continue
@@ -1109,7 +1272,37 @@ twentyi_write_gateway_config() {
     done < <(twentyi_gateway_route_lines)
 
     if [[ ${#route_lines[@]} -eq 0 ]]; then
-        cat > "$config_file" <<EOF
+        if twentyi_tls_available; then
+            cat > "$temp_config" <<EOF
+server {
+    listen 80 default_server;
+    listen 443 ssl default_server;
+    server_name _;
+
+    ssl_certificate     /etc/nginx/certs/tls.pem;
+    ssl_certificate_key /etc/nginx/certs/tls-key.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
+
+    add_header X-20i-Gateway "shared" always;
+    add_header X-20i-Route-Target "twentyi-no-route" always;
+
+    location = /__20i_gateway_health {
+        default_type text/plain;
+        return 200 "gateway ok\\n";
+    }
+
+    location / {
+        default_type text/plain;
+        return 503 "20i shared gateway has no hostname routes.\\n";
+    }
+}
+EOF
+        else
+            cat > "$temp_config" <<EOF
 server {
     listen 80 default_server;
     listen 443 default_server;
@@ -1132,12 +1325,45 @@ server {
     }
 }
 EOF
+        fi
+    mv "$temp_config" "$config_file"
         TWENTYI_GATEWAY_PROBE_TARGET="twentyi-no-route"
         TWENTYI_GATEWAY_PROBE_HOSTNAME="localhost"
         return 0
     fi
 
-    cat > "$config_file" <<EOF
+    if twentyi_tls_available; then
+    cat > "$temp_config" <<EOF
+server {
+    listen 80 default_server;
+    listen 443 ssl default_server;
+    server_name _;
+
+    ssl_certificate     /etc/nginx/certs/tls.pem;
+    ssl_certificate_key /etc/nginx/certs/tls-key.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
+
+    add_header X-20i-Gateway "shared" always;
+    add_header X-20i-Route-Target "unmatched-host" always;
+
+    location = /__20i_gateway_health {
+        default_type text/plain;
+        return 200 "gateway ok\\n";
+    }
+
+    location / {
+        default_type text/plain;
+        add_header X-20i-Route-State "unmatched-host" always;
+        return 404 "20i shared gateway has no route for host '\$host'.\\n";
+    }
+}
+EOF
+    else
+    cat > "$temp_config" <<EOF
 server {
     listen 80 default_server;
     listen 443 default_server;
@@ -1161,13 +1387,16 @@ server {
     }
 }
 EOF
+    fi
 
     for route_line in "${route_lines[@]}"; do
         hostname="${route_line%%|*}"
         route_target="${route_line#*|}"
         route_target="${route_target%%|*}"
-        twentyi_gateway_block_for_route "$hostname" "$route_target" >> "$config_file"
+        twentyi_gateway_block_for_route "$hostname" "$route_target" >> "$temp_config"
     done
+
+    mv "$temp_config" "$config_file"
 
     if [[ -z "$preferred_target" ]]; then
         hostname="${route_lines[0]%%|*}"
@@ -1180,10 +1409,86 @@ EOF
     TWENTYI_GATEWAY_PROBE_HOSTNAME="$preferred_hostname"
 }
 
+twentyi_tls_cert_file() {
+    printf '%s/shared/certs/tls.pem' "$TWENTYI_STATE_DIR"
+}
+
+twentyi_tls_key_file() {
+    printf '%s/shared/certs/tls-key.pem' "$TWENTYI_STATE_DIR"
+}
+
+twentyi_tls_hostnames() {
+    local registry_file
+    local project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary
+
+    printf 'localhost\n127.0.0.1\n'
+
+    if [[ -n "${HOSTNAME:-}" ]] && twentyi_hostname_valid "$HOSTNAME"; then
+        printf '%s\n' "$HOSTNAME"
+    fi
+
+    registry_file="$(twentyi_registry_file)"
+    [[ -f "$registry_file" ]] || return 0
+
+    while IFS=$'\t' read -r project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary; do
+        [[ "$project_slug" == "project_slug" ]] && continue
+        [[ "$attachment_state" == "attached" ]] || continue
+        if twentyi_hostname_valid "$hostname"; then
+            printf '%s\n' "$hostname"
+        fi
+    done < "$registry_file"
+}
+
+twentyi_ensure_tls_cert() {
+    local cert_file key_file certs_dir host_list_file cert_summary cert_target
+    local cert_targets=()
+
+    if [[ "$LOCAL_DNS_SUFFIX" != "dev" ]]; then
+        return 0
+    fi
+
+    if ! command -v mkcert >/dev/null 2>&1; then
+        printf 'Error: mkcert is required for .dev TLS. Run: brew install mkcert && mkcert -install\n' >&2
+        exit 1
+    fi
+
+    cert_file="$(twentyi_tls_cert_file)"
+    key_file="$(twentyi_tls_key_file)"
+    certs_dir="$(dirname "$cert_file")"
+    mkdir -p "$certs_dir"
+
+    host_list_file="$(mktemp)"
+    twentyi_tls_hostnames | awk 'NF' | sort -u > "$host_list_file"
+
+    while IFS= read -r cert_target; do
+        [[ -n "$cert_target" ]] || continue
+        cert_targets+=("$cert_target")
+    done < "$host_list_file"
+    rm -f "$host_list_file"
+
+    if [[ ${#cert_targets[@]} -eq 0 ]]; then
+        cert_targets=("localhost" "127.0.0.1")
+    fi
+
+    mkcert -cert-file "$cert_file" -key-file "$key_file" "${cert_targets[@]}" >/dev/null 2>&1 || {
+        printf 'Error: mkcert could not generate a TLS certificate for the local .dev hostnames\n' >&2
+        exit 1
+    }
+
+    cert_summary="$(printf '%s, ' "${cert_targets[@]}")"
+    cert_summary="${cert_summary%, }"
+    printf 'TLS certificate ready for %s (expires %s)\n' "$cert_summary" "$(openssl x509 -noout -enddate -in "$cert_file" 2>/dev/null | cut -d= -f2 || echo 'see cert file')"
+}
+
+twentyi_tls_available() {
+    [[ -f "$(twentyi_tls_cert_file)" && -f "$(twentyi_tls_key_file)" ]]
+}
+
 twentyi_write_shared_env() {
-    local shared_env_file
+    local shared_env_file certs_dir
 
     shared_env_file="$(twentyi_shared_env_file)"
+    certs_dir="$(dirname "$(twentyi_tls_cert_file)")"
     mkdir -p "$(dirname "$shared_env_file")"
     : > "$shared_env_file"
 
@@ -1192,14 +1497,20 @@ twentyi_write_shared_env() {
         printf 'SHARED_GATEWAY_HTTP_PORT=%q\n' "$SHARED_GATEWAY_HTTP_PORT"
         printf 'SHARED_GATEWAY_HTTPS_PORT=%q\n' "$SHARED_GATEWAY_HTTPS_PORT"
         printf 'SHARED_GATEWAY_CONFIG_FILE=%q\n' "$SHARED_GATEWAY_CONFIG_FILE"
+        if twentyi_tls_available; then
+            printf 'SHARED_GATEWAY_CERTS_DIR=%q\n' "$certs_dir"
+        else
+            printf 'SHARED_GATEWAY_CERTS_DIR=/dev/null\n'
+        fi
     } >> "$shared_env_file"
 }
 
 twentyi_update_gateway_route() {
     local preferred_slug="${1:-}"
-    local config_file backup_file
+    local config_file backup_file gateway_container
 
     twentyi_refresh_registry
+    twentyi_ensure_tls_cert
     config_file="$(twentyi_shared_gateway_config_file)"
     backup_file="$config_file.bak"
 
@@ -1213,16 +1524,20 @@ twentyi_update_gateway_route() {
     twentyi_write_shared_env
     twentyi_export_shared_env
 
-    if docker ps --filter "label=com.docker.compose.project=$SHARED_GATEWAY_COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=gateway" --format '{{.Names}}' | grep -q .; then
-        if ! twentyi_shared_compose exec -T gateway nginx -t >/dev/null 2>&1; then
+    gateway_container="$(docker ps --filter "label=com.docker.compose.project=$SHARED_GATEWAY_COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=gateway" --format '{{.Names}}' | head -1)"
+
+    if [[ -n "$gateway_container" ]]; then
+        if ! twentyi_shared_compose up -d --no-deps --force-recreate gateway >/dev/null 2>&1; then
             if [[ -f "$backup_file" ]]; then
                 mv "$backup_file" "$config_file"
+                twentyi_write_shared_env
+                twentyi_export_shared_env
+                twentyi_shared_compose up -d --no-deps --force-recreate gateway >/dev/null 2>&1 || true
             fi
-            printf 'Error: generated gateway config failed nginx validation\n' >&2
+            printf 'Error: could not recreate shared gateway with updated config\n' >&2
             exit 1
         fi
         rm -f "$backup_file"
-        twentyi_shared_compose exec -T gateway nginx -s reload >/dev/null
     else
         twentyi_shared_compose up -d
     fi
@@ -1251,6 +1566,11 @@ twentyi_ensure_shared_infra() {
 
 twentyi_note_phase_status() {
     printf 'Routing mode: shared gateway on host ports with hostname-aware gateway rules (.test DNS bootstrap still lands in later phases)\n'
+    if [[ "${LOCAL_DNS_SUFFIX:-${SITE_SUFFIX:-}}" == "dev" && "$SHARED_GATEWAY_HTTPS_PORT" != "443" ]]; then
+        printf 'Local .dev uses HTTPS port %s by default.\n' "$SHARED_GATEWAY_HTTPS_PORT"
+    elif [[ "${TWENTYI_HTTPS_PORT_AUTO_FALLBACK:-0}" -eq 1 ]]; then
+        printf 'HTTPS port 443 is busy on this machine; using %s instead.\n' "$SHARED_GATEWAY_HTTPS_PORT"
+    fi
 }
 
 twentyi_usage() {
@@ -1407,7 +1727,9 @@ twentyi_init_defaults() {
     LOCAL_DNS_PROVIDER="${LOCAL_DNS_PROVIDER:-dnsmasq}"
     LOCAL_DNS_IP="${LOCAL_DNS_IP:-127.0.0.1}"
     LOCAL_DNS_PORT="${LOCAL_DNS_PORT:-53535}"
-    LOCAL_DNS_SUFFIX="${LOCAL_DNS_SUFFIX:-test}"
+    TWENTYI_HTTPS_PORT_AUTO_FALLBACK=0
+    # LOCAL_DNS_SUFFIX is NOT defaulted here; it derives from SITE_SUFFIX in twentyi_finalize_context
+    # so that .20i-local's SITE_SUFFIX=dev flows through correctly.
 }
 
 twentyi_load_stack_and_project_config() {
@@ -1462,6 +1784,7 @@ twentyi_finalize_context() {
     fi
     twentyi_resolve_hostname
     LOCAL_DNS_SUFFIX="${LOCAL_DNS_SUFFIX:-$SITE_SUFFIX}"
+    twentyi_resolve_shared_gateway_ports
     twentyi_resolve_ports
 
     if [[ "$TWENTYI_COMMAND" == "up" || "$TWENTYI_COMMAND" == "attach" ]]; then
@@ -1630,6 +1953,7 @@ twentyi_logs() {
     if [[ -f "$state_file" ]]; then
         twentyi_unset_project_state_vars
         twentyi_load_state_file "$state_file"
+        twentyi_export_runtime_env
     fi
 
     twentyi_require_docker

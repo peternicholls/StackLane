@@ -4,10 +4,10 @@ This document locks the implemented Phase 1 through Phase 6 command semantics an
 
 ## Goals
 
-- Preserve the existing shell-first workflow.
-- Standardize project identity and future hostname derivation.
+- Preserve an easy shell-first workflow.
+- Make repeated command runs reliable and predictable.
+- Keep the stack robust under partial failure and stale state.
 - Make `up`, `attach`, `down`, `detach`, and status behavior explicit.
-- Provide a stable state model before the shared gateway and DNS work begins.
 
 ## Command Behavior
 
