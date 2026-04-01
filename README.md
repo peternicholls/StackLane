@@ -4,7 +4,7 @@
 
 Stacklane is a workflow for local Docker development that aims to mirror the shared hosting environment of 20i webhosting services. To achieve this, it introduces a command/runtime layer plus a shared gateway split, so per-project runtimes are fronted by one persistent gateway while hostname and DNS setup continue to mature.
 
-This is a work in progress. The CLI is the primary interface for the implemented runtime contract, while the macOS GUI automation is an experimental wrapper that provides a visual menu and system-wide Services access. 
+This is a work in progress. The CLI is the primary interface for the implemented runtime contract. 
 
 ### What is implemented now:
 
