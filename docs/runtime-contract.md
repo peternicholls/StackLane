@@ -1,6 +1,6 @@
 # Runtime Contract
 
-This document locks the implemented Phase 1 and Phase 2 command semantics and state model.
+This document locks the implemented Phase 1 through Phase 6 command semantics and state model.
 
 ## Goals
 
@@ -19,14 +19,16 @@ This document locks the implemented Phase 1 and Phase 2 command semantics and st
 - Plans a hostname of `<slug>.test` unless overridden.
 - Ensures the shared gateway and shared Docker network exist.
 - Starts the current Docker compose project.
-- Writes a project state file and marks the project as `attached`.
-- Updates the shared gateway to route its current default target to this project.
+- Captures the live runtime container identity.
+- Writes a project state file, refreshes the stack registry, and marks the project as `attached`.
+- Refreshes the shared gateway's hostname-aware route set from the registry.
 
 ### `20i-attach`
 
 - Uses the same runtime resolution as `20i-up`.
 - Is the explicit command for bringing an additional repo into the managed set.
-- Starts a second isolated per-project runtime and repoints the current shared gateway default route to it.
+- Bootstraps the shared layer if it is not already running.
+- Starts a second isolated per-project runtime and refreshes the hostname-aware shared gateway rules.
 
 ### `20i-down`
 
@@ -44,7 +46,20 @@ This document locks the implemented Phase 1 and Phase 2 command semantics and st
 ### `20i-status`
 
 - Reports tracked projects from the state directory.
-- Shows shared gateway health, planned hostname, shared localhost URL, document root, container docroot, project path, and Docker status.
+- Supports `--project <selector>` where selector may be a project slug, project name, hostname, or repo path.
+- Shows shared gateway health, local DNS health, planned hostname, hostname route URL, localhost probe URL, document root, container docroot, project path, registry file path, recorded live container identity, registry drift, and Docker status.
+
+### `20i-logs`
+
+- Follows logs for the current project runtime by default.
+- Supports `--project <selector>` to target another recorded project by slug, project name, hostname, or repo path.
+
+### `20i-dns-setup`
+
+- Writes stack-managed `dnsmasq` config for the chosen suffix.
+- Starts or restarts Homebrew `dnsmasq` on the configured local port.
+- Installs or instructs the user to install the matching `/etc/resolver/<suffix>` file.
+- Fails with a clear message when Homebrew is missing, `dnsmasq` is not installed, privileges are needed for `/etc/resolver`, or the resulting DNS health check is not ready.
 
 ## Config Precedence
 
@@ -78,11 +93,22 @@ This document locks the implemented Phase 1 and Phase 2 command semantics and st
 - `detached`: record removed from active state storage
 - global teardown: all records removed and all known runtimes stopped
 
+## Runtime Identity Mapping
+
+- Project slug defaults to the repo folder name, unless `SITE_NAME` overrides it.
+- Compose project defaults to `20i-<slug>`.
+- Runtime network is `<compose-project>-runtime`.
+- Database volume is `<compose-project>-db-data`.
+- Planned hostname defaults to `<slug>.test` unless overridden.
+- State records keep the repo path, slug, compose project, hostname, and docroot together so live Docker resources can be mapped back to the originating repo.
+
 ## State Storage
 
 - Location: `<stack-home>/.20i-state/projects/<slug>.env`
 - One file per project
-- Stores resolved runtime identity, container path layout, and published per-project service ports
+- Stores resolved runtime identity, container path layout, published per-project service ports, and recorded live container identity
+- Stack registry snapshot: `<stack-home>/.20i-state/registry.tsv`
+- Registry columns include repo path, project name, hostname, docroot, runtime settings, and recorded container summary for each project
 
 ## Shared Infrastructure
 
@@ -91,7 +117,21 @@ This document locks the implemented Phase 1 and Phase 2 command semantics and st
 - Shared gateway host ports: `80/443` by default, overrideable via `SHARED_GATEWAY_HTTP_PORT` and `SHARED_GATEWAY_HTTPS_PORT`
 - Per-project web containers no longer publish host ports directly for normal site access
 - phpMyAdmin remains per project in the current milestone and still publishes its own host port
+- MariaDB remains per project and now resolves database name, user, password, and root password from the project-specific runtime config
+- Gateway config is generated from the stack registry as one server block per attached hostname
+- Invalid registry rows are skipped during route generation so one bad registration does not invalidate the full gateway config
+- When a hostname is registered but its runtime is unavailable, the gateway returns a clear `503` response for that hostname
+
+## Local DNS
+
+- First implementation target: macOS
+- Provider: Homebrew `dnsmasq`
+- Listen address: `127.0.0.1`
+- Listen port: `53535`
+- Resolver file: `/etc/resolver/test` by default
+- Status reports DNS readiness separately from Docker/gateway health
+- Missing Homebrew, missing `dnsmasq`, missing resolver privileges, resolver mismatch, and stopped service are surfaced as explicit states
 
 ## Phase Boundary
 
-This contract now includes the shared gateway split, but it still uses one default localhost route rather than hostname-aware routing. The `.test` hostname remains the future routing target, and local DNS plus host-based gateway rules still land in later phases.
+This contract now includes registry-driven hostname-aware gateway rules plus the first macOS local DNS bootstrap path. The `.test` hostname is the routing target at the gateway layer, and `dnsmasq` plus `/etc/resolver` provide the resolution path for that suffix.

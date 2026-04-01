@@ -1,7 +1,18 @@
+x-20i-project-labels: &twentyi-project-labels
+  io.20i.project.name: ${PROJECT_NAME:?err}
+  io.20i.project.slug: ${PROJECT_SLUG:?err}
+  io.20i.project.dir: ${PROJECT_ROOT:?err}
+  io.20i.project.hostname: ${PROJECT_HOSTNAME:?err}
+  io.20i.project.docroot: ${PROJECT_DOCROOT:?err}
+  io.20i.compose_project: ${COMPOSE_PROJECT_NAME:?err}
+
 services:
   nginx:
     image: nginx:1.25-alpine
     expose: ["80"]
+    labels:
+      <<: *twentyi-project-labels
+      io.20i.service: nginx
     environment:
       CONTAINER_DOCROOT: ${CONTAINER_DOCROOT:?err}
     volumes:
@@ -20,31 +31,43 @@ services:
       args:
         PHP_VERSION: ${PHP_VERSION:-8.5}
     expose: ["9000"]
+    labels:
+      <<: *twentyi-project-labels
+      io.20i.service: apache
     working_dir: ${CONTAINER_DOCROOT:?err}
     volumes:
       - ${PROJECT_ROOT:?err}:${CONTAINER_SITE_ROOT:?err}
 
   mariadb:
     image: mariadb:${MYSQL_VERSION:-10.6}
+    labels:
+      <<: *twentyi-project-labels
+      io.20i.service: mariadb
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: devdb
-      MYSQL_USER: devuser
-      MYSQL_PASSWORD: devpass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?err}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?err}
+      MYSQL_USER: ${MYSQL_USER:?err}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?err}
     volumes:
       - db_data:/var/lib/mysql
     ports: ["${MYSQL_PORT:-3306}:3306"]
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    labels:
+      <<: *twentyi-project-labels
+      io.20i.service: phpmyadmin
     environment:
       PMA_HOST: mariadb
     ports: ["${PMA_PORT:-8081}:80"]
 
 networks:
+  default:
+    name: ${PROJECT_RUNTIME_NETWORK:?err}
   shared-gateway:
     name: ${SHARED_GATEWAY_NETWORK:-twentyi-shared}
     external: true
 
 volumes:
   db_data:
+    name: ${PROJECT_DATABASE_VOLUME:?err}

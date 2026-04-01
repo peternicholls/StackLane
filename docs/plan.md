@@ -67,46 +67,46 @@ As a developer, I want the new behavior to preserve existing `20i-up` and `20i-d
 
 ### Phase 3: Project runtime isolation
 
-- [ ] Namespace project containers, volumes, and networks so multiple repos can coexist cleanly.
-- [ ] Keep code mounting project-specific and preserve current `CODE_DIR` behavior.
-- [ ] Add document root override support so projects are not forced to use only one fixed layout.
-- [ ] Move database state to project-scoped storage and ensure no cross-project leakage.
-- [ ] Confirm PHP version override remains project-specific.
-- [ ] Define how project runtime names map back to repo paths and hostnames.
+- [x] Namespace project containers, volumes, and networks so multiple repos can coexist cleanly.
+- [x] Keep code mounting project-specific and preserve current `CODE_DIR` behavior.
+- [x] Add document root override support so projects are not forced to use only one fixed layout.
+- [x] Move database state to project-scoped storage and ensure no cross-project leakage.
+- [x] Confirm PHP version override remains project-specific.
+- [x] Define how project runtime names map back to repo paths and hostnames.
 
 ### Phase 4: Registry and orchestration
 
-- [ ] Add a registry/state file under the stack home to record attachments.
-- [ ] Store repo path, project name, hostname, document root, runtime settings, and live container identity.
-- [ ] Update `20i-up` to write registration state and validate it after startup.
-- [ ] Implement `20i-attach` as attach-or-bootstrap behavior.
-- [ ] Implement `20i-detach` to remove routing and stop only the targeted project runtime.
-- [ ] Update `20i-down` to remain project-local by default.
-- [ ] Add explicit global teardown behavior such as `20i-down --all`.
+- [x] Add a registry/state file under the stack home to record attachments.
+- [x] Store repo path, project name, hostname, document root, runtime settings, and live container identity.
+- [x] Update `20i-up` to write registration state and validate it after startup.
+- [x] Implement `20i-attach` as attach-or-bootstrap behavior.
+- [x] Implement `20i-detach` to remove routing and stop only the targeted project runtime.
+- [x] Update `20i-down` to remain project-local by default.
+- [x] Add explicit global teardown behavior such as `20i-down --all`.
 
 ### Phase 5: Gateway routing
 
-- [ ] Replace single-site `localhost` routing with hostname-aware gateway configuration.
-- [ ] Generate or template route definitions from the registry.
-- [ ] Reload the gateway safely after attach and detach operations.
-- [ ] Validate that one bad project registration cannot break routing for all attached projects.
-- [ ] Ensure the gateway can surface a clear error when a project runtime is down but still registered.
+- [x] Replace single-site `localhost` routing with hostname-aware gateway configuration.
+- [x] Generate or template route definitions from the registry.
+- [x] Reload the gateway safely after attach and detach operations.
+- [x] Validate that one bad project registration cannot break routing for all attached projects.
+- [x] Ensure the gateway can surface a clear error when a project runtime is down but still registered.
 
 ### Phase 6: Local DNS service integration
 
-- [ ] Choose the concrete local DNS service implementation for macOS.
-- [ ] Add bootstrap/setup logic for the DNS service and resolver configuration.
-- [ ] Support wildcard resolution for the chosen suffix.
-- [ ] Add health checks so CLI status can report DNS readiness.
-- [ ] Add failure handling for missing resolver setup, missing privileges, or stopped DNS service.
+- [x] Choose the concrete local DNS service implementation for macOS.
+- [x] Add bootstrap/setup logic for the DNS service and resolver configuration.
+- [x] Support wildcard resolution for the chosen suffix.
+- [x] Add health checks so CLI status can report DNS readiness.
+- [x] Add failure handling for missing resolver setup, missing privileges, or stopped DNS service.
 
 ### Phase 7: Monitoring and status
 
-- [ ] Update status output to show shared gateway health.
-- [ ] Show local DNS health separately from Docker health.
-- [ ] Show attached project name, repo path, hostname, document root, and project container state.
-- [ ] Detect and report drift between registry state and live Docker state.
-- [ ] Make logs and status project-aware rather than only compose-project-aware.
+- [x] Update status output to show shared gateway health.
+- [x] Show local DNS health separately from Docker health.
+- [x] Show attached project name, repo path, hostname, document root, and project container state.
+- [x] Detect and report drift between registry state and live Docker state.
+- [x] Make logs and status project-aware rather than only compose-project-aware.
 
 ### Phase 8: Documentation and migration
 
@@ -115,6 +115,7 @@ As a developer, I want the new behavior to preserve existing `20i-up` and `20i-d
 - [ ] Add docs for attach, detach, shared teardown, and concurrent project workflows.
 - [ ] Add a migration section explaining old versus new behavior.
 - [ ] Mark GUI support as deferred or partial if CLI ships first.
+- [ ] Tidy up the project structure and docs to reflect the new multi-project focus and follow good practices and patterns for project organization.
 
 ## Gates
 

@@ -111,6 +111,10 @@ twentyi_project_state_file() {
     printf '%s/projects/%s.env' "$TWENTYI_STATE_DIR" "$PROJECT_SLUG"
 }
 
+twentyi_registry_file() {
+    printf '%s/registry.tsv' "$TWENTYI_STATE_DIR"
+}
+
 twentyi_shared_env_file() {
     printf '%s/shared/gateway.env' "$TWENTYI_STATE_DIR"
 }
@@ -125,6 +129,14 @@ twentyi_load_state_file() {
     [[ -f "$state_file" ]] || return 1
     # shellcheck disable=SC1090
     source "$state_file"
+}
+
+twentyi_unset_project_state_vars() {
+    unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT DOCROOT_RELATIVE HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME HOST_PORT MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS CONTAINER_SITE_ROOT CONTAINER_DOCROOT PROJECT_RUNTIME_NETWORK PROJECT_DATABASE_VOLUME NGINX_CONTAINER_NAME NGINX_CONTAINER_ID NGINX_CONTAINER_STATUS APACHE_CONTAINER_NAME APACHE_CONTAINER_ID APACHE_CONTAINER_STATUS MARIADB_CONTAINER_NAME MARIADB_CONTAINER_ID MARIADB_CONTAINER_STATUS PHPMYADMIN_CONTAINER_NAME PHPMYADMIN_CONTAINER_ID PHPMYADMIN_CONTAINER_STATUS RUNTIME_CONTAINER_SUMMARY
+}
+
+twentyi_registry_escape() {
+    printf '%s' "$1" | tr '\t\r\n' '   '
 }
 
 twentyi_state_files() {
@@ -420,6 +432,12 @@ twentyi_validate_collision() {
 twentyi_export_runtime_env() {
     export CODE_DIR="$DOCROOT"
     export PROJECT_ROOT="$PROJECT_DIR"
+    export PROJECT_NAME
+    export PROJECT_SLUG
+    export PROJECT_HOSTNAME="$HOSTNAME"
+    export PROJECT_DOCROOT="$DOCROOT"
+    export PROJECT_RUNTIME_NETWORK="${COMPOSE_PROJECT_NAME}-runtime"
+    export PROJECT_DATABASE_VOLUME="${COMPOSE_PROJECT_NAME}-db-data"
     export CONTAINER_SITE_ROOT
     export CONTAINER_DOCROOT
     export COMPOSE_PROJECT_NAME
@@ -443,6 +461,372 @@ twentyi_export_shared_env() {
     export SHARED_GATEWAY_CONFIG_FILE
 }
 
+twentyi_dns_preview_config_file() {
+    printf '%s/shared/dnsmasq-%s.conf' "$TWENTYI_STATE_DIR" "$LOCAL_DNS_SUFFIX"
+}
+
+twentyi_dns_preview_resolver_file() {
+    printf '%s/shared/resolver-%s.conf' "$TWENTYI_STATE_DIR" "$LOCAL_DNS_SUFFIX"
+}
+
+twentyi_dns_resolver_file() {
+    printf '/etc/resolver/%s' "$LOCAL_DNS_SUFFIX"
+}
+
+twentyi_dnsmasq_conf_dir() {
+    local brew_prefix
+
+    if ! command -v brew >/dev/null 2>&1; then
+        return 1
+    fi
+
+    brew_prefix="$(brew --prefix 2>/dev/null)"
+    [[ -n "$brew_prefix" ]] || return 1
+    printf '%s/etc/dnsmasq.d' "$brew_prefix"
+}
+
+twentyi_dnsmasq_managed_file() {
+    local conf_dir
+
+    conf_dir="$(twentyi_dnsmasq_conf_dir)" || return 1
+    printf '%s/20i-stack-%s.conf' "$conf_dir" "$LOCAL_DNS_SUFFIX"
+}
+
+twentyi_write_dns_support_files() {
+    local preview_config preview_resolver
+
+    preview_config="$(twentyi_dns_preview_config_file)"
+    preview_resolver="$(twentyi_dns_preview_resolver_file)"
+    mkdir -p "$(dirname "$preview_config")"
+
+    cat > "$preview_config" <<EOF
+port=$LOCAL_DNS_PORT
+listen-address=$LOCAL_DNS_IP
+bind-interfaces
+address=/.$LOCAL_DNS_SUFFIX/$LOCAL_DNS_IP
+EOF
+
+    cat > "$preview_resolver" <<EOF
+nameserver $LOCAL_DNS_IP
+port $LOCAL_DNS_PORT
+EOF
+}
+
+twentyi_dns_service_running() {
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -nP -iUDP:"$LOCAL_DNS_PORT" 2>/dev/null | grep -qi dnsmasq
+    else
+        return 1
+    fi
+}
+
+twentyi_dns_status() {
+    local managed_file resolver_file
+
+    [[ "$(uname -s)" == "Darwin" ]] || {
+        printf 'unsupported-os'
+        return 0
+    }
+
+    managed_file="$(twentyi_dnsmasq_managed_file 2>/dev/null || true)"
+    resolver_file="$(twentyi_dns_resolver_file)"
+
+    if ! command -v brew >/dev/null 2>&1; then
+        printf 'brew-missing'
+        return 0
+    fi
+
+    if ! brew list dnsmasq >/dev/null 2>&1; then
+        printf 'dnsmasq-missing'
+        return 0
+    fi
+
+    if [[ -z "$managed_file" || ! -f "$managed_file" ]]; then
+        printf 'dnsmasq-config-missing'
+        return 0
+    fi
+
+    if ! twentyi_dns_service_running; then
+        printf 'dnsmasq-stopped'
+        return 0
+    fi
+
+    if [[ ! -f "$resolver_file" ]]; then
+        printf 'resolver-missing'
+        return 0
+    fi
+
+    if ! grep -Fq "nameserver $LOCAL_DNS_IP" "$resolver_file" || ! grep -Fq "port $LOCAL_DNS_PORT" "$resolver_file"; then
+        printf 'resolver-mismatch'
+        return 0
+    fi
+
+    printf 'ready'
+}
+
+twentyi_dns_status_message() {
+    case "$(twentyi_dns_status)" in
+        ready)
+            printf 'ready (%s on %s:%s for .%s)' "$LOCAL_DNS_PROVIDER" "$LOCAL_DNS_IP" "$LOCAL_DNS_PORT" "$LOCAL_DNS_SUFFIX"
+            ;;
+        unsupported-os)
+            printf 'unsupported-os'
+            ;;
+        brew-missing)
+            printf 'brew missing'
+            ;;
+        dnsmasq-missing)
+            printf 'dnsmasq not installed'
+            ;;
+        dnsmasq-config-missing)
+            printf 'dnsmasq config missing'
+            ;;
+        dnsmasq-stopped)
+            printf 'dnsmasq not running on %s:%s' "$LOCAL_DNS_IP" "$LOCAL_DNS_PORT"
+            ;;
+        resolver-missing)
+            printf 'resolver file missing: %s' "$(twentyi_dns_resolver_file)"
+            ;;
+        resolver-mismatch)
+            printf 'resolver file does not point at %s:%s' "$LOCAL_DNS_IP" "$LOCAL_DNS_PORT"
+            ;;
+        *)
+            printf 'unknown'
+            ;;
+    esac
+}
+
+twentyi_warn_if_dns_not_ready() {
+    local dns_status
+
+    dns_status="$(twentyi_dns_status)"
+    [[ "$dns_status" == "ready" || "$dns_status" == "unsupported-os" ]] && return 0
+
+    printf 'Local DNS: %s\n' "$(twentyi_dns_status_message)" >&2
+    printf 'Run 20i-dns-setup to bootstrap .%s resolution on macOS.\n' "$LOCAL_DNS_SUFFIX" >&2
+}
+
+twentyi_dns_setup() {
+    local preview_config preview_resolver managed_file resolver_file resolver_dir
+
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+        printf 'Error: local DNS bootstrap is currently implemented for macOS only\n' >&2
+        exit 1
+    fi
+
+    if ! command -v brew >/dev/null 2>&1; then
+        printf 'Error: Homebrew is required for local DNS bootstrap\n' >&2
+        exit 1
+    fi
+
+    if ! brew list dnsmasq >/dev/null 2>&1; then
+        printf 'Error: dnsmasq is not installed. Run: brew install dnsmasq\n' >&2
+        exit 1
+    fi
+
+    twentyi_write_dns_support_files
+    preview_config="$(twentyi_dns_preview_config_file)"
+    preview_resolver="$(twentyi_dns_preview_resolver_file)"
+    managed_file="$(twentyi_dnsmasq_managed_file)"
+    resolver_file="$(twentyi_dns_resolver_file)"
+    resolver_dir="$(dirname "$resolver_file")"
+
+    mkdir -p "$(dirname "$managed_file")"
+    cp "$preview_config" "$managed_file"
+
+    if ! brew services restart dnsmasq >/dev/null 2>&1; then
+        brew services start dnsmasq >/dev/null 2>&1 || {
+            printf 'Error: could not start dnsmasq via Homebrew services\n' >&2
+            exit 1
+        }
+    fi
+
+    if [[ -w "$resolver_dir" || ( ! -e "$resolver_dir" && -w /etc ) ]]; then
+        mkdir -p "$resolver_dir"
+        cp "$preview_resolver" "$resolver_file"
+    elif command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+        sudo mkdir -p "$resolver_dir"
+        sudo cp "$preview_resolver" "$resolver_file"
+    else
+        printf 'Resolver file needs elevated privileges. Run:\n' >&2
+        printf '  sudo mkdir -p %s && sudo cp %s %s\n' "$resolver_dir" "$preview_resolver" "$resolver_file" >&2
+        exit 1
+    fi
+
+    if [[ "$(twentyi_dns_status)" != "ready" ]]; then
+        printf 'Error: local DNS bootstrap did not reach a ready state (%s)\n' "$(twentyi_dns_status_message)" >&2
+        exit 1
+    fi
+
+    printf 'Local DNS ready for .%s via %s\n' "$LOCAL_DNS_SUFFIX" "$LOCAL_DNS_PROVIDER"
+}
+
+twentyi_hostname_route_url() {
+    if [[ "$SHARED_GATEWAY_HTTP_PORT" == "80" ]]; then
+        printf 'http://%s' "$HOSTNAME"
+    else
+        printf 'http://%s:%s' "$HOSTNAME" "$SHARED_GATEWAY_HTTP_PORT"
+    fi
+}
+
+twentyi_gateway_probe_url() {
+    if [[ "$SHARED_GATEWAY_HTTP_PORT" == "80" ]]; then
+        printf 'http://localhost'
+    else
+        printf 'http://localhost:%s' "$SHARED_GATEWAY_HTTP_PORT"
+    fi
+}
+
+twentyi_reset_runtime_identity() {
+    NGINX_CONTAINER_NAME=""
+    NGINX_CONTAINER_ID=""
+    NGINX_CONTAINER_STATUS=""
+    APACHE_CONTAINER_NAME=""
+    APACHE_CONTAINER_ID=""
+    APACHE_CONTAINER_STATUS=""
+    MARIADB_CONTAINER_NAME=""
+    MARIADB_CONTAINER_ID=""
+    MARIADB_CONTAINER_STATUS=""
+    PHPMYADMIN_CONTAINER_NAME=""
+    PHPMYADMIN_CONTAINER_ID=""
+    PHPMYADMIN_CONTAINER_STATUS=""
+    RUNTIME_CONTAINER_SUMMARY=""
+}
+
+twentyi_capture_runtime_identity() {
+    local service line container_name container_id container_status prefix summary=()
+
+    twentyi_reset_runtime_identity
+
+    for service in nginx apache mariadb phpmyadmin; do
+        line="$(docker ps -a --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=$service" --format '{{.Names}}|{{.ID}}|{{.Status}}' | head -n 1)"
+
+        if [[ -z "$line" ]]; then
+            printf 'Error: expected %s container for compose project %s was not created\n' "$service" "$COMPOSE_PROJECT_NAME" >&2
+            return 1
+        fi
+
+        container_name="${line%%|*}"
+        line="${line#*|}"
+        container_id="${line%%|*}"
+        container_status="${line#*|}"
+
+        case "$service" in
+            nginx) prefix="NGINX" ;;
+            apache) prefix="APACHE" ;;
+            mariadb) prefix="MARIADB" ;;
+            phpmyadmin) prefix="PHPMYADMIN" ;;
+        esac
+
+        printf -v "${prefix}_CONTAINER_NAME" '%s' "$container_name"
+        printf -v "${prefix}_CONTAINER_ID" '%s' "$container_id"
+        printf -v "${prefix}_CONTAINER_STATUS" '%s' "$container_status"
+        summary+=("$service=$container_name#$container_id [$container_status]")
+    done
+
+    RUNTIME_CONTAINER_SUMMARY="${summary[*]}"
+}
+
+twentyi_refresh_registry() {
+    local registry_file state_file
+
+    registry_file="$(twentyi_registry_file)"
+    mkdir -p "$TWENTYI_STATE_DIR"
+    : > "$registry_file"
+
+    printf 'project_slug\tattachment_state\tproject_name\tproject_dir\thostname\tdocroot\tcompose_project\truntime_network\tdb_volume\tphp_version\tmysql_database\tmysql_port\tpma_port\tweb_network_alias\tcontainer_summary\n' >> "$registry_file"
+
+    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+        [[ -e "$state_file" ]] || continue
+        twentyi_unset_project_state_vars
+        twentyi_load_state_file "$state_file"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$(twentyi_registry_escape "$PROJECT_SLUG")" \
+            "$(twentyi_registry_escape "$ATTACHMENT_STATE")" \
+            "$(twentyi_registry_escape "$PROJECT_NAME")" \
+            "$(twentyi_registry_escape "$PROJECT_DIR")" \
+            "$(twentyi_registry_escape "$HOSTNAME")" \
+            "$(twentyi_registry_escape "$DOCROOT")" \
+            "$(twentyi_registry_escape "$COMPOSE_PROJECT_NAME")" \
+            "$(twentyi_registry_escape "${PROJECT_RUNTIME_NETWORK:-${COMPOSE_PROJECT_NAME}-runtime}")" \
+            "$(twentyi_registry_escape "${PROJECT_DATABASE_VOLUME:-${COMPOSE_PROJECT_NAME}-db-data}")" \
+            "$(twentyi_registry_escape "$PHP_VERSION")" \
+            "$(twentyi_registry_escape "$MYSQL_DATABASE")" \
+            "$(twentyi_registry_escape "$MYSQL_PORT")" \
+            "$(twentyi_registry_escape "$PMA_PORT")" \
+            "$(twentyi_registry_escape "$WEB_NETWORK_ALIAS")" \
+            "$(twentyi_registry_escape "${RUNTIME_CONTAINER_SUMMARY:-}")" >> "$registry_file"
+    done
+}
+
+twentyi_state_file_for_selector() {
+    local selector="$1"
+    local state_file
+
+    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+        [[ -e "$state_file" ]] || continue
+        twentyi_unset_project_state_vars
+        twentyi_load_state_file "$state_file"
+
+        if [[ "$selector" == "$PROJECT_SLUG" || "$selector" == "$PROJECT_NAME" || "$selector" == "$HOSTNAME" || "$selector" == "$PROJECT_DIR" ]]; then
+            printf '%s' "$state_file"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+twentyi_live_container_summary() {
+    local compose_project="$1"
+    local service line summary=()
+
+    for service in nginx apache mariadb phpmyadmin; do
+        line="$(docker ps -a --filter "label=com.docker.compose.project=$compose_project" --filter "label=com.docker.compose.service=$service" --format '{{.Names}}#{{.ID}} [{{.Status}}]' | head -n 1)"
+        if [[ -n "$line" ]]; then
+            summary+=("$service=$line")
+        fi
+    done
+
+    if [[ ${#summary[@]} -eq 0 ]]; then
+        printf '%s' ''
+    else
+        printf '%s' "${summary[*]}"
+    fi
+}
+
+twentyi_registry_drift_status() {
+    local live_summary
+
+    if ! command -v docker >/dev/null 2>&1; then
+        printf 'docker-unavailable'
+        return 0
+    fi
+
+    live_summary="$(twentyi_live_container_summary "$COMPOSE_PROJECT_NAME")"
+
+    if [[ "$ATTACHMENT_STATE" == "attached" && -z "$live_summary" ]]; then
+        printf 'attached-but-missing-runtime'
+    elif [[ "$ATTACHMENT_STATE" == "down" && -n "$live_summary" ]]; then
+        printf 'state-down-but-runtime-present'
+    elif [[ -n "${RUNTIME_CONTAINER_SUMMARY:-}" && -n "$live_summary" && "$RUNTIME_CONTAINER_SUMMARY" != "$live_summary" ]]; then
+        printf 'recorded-container-identity-mismatch'
+    else
+        printf 'none'
+    fi
+}
+
+twentyi_validate_runtime_registration() {
+    twentyi_capture_runtime_identity
+    twentyi_write_state
+    twentyi_refresh_registry
+
+    if ! grep -Fq "$PROJECT_SLUG"$'\t' "$(twentyi_registry_file)"; then
+        printf 'Error: registry update failed for %s\n' "$PROJECT_SLUG" >&2
+        exit 1
+    fi
+}
+
 twentyi_print_runtime_summary() {
     cat <<EOF
 Project name:      $PROJECT_NAME
@@ -452,9 +836,12 @@ Document root:     $DOCROOT
 Container root:    $CONTAINER_SITE_ROOT
 Container docroot: $CONTAINER_DOCROOT
 Compose project:   $COMPOSE_PROJECT_NAME
+Runtime network:   ${COMPOSE_PROJECT_NAME}-runtime
+DB volume:         ${COMPOSE_PROJECT_NAME}-db-data
 Planned hostname:  $HOSTNAME
 Gateway alias:     $WEB_NETWORK_ALIAS
-Current access:    http://localhost:$SHARED_GATEWAY_HTTP_PORT
+Hostname route:    $(twentyi_hostname_route_url)
+Gateway probe:     $(twentyi_gateway_probe_url)
 Database port:     $MYSQL_PORT
 phpMyAdmin port:   $PMA_PORT
 PHP version:       $PHP_VERSION
@@ -491,6 +878,21 @@ twentyi_write_state() {
         printf 'MYSQL_ROOT_PASSWORD=%q\n' "$MYSQL_ROOT_PASSWORD"
         printf 'PHP_VERSION=%q\n' "$PHP_VERSION"
         printf 'ATTACHMENT_STATE=%q\n' "$ATTACHMENT_STATE"
+        printf 'PROJECT_RUNTIME_NETWORK=%q\n' "${PROJECT_RUNTIME_NETWORK:-${COMPOSE_PROJECT_NAME}-runtime}"
+        printf 'PROJECT_DATABASE_VOLUME=%q\n' "${PROJECT_DATABASE_VOLUME:-${COMPOSE_PROJECT_NAME}-db-data}"
+        printf 'NGINX_CONTAINER_NAME=%q\n' "${NGINX_CONTAINER_NAME:-}"
+        printf 'NGINX_CONTAINER_ID=%q\n' "${NGINX_CONTAINER_ID:-}"
+        printf 'NGINX_CONTAINER_STATUS=%q\n' "${NGINX_CONTAINER_STATUS:-}"
+        printf 'APACHE_CONTAINER_NAME=%q\n' "${APACHE_CONTAINER_NAME:-}"
+        printf 'APACHE_CONTAINER_ID=%q\n' "${APACHE_CONTAINER_ID:-}"
+        printf 'APACHE_CONTAINER_STATUS=%q\n' "${APACHE_CONTAINER_STATUS:-}"
+        printf 'MARIADB_CONTAINER_NAME=%q\n' "${MARIADB_CONTAINER_NAME:-}"
+        printf 'MARIADB_CONTAINER_ID=%q\n' "${MARIADB_CONTAINER_ID:-}"
+        printf 'MARIADB_CONTAINER_STATUS=%q\n' "${MARIADB_CONTAINER_STATUS:-}"
+        printf 'PHPMYADMIN_CONTAINER_NAME=%q\n' "${PHPMYADMIN_CONTAINER_NAME:-}"
+        printf 'PHPMYADMIN_CONTAINER_ID=%q\n' "${PHPMYADMIN_CONTAINER_ID:-}"
+        printf 'PHPMYADMIN_CONTAINER_STATUS=%q\n' "${PHPMYADMIN_CONTAINER_STATUS:-}"
+        printf 'RUNTIME_CONTAINER_SUMMARY=%q\n' "${RUNTIME_CONTAINER_SUMMARY:-}"
     } >> "$state_file"
 }
 
@@ -498,6 +900,7 @@ twentyi_remove_state() {
     local state_file
     state_file="$(twentyi_project_state_file)"
     [[ -f "$state_file" ]] && rm -f "$state_file"
+    twentyi_refresh_registry
 }
 
 twentyi_docker_status() {
@@ -573,15 +976,15 @@ twentyi_wait_for_route_target() {
 }
 
 twentyi_wait_for_gateway_route() {
-    local route_target="$1"
+    local route_hostname="$1"
     local attempt
 
-    if [[ "$route_target" == "twentyi-no-route" ]]; then
+    if [[ -z "$route_hostname" || "$route_hostname" == "localhost" ]]; then
         return 0
     fi
 
     for attempt in $(seq 1 25); do
-        if twentyi_shared_compose exec -T gateway sh -c 'wget -qO- http://127.0.0.1/ >/dev/null 2>&1' >/dev/null 2>&1; then
+        if twentyi_shared_compose exec -T gateway sh -c "wget -qO- --header='Host: $route_hostname' http://127.0.0.1/ >/dev/null 2>&1" >/dev/null 2>&1; then
             return 0
         fi
         sleep 0.2
@@ -590,14 +993,122 @@ twentyi_wait_for_gateway_route() {
     return 1
 }
 
+twentyi_hostname_valid() {
+    local hostname="$1"
+    local remaining label
+
+    [[ -n "$hostname" && "$hostname" == *.* ]] || return 1
+
+    case "$hostname" in
+        *[!A-Za-z0-9.-]*|.*|*..*|*.)
+            return 1
+            ;;
+    esac
+
+    remaining="$hostname"
+    while true; do
+        label="${remaining%%.*}"
+        [[ -n "$label" ]] || return 1
+        [[ "$label" != -* && "$label" != *- ]] || return 1
+        [[ "$remaining" == *.* ]] || break
+        remaining="${remaining#*.}"
+    done
+
+    return 0
+}
+
+twentyi_alias_valid() {
+    local alias_name="$1"
+
+    [[ "$alias_name" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]
+}
+
+twentyi_gateway_route_lines() {
+    local registry_file line
+    local project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary
+
+    registry_file="$(twentyi_registry_file)"
+    [[ -f "$registry_file" ]] || return 0
+
+    while IFS=$'\t' read -r project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary; do
+        [[ "$project_slug" == "project_slug" ]] && continue
+        [[ "$attachment_state" == "attached" ]] || continue
+
+        if ! twentyi_hostname_valid "$hostname"; then
+            continue
+        fi
+
+        if ! twentyi_alias_valid "$web_network_alias"; then
+            continue
+        fi
+
+        printf '%s|%s|%s\n' "$hostname" "$web_network_alias" "$project_slug"
+    done < "$registry_file"
+}
+
+twentyi_gateway_block_for_route() {
+    local hostname="$1"
+    local route_target="$2"
+
+    cat <<EOF
+server {
+    listen 80;
+    listen 443;
+    server_name $hostname;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
+
+    add_header X-20i-Gateway "shared" always;
+    add_header X-20i-Route-Target "$route_target" always;
+    add_header X-20i-Hostname "$hostname" always;
+
+    location / {
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 600s;
+        proxy_pass http://$route_target:80;
+
+        error_page 502 503 504 = @route_unavailable;
+    }
+
+    location @route_unavailable {
+        default_type text/plain;
+        add_header X-20i-Route-State "registered-but-unavailable" always;
+        return 503 "20i shared gateway knows '$hostname' but could not reach '$route_target'.\\n";
+    }
+}
+
+EOF
+}
+
 twentyi_write_gateway_config() {
-    local route_target="$1"
-    local config_file
+    local preferred_slug="$1"
+    local config_file route_lines=() route_line preferred_hostname="" preferred_target="" hostname route_target route_slug
 
     config_file="$(twentyi_shared_gateway_config_file)"
     mkdir -p "$(dirname "$config_file")"
 
-    if [[ "$route_target" == "twentyi-no-route" ]]; then
+    while IFS= read -r route_line; do
+        [[ -n "$route_line" ]] || continue
+        route_lines+=("$route_line")
+        hostname="${route_line%%|*}"
+        route_target="${route_line#*|}"
+        route_target="${route_target%%|*}"
+        route_slug="${route_line##*|}"
+
+        if [[ -n "$preferred_slug" && "$route_slug" == "$preferred_slug" ]]; then
+            preferred_hostname="$hostname"
+            preferred_target="$route_target"
+        fi
+    done < <(twentyi_gateway_route_lines)
+
+    if [[ ${#route_lines[@]} -eq 0 ]]; then
         cat > "$config_file" <<EOF
 server {
     listen 80 default_server;
@@ -617,10 +1128,12 @@ server {
 
     location / {
         default_type text/plain;
-        return 503 "20i shared gateway has no attached project route.\\n";
+        return 503 "20i shared gateway has no hostname routes.\\n";
     }
 }
 EOF
+        TWENTYI_GATEWAY_PROBE_TARGET="twentyi-no-route"
+        TWENTYI_GATEWAY_PROBE_HOSTNAME="localhost"
         return 0
     fi
 
@@ -634,7 +1147,7 @@ server {
     error_log /var/log/nginx/error.log warn;
 
     add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "$route_target" always;
+    add_header X-20i-Route-Target "unmatched-host" always;
 
     location = /__20i_gateway_health {
         default_type text/plain;
@@ -642,25 +1155,29 @@ server {
     }
 
     location / {
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Forwarded-Host \$host;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_connect_timeout 2s;
-        proxy_read_timeout 600s;
-        proxy_pass http://$route_target:80;
-
-        error_page 502 503 504 = @route_unavailable;
-    }
-
-    location @route_unavailable {
         default_type text/plain;
-        return 503 "20i shared gateway could not reach '$route_target'.\\n";
+        add_header X-20i-Route-State "unmatched-host" always;
+        return 404 "20i shared gateway has no route for host '\$host'.\\n";
     }
 }
 EOF
+
+    for route_line in "${route_lines[@]}"; do
+        hostname="${route_line%%|*}"
+        route_target="${route_line#*|}"
+        route_target="${route_target%%|*}"
+        twentyi_gateway_block_for_route "$hostname" "$route_target" >> "$config_file"
+    done
+
+    if [[ -z "$preferred_target" ]]; then
+        hostname="${route_lines[0]%%|*}"
+        preferred_target="${route_lines[0]#*|}"
+        preferred_target="${preferred_target%%|*}"
+        preferred_hostname="$hostname"
+    fi
+
+    TWENTYI_GATEWAY_PROBE_TARGET="$preferred_target"
+    TWENTYI_GATEWAY_PROBE_HOSTNAME="$preferred_hostname"
 }
 
 twentyi_write_shared_env() {
@@ -678,56 +1195,43 @@ twentyi_write_shared_env() {
     } >> "$shared_env_file"
 }
 
-twentyi_pick_gateway_target() {
-    local preferred_slug="${1:-}"
-    local state_file
-
-    if [[ -n "$preferred_slug" ]]; then
-        state_file="$TWENTYI_STATE_DIR/projects/$preferred_slug.env"
-        if [[ -f "$state_file" ]]; then
-            unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS
-            twentyi_load_state_file "$state_file"
-            if [[ "${ATTACHMENT_STATE:-}" == "attached" && -n "${WEB_NETWORK_ALIAS:-}" ]]; then
-                printf '%s|%s' "$WEB_NETWORK_ALIAS" "$HOSTNAME"
-                return 0
-            fi
-        fi
-    fi
-
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
-        [[ -e "$state_file" ]] || continue
-        unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS
-        twentyi_load_state_file "$state_file"
-        if [[ "${ATTACHMENT_STATE:-}" == "attached" && -n "${WEB_NETWORK_ALIAS:-}" ]]; then
-            printf '%s|%s' "$WEB_NETWORK_ALIAS" "$HOSTNAME"
-            return 0
-        fi
-    done
-
-    printf 'twentyi-no-route|localhost'
-}
-
 twentyi_update_gateway_route() {
     local preferred_slug="${1:-}"
-    local gateway_target gateway_hostname route_target route_hostname
+    local config_file backup_file
 
-    gateway_target="$(twentyi_pick_gateway_target "$preferred_slug")"
-    route_target="${gateway_target%%|*}"
-    route_hostname="${gateway_target#*|}"
+    twentyi_refresh_registry
+    config_file="$(twentyi_shared_gateway_config_file)"
+    backup_file="$config_file.bak"
 
-    twentyi_write_gateway_config "$route_target"
+    if [[ -f "$config_file" ]]; then
+        cp "$config_file" "$backup_file"
+    else
+        rm -f "$backup_file"
+    fi
+
+    twentyi_write_gateway_config "$preferred_slug"
     twentyi_write_shared_env
     twentyi_export_shared_env
 
     if docker ps --filter "label=com.docker.compose.project=$SHARED_GATEWAY_COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=gateway" --format '{{.Names}}' | grep -q .; then
-        twentyi_wait_for_route_target "$route_target"
+        if ! twentyi_shared_compose exec -T gateway nginx -t >/dev/null 2>&1; then
+            if [[ -f "$backup_file" ]]; then
+                mv "$backup_file" "$config_file"
+            fi
+            printf 'Error: generated gateway config failed nginx validation\n' >&2
+            exit 1
+        fi
+        rm -f "$backup_file"
         twentyi_shared_compose exec -T gateway nginx -s reload >/dev/null
     else
         twentyi_shared_compose up -d
     fi
 
     twentyi_wait_for_gateway_ready
-    twentyi_wait_for_gateway_route "$route_target"
+    if [[ -n "$preferred_slug" ]]; then
+        twentyi_wait_for_route_target "${TWENTYI_GATEWAY_PROBE_TARGET:-twentyi-no-route}"
+        twentyi_wait_for_gateway_route "${TWENTYI_GATEWAY_PROBE_HOSTNAME:-localhost}"
+    fi
 }
 
 twentyi_ensure_shared_infra() {
@@ -737,7 +1241,8 @@ twentyi_ensure_shared_infra() {
         docker network create "$SHARED_GATEWAY_NETWORK" >/dev/null
     fi
 
-    twentyi_write_gateway_config "twentyi-no-route"
+    twentyi_refresh_registry
+    twentyi_write_gateway_config ""
     twentyi_write_shared_env
     twentyi_export_shared_env
     twentyi_shared_compose up -d
@@ -745,7 +1250,7 @@ twentyi_ensure_shared_infra() {
 }
 
 twentyi_note_phase_status() {
-    printf 'Routing mode: shared gateway on host ports with a single default route (hostname-aware routing and .test DNS land in later phases)\n'
+    printf 'Routing mode: shared gateway on host ports with hostname-aware gateway rules (.test DNS bootstrap still lands in later phases)\n'
 }
 
 twentyi_usage() {
@@ -775,6 +1280,9 @@ State model:
   down                     Stop the project runtime and retain a down state record
   detach                   Stop the project runtime and remove its attachment record
   down --all               Stop all known runtimes and clear all attachment state
+
+Additional commands:
+    dns-setup                Bootstrap local .test DNS on macOS using Homebrew dnsmasq
 EOF
 }
 
@@ -799,6 +1307,10 @@ twentyi_parse_args() {
             --project-dir)
                 shift
                 PROJECT_DIR="$1"
+                ;;
+            --project)
+                shift
+                PROJECT_SELECTOR="$1"
                 ;;
             --site-name)
                 shift
@@ -892,6 +1404,10 @@ twentyi_init_defaults() {
     MYSQL_USER="${MYSQL_USER:-devuser}"
     MYSQL_PASSWORD="${MYSQL_PASSWORD:-devpass}"
     PHP_VERSION="${PHP_VERSION:-8.5}"
+    LOCAL_DNS_PROVIDER="${LOCAL_DNS_PROVIDER:-dnsmasq}"
+    LOCAL_DNS_IP="${LOCAL_DNS_IP:-127.0.0.1}"
+    LOCAL_DNS_PORT="${LOCAL_DNS_PORT:-53535}"
+    LOCAL_DNS_SUFFIX="${LOCAL_DNS_SUFFIX:-test}"
 }
 
 twentyi_load_stack_and_project_config() {
@@ -945,6 +1461,7 @@ twentyi_finalize_context() {
         CONTAINER_DOCROOT="$CONTAINER_SITE_ROOT"
     fi
     twentyi_resolve_hostname
+    LOCAL_DNS_SUFFIX="${LOCAL_DNS_SUFFIX:-$SITE_SUFFIX}"
     twentyi_resolve_ports
 
     if [[ "$TWENTYI_COMMAND" == "up" || "$TWENTYI_COMMAND" == "attach" ]]; then
@@ -971,11 +1488,13 @@ twentyi_up_like() {
 
     twentyi_ensure_shared_infra
     twentyi_compose up -d
-    twentyi_write_state
+    twentyi_validate_runtime_registration
     twentyi_update_gateway_route "$PROJECT_SLUG"
 
     printf 'Attached: %s\n' "$HOSTNAME"
-    printf 'Current access URL: http://localhost:%s\n' "$SHARED_GATEWAY_HTTP_PORT"
+    printf 'Hostname route URL: %s\n' "$(twentyi_hostname_route_url)"
+    printf 'Gateway probe URL: %s\n' "$(twentyi_gateway_probe_url)"
+    twentyi_warn_if_dns_not_ready
 }
 
 twentyi_down_like() {
@@ -983,7 +1502,7 @@ twentyi_down_like() {
 
     state_file="$(twentyi_project_state_file)"
     if [[ -f "$state_file" ]]; then
-        unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT DOCROOT_RELATIVE HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME HOST_PORT MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS CONTAINER_SITE_ROOT CONTAINER_DOCROOT
+        twentyi_unset_project_state_vars
         twentyi_load_state_file "$state_file"
     fi
 
@@ -995,6 +1514,7 @@ twentyi_down_like() {
     twentyi_export_runtime_env
     twentyi_require_docker
     twentyi_compose down
+    twentyi_reset_runtime_identity
 
     if [[ "$TWENTYI_COMMAND" == "detach" ]]; then
         twentyi_remove_state
@@ -1003,6 +1523,7 @@ twentyi_down_like() {
     else
         ATTACHMENT_STATE="down"
         twentyi_write_state
+        twentyi_refresh_registry
         twentyi_update_gateway_route
         printf 'Stopped: %s\n' "$PROJECT_NAME"
     fi
@@ -1020,7 +1541,7 @@ twentyi_down_all() {
 
     for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
-        unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT DOCROOT_RELATIVE HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS CONTAINER_SITE_ROOT CONTAINER_DOCROOT
+        twentyi_unset_project_state_vars
         twentyi_load_state_file "$state_file"
         twentyi_export_runtime_env
         twentyi_compose down || true
@@ -1040,28 +1561,49 @@ twentyi_status() {
     local state_file
     local found=0
 
+    twentyi_refresh_registry
+
     printf '20i stack status\n'
     printf 'Stack home: %s\n' "$STACK_HOME"
     printf 'State dir: %s\n' "$TWENTYI_STATE_DIR"
+    printf 'Registry file: %s\n' "$(twentyi_registry_file)"
     printf 'Shared gateway: %s\n' "$(twentyi_shared_gateway_status)"
+    printf 'Local DNS: %s\n' "$(twentyi_dns_status_message)"
     printf 'Shared network: %s\n' "$SHARED_GATEWAY_NETWORK"
     twentyi_note_phase_status
     printf '\n'
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    if [[ -n "${PROJECT_SELECTOR:-}" ]]; then
+        state_file="$(twentyi_state_file_for_selector "$PROJECT_SELECTOR" 2>/dev/null || true)"
+        if [[ -z "$state_file" ]]; then
+            printf 'No project matched selector: %s\n' "$PROJECT_SELECTOR"
+            return 1
+        fi
+        set -- "$state_file"
+    else
+        set -- "$TWENTYI_STATE_DIR"/projects/*.env
+    fi
+
+    for state_file in "$@"; do
         [[ -e "$state_file" ]] || continue
         found=1
-        unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT DOCROOT_RELATIVE HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS CONTAINER_SITE_ROOT CONTAINER_DOCROOT
+        twentyi_unset_project_state_vars
         twentyi_load_state_file "$state_file"
 
         printf '%s\n' "[$PROJECT_NAME]"
         printf '  state: %s\n' "$ATTACHMENT_STATE"
+        printf '  compose project: %s\n' "$COMPOSE_PROJECT_NAME"
         printf '  hostname: %s\n' "$HOSTNAME"
-        printf '  access: http://localhost:%s\n' "$SHARED_GATEWAY_HTTP_PORT"
+        printf '  route url: %s\n' "$(twentyi_hostname_route_url)"
+        printf '  gateway probe: %s\n' "$(twentyi_gateway_probe_url)"
         printf '  gateway alias: %s\n' "$WEB_NETWORK_ALIAS"
+        printf '  runtime network: %s\n' "${COMPOSE_PROJECT_NAME}-runtime"
+        printf '  db volume: %s\n' "${COMPOSE_PROJECT_NAME}-db-data"
         printf '  docroot: %s\n' "$DOCROOT"
         printf '  container docroot: %s\n' "$CONTAINER_DOCROOT"
         printf '  project dir: %s\n' "$PROJECT_DIR"
+        printf '  containers: %s\n' "${RUNTIME_CONTAINER_SUMMARY:-none recorded}"
+        printf '  drift: %s\n' "$(twentyi_registry_drift_status)"
         printf '  docker: %s\n' "$(twentyi_docker_status "$COMPOSE_PROJECT_NAME")"
         printf '\n'
     done
@@ -1075,9 +1617,18 @@ twentyi_logs() {
     local service_name="${TWENTYI_POSITIONAL_1:-}"
     local state_file
 
-    state_file="$(twentyi_project_state_file)"
+    if [[ -n "${PROJECT_SELECTOR:-}" ]]; then
+        state_file="$(twentyi_state_file_for_selector "$PROJECT_SELECTOR" 2>/dev/null || true)"
+        if [[ -z "$state_file" ]]; then
+            printf 'Error: no project matched selector %s\n' "$PROJECT_SELECTOR" >&2
+            exit 1
+        fi
+    else
+        state_file="$(twentyi_project_state_file)"
+    fi
+
     if [[ -f "$state_file" ]]; then
-        unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT DOCROOT_RELATIVE HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME HOST_PORT MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS CONTAINER_SITE_ROOT CONTAINER_DOCROOT
+        twentyi_unset_project_state_vars
         twentyi_load_state_file "$state_file"
     fi
 
@@ -1113,6 +1664,9 @@ twentyi_main() {
             ;;
         status)
             twentyi_status
+            ;;
+        dns-setup)
+            twentyi_dns_setup
             ;;
         logs)
             twentyi_logs

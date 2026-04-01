@@ -6,18 +6,17 @@
 
 What is implemented now:
 
-- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, and `20i-logs` are real repo scripts.
+- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` are real repo scripts.
 - Project config is resolved consistently from `.env`, `.20i-local`, and CLI flags.
 - Project identity is standardized around a slug and a planned `.test` hostname.
-- Project state is recorded under `.20i-state` so status, detach, and global teardown have stable semantics.
+- Project state is recorded under `.20i-state`, with a stack-level `registry.tsv` snapshot for status, detach, and global teardown semantics.
 - One shared gateway now owns the host web ports and routes to one attached project at a time.
 - Per-project web containers are isolated behind the shared Docker network instead of publishing host ports directly.
 - Project code is mounted internally at `/home/sites/<project-slug>/...` to better mirror the 20i-style hosting layout.
+- Per-project runtimes now get deterministic Docker names: compose project `20i-<slug>`, network `20i-<slug>-runtime`, and DB volume `20i-<slug>-db-data`.
 
 What is not implemented yet:
 
-- Hostname routing via Nginx
-- Local DNS bootstrap for `.test`
 - Full GUI parity
 
 ## Quick Start
@@ -28,6 +27,7 @@ From the stack repo itself or a deployed copy of it, add the scripts to your she
 export STACK_HOME="$HOME/docker/20i-stack"
 
 cd /path/to/project
+"$STACK_HOME/20i-dns-setup"
 "$STACK_HOME/20i-up"
 "$STACK_HOME/20i-status"
 "$STACK_HOME/20i-down"
@@ -39,17 +39,19 @@ Optional overrides:
 "$STACK_HOME/20i-up" --php-version 8.4
 "$STACK_HOME/20i-up" --docroot web --site-name marketing-site
 "$STACK_HOME/20i-up" version=8.4
+"$STACK_HOME/20i-status" --project marketing-site
 ```
 
 ## Command Semantics
 
-- `20i-up`: Ensure the shared gateway exists, start the current project runtime, register it in `.20i-state`, and mark it `attached`.
-- `20i-attach`: Start another isolated project runtime and repoint the shared gateway default route to it.
+- `20i-up`: Ensure the shared gateway exists, start the current project runtime, validate the live containers, register it in `.20i-state`, and mark it `attached`.
+- `20i-attach`: Attach-or-bootstrap the current project runtime and regenerate hostname-aware gateway routes from the registry.
 - `20i-down`: Stop only the current project runtime and retain its record with state `down`.
 - `20i-detach`: Stop only the current project runtime and remove its attachment record.
 - `20i-down --all`: Stop every known runtime and remove all recorded attachment state.
-- `20i-status`: Show shared gateway health plus recorded projects, their planned hostnames, shared access URL, container docroots, and Docker state.
-- `20i-logs [service]`: Follow logs for the current project runtime.
+- `20i-status [--project SELECTOR]`: Show shared gateway health plus recorded projects, their planned hostnames, hostname route URLs, gateway probe URL, container docroots, registry file path, recorded live container identity, registry drift, and Docker state.
+- `20i-logs [--project SELECTOR] [service]`: Follow logs for a selected project runtime.
+- `20i-dns-setup`: Bootstrap local `.test` resolution on macOS using Homebrew `dnsmasq` on `127.0.0.1:53535` and an `/etc/resolver/<suffix>` file.
 
 ## Config Precedence
 
@@ -91,6 +93,7 @@ Supported keys:
 - `MYSQL_PASSWORD`
 - `MYSQL_PORT`, `PMA_PORT`: Optional per-project published port overrides
 - `SHARED_GATEWAY_HTTP_PORT`, `SHARED_GATEWAY_HTTPS_PORT`: Shared gateway host port overrides
+- `LOCAL_DNS_PROVIDER`, `LOCAL_DNS_IP`, `LOCAL_DNS_PORT`, `LOCAL_DNS_SUFFIX`: Local DNS bootstrap defaults
 
 Default document root behavior:
 
@@ -104,13 +107,28 @@ Current container path model:
 - `public_html` becomes `/home/sites/<project-slug>/public_html`
 - A custom `DOCROOT` becomes `/home/sites/<project-slug>/<docroot-relative-path>`
 
+Current runtime naming model:
+
+- Compose project: `20i-<slug>` by default
+- Runtime network: `<compose-project>-runtime`
+- Database volume: `<compose-project>-db-data`
+- State file: `.20i-state/projects/<slug>.env`
+- Registry snapshot: `.20i-state/registry.tsv`
+
+That mapping is what ties live Docker resources back to the repo path and planned hostname recorded in state.
+
 ## Current Access Model
 
-The current implementation uses a shared front-door gateway on one host web port pair while the future hostname contract is recorded and exposed in status output.
+The current implementation now generates hostname-aware gateway rules from the stack registry and bootstraps local `.test` resolution on macOS through Homebrew `dnsmasq`.
 
-- Planned hostname: `my-project.test`
-- Current shared access URL: `http://localhost` or another configured shared gateway port
+- Planned hostname and routed hostname: `my-project.test`
+- Manual gateway probe URL: `http://localhost` or another configured shared gateway port
+- DNS implementation: `dnsmasq` on `127.0.0.1:53535`
+- Resolver file: `/etc/resolver/test` by default
+- Bootstrap command: `20i-dns-setup`
+- If resolver installation still needs elevated privileges, the command prints the exact `sudo` copy step to finish setup
 - Project databases and phpMyAdmin still publish per-project host ports
+- MariaDB credentials, database name, and data volume are resolved per project, so `.20i-local` overrides stay isolated to that runtime
 
 This keeps the shell-first workflow intact while removing direct per-project web port publishing from normal site access.
 
@@ -127,6 +145,7 @@ This keeps the shell-first workflow intact while removing direct per-project web
 ├── 20i-up
 ├── 20i-attach
 ├── 20i-down
+├── 20i-dns-setup
 ├── 20i-detach
 ├── 20i-status
 ├── 20i-logs
@@ -171,6 +190,7 @@ cd /path/to/project-b
 20i-attach --site-name project-b
 
 20i-status
+20i-status --project project-b
 ```
 
 Global teardown:
@@ -212,4 +232,4 @@ docker volume ls
 
 Stage one fixes the contract first and keeps `.test` as the canonical future suffix. `.dev` is intentionally deferred until the stack has a proper HTTPS-capable local gateway.
 
-Phase 2 has now landed the shared gateway and hidden per-project web ports behind it. Hostname-aware routing and local DNS are still the next steps.
+Phase 2 landed the shared gateway and hid per-project web ports behind it. Phase 3 made runtime naming, docroot mapping, PHP selection, and database config explicitly project-specific. Phase 4 added a stack-level registry snapshot plus post-start validation of live container identity. Phase 5 renders hostname-aware gateway rules from that registry. Phase 6 adds macOS `.test` DNS bootstrap around Homebrew `dnsmasq` plus resolver health checks.
