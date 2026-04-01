@@ -54,7 +54,7 @@ stacklane --status        # shows hostname, container health, gateway and DNS st
 stacklane --down          # stops the project runtime; retains its state record
 ```
 
-Legacy `20i-*` wrappers still work during the migration window, but Stacklane is the primary workflow and the documented path.
+Legacy `20i-*` wrappers are deprecated and only retained for the migration window. They still forward for now, but Stacklane is the primary workflow, the documented path, and the only interface that should be used in new scripts or docs.
 
 ### Running two projects concurrently
 
@@ -97,6 +97,8 @@ stacklane --down --all
 | _(no equivalent)_ | `stacklane --dns-setup` | One-time local DNS bootstrap |
 
 Retained compatibility wrappers:
+
+These wrappers are deprecated and scheduled to be dropped in a future update once the migration window closes.
 
 | Legacy wrapper | Forwards to |
 |---|---|

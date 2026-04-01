@@ -59,8 +59,8 @@ This document locks the Stacklane command semantics and state model.
 
 ## Legacy Wrappers
 
-- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` remain temporarily available.
-- Each wrapper forwards to the equivalent `stacklane --action` command and prints concise deprecation guidance.
+- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` are deprecated compatibility wrappers retained only for the migration window.
+- Each wrapper forwards to the equivalent `stacklane --action` command and prints concise deprecation guidance, including that the wrapper will be removed in a future update.
 - Wrappers are retained for migration only and are not the primary documented interface.
 
 - Writes stack-managed `dnsmasq` config for the chosen suffix.

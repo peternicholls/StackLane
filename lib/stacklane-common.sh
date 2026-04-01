@@ -1673,7 +1673,7 @@ Examples:
   stacklane --logs apache
 
 Migration:
-  Legacy wrappers such as 20i-up and 20i-status still work temporarily, but they now forward to Stacklane.
+    Legacy wrappers such as 20i-up and 20i-status are deprecated, forward to Stacklane, and will be removed in a future update.
   Prefer stacklane $(twentyi_stacklane_action_flag up), stacklane $(twentyi_stacklane_action_flag status), and related action flags in all new docs and shell aliases.
 EOF
 }
@@ -2136,7 +2136,7 @@ twentyi_legacy_forward() {
     preferred_flag="$(twentyi_stacklane_action_flag "$runtime_action")"
     legacy_command="$(twentyi_legacy_command_name "$runtime_action")"
 
-    printf 'Notice: %s is deprecated. Use stacklane %s instead.\n' "$legacy_command" "$preferred_flag" >&2
+    printf 'Notice: %s is deprecated and will be removed in a future update. Use stacklane %s instead.\n' "$legacy_command" "$preferred_flag" >&2
 
     TWENTYI_ENTRYPOINT_MODE="stacklane"
     stacklane_main "$preferred_flag" "$@"

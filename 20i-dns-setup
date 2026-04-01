@@ -5,4 +5,4 @@ set -euo pipefail
 # shellcheck source=lib/stacklane-common.sh
 source "$(cd "$(dirname "$0")" && pwd -P)/lib/stacklane-common.sh"
 
-stacklane_main "$@"
+twentyi_legacy_forward dns-setup "$@"

@@ -9,7 +9,7 @@ This is a work in progress. The CLI is the primary interface for the implemented
 ### What is implemented now:
 
 - `stacklane` is the canonical CLI entrypoint, with action flags such as `--up`, `--attach`, `--status`, and `--down`.
-- Legacy wrappers such as `20i-up` and `20i-status` still exist temporarily and now forward to `stacklane` with deprecation guidance.
+- Legacy wrappers such as `20i-up` and `20i-status` are deprecated, now forward to `stacklane`, and are intended to be removed in a future update.
 - Project config is resolved consistently from `.env`, `.20i-local`, and CLI flags.
 - Project identity is standardized around a slug and a planned `.test` hostname.
 - Project state is recorded under `.20i-state`, with a stack-level `registry.tsv` snapshot for status, detach, and global teardown semantics.

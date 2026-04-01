@@ -52,9 +52,9 @@
 
 ## Legacy Wrapper Contract
 
-- Existing `20i-*` scripts remain temporarily available.
+- Existing `20i-*` scripts remain temporarily available only as deprecated migration wrappers.
 - Each wrapper must forward to the equivalent `stacklane` action.
-- Each wrapper must emit deprecation guidance that shows the preferred `stacklane` syntax.
+- Each wrapper must emit deprecation guidance that shows the preferred `stacklane` syntax and warns that the wrapper will be removed in a future update.
 - Wrappers must not be the primary path in help text or top-level docs.
 
 ## Help Contract
