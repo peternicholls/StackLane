@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KitFlow Pro</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0a0a0a;
+            --clock-text: #ffffff;
+            --accent-color: #ff0000;
+            --glow-color: rgba(255, 255, 255, 0.2);
+            --font-family: 'Rajdhani', 'Arial Narrow', sans-serif;
+            --display-font: 'Orbitron', 'Eurostile', sans-serif;
+            --clock-size: 500px;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: var(--font-family);
+            position: relative;
+            isolation: isolate;
+        }
+
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        body::before {
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.02) 50%, rgba(0, 0, 0, 0.18) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.035), rgba(0, 255, 170, 0.02), rgba(0, 110, 255, 0.035));
+            background-size: 100% 4px, 4px 100%;
+            mix-blend-mode: screen;
+            opacity: 0.26;
+            z-index: 30;
+        }
+
+        body::after {
+            background:
+                radial-gradient(circle at center, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0) 42%),
+                radial-gradient(circle at center, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.42) 100%);
+            opacity: 0.9;
+            z-index: 29;
+        }
+
+        .clock-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .scene-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .scene-kicker {
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.34em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .scene-title {
+            margin: 0;
+            font-family: var(--display-font);
+            font-size: clamp(2rem, 4vw, 3.35rem);
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #f7f7f7;
+            text-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
+        }
+
+        .status-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 12px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(28, 28, 28, 0.95), rgba(10, 10, 10, 0.95));
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 92px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: var(--font-family);
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #d7d7d7;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .status-pill.on-air {
+            color: #fff;
+            background: linear-gradient(180deg, #ff3b3b, #b90000);
+            border-color: rgba(255, 255, 255, 0.28);
+            box-shadow: 0 0 24px rgba(255, 0, 0, 0.32), inset 0 0 16px rgba(255, 255, 255, 0.16);
+        }
+
+        .status-pill.mic-on {
+            color: #f3fff7;
+            background: linear-gradient(180deg, #24c96b, #0b7a3b);
+            border-color: rgba(110, 255, 176, 0.3);
+            box-shadow: 0 0 22px rgba(36, 201, 107, 0.24), inset 0 0 14px rgba(255, 255, 255, 0.12);
+        }
+
+        .status-pill.tel {
+            color: #fff6df;
+            background: linear-gradient(180deg, #ffbf47, #b36a00);
+            border-color: rgba(255, 214, 130, 0.34);
+            box-shadow: 0 0 22px rgba(255, 191, 71, 0.26), inset 0 0 14px rgba(255, 255, 255, 0.12);
+        }
+
+        /* THE ANALOG OUTER RING */
+        .analog-outer {
+            width: var(--clock-size);
+            height: var(--clock-size);
+            border: 8px solid #222;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 70%);
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Clock Ticks (The numbers/marks) */
+        .tick {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background: #444;
+            top: 0;
+            left: 50%;
+            transform-origin: 0 calc(var(--clock-size) / 2);
+        }
+
+        .tick.large {
+            width: 4px;
+            height: 25px;
+            background: #888;
+        }
+
+        /* Clock Hands */
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            z-index: 10;
+        }
+
+        .hour-hand {
+            width: 8px;
+            height: 25%;
+            background: white;
+        }
+
+        .min-hand {
+            width: 4px;
+            height: 35%;
+            background: #bbb;
+        }
+
+        .sec-hand {
+            width: 2px;
+            height: 40%;
+            background: var(--accent-color);
+            z-index: 15;
+        }
+
+        /* THE DIGITAL INNER CORE (From previous version) */
+        .broadcast-container {
+            width: 280px;
+            padding: 30px;
+            text-align: center;
+            border: 2px solid #333;
+            background: linear-gradient(145deg, #1a1a1a, #000);
+            position: relative;
+            border-radius: 10px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+        }
+
+        .clock-display {
+            font-size: 3rem;
+            font-family: var(--display-font);
+            font-weight: 700;
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: center;
+            color: var(--clock-text);
+            text-shadow: 0 0 15px var(--glow-color);
+            letter-spacing: 0.04em;
+            line-height: 1;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum' 1, 'lnum' 1;
+        }
+
+        .time-main,
+        .time-seconds {
+            display: inline-block;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum' 1, 'lnum' 1;
+        }
+
+        .time-main {
+            width: 5.6ch;
+        }
+
+        .seconds-separator {
+            color: var(--accent-color);
+            display: inline-block;
+            width: 0.8ch;
+            text-align: center;
+        }
+
+        .seconds {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            display: inline-block;
+            transition: transform 0.1s ease;
+        }
+
+        .time-seconds {
+            width: 2.4ch;
+        }
+
+        .date-display {
+            color: #666;
+            font-size: 0.8rem;
+            font-family: var(--font-family);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            margin-top: 10px;
+        }
+
+        /* Center Cap */
+        .center-dot {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #333;
+            border-radius: 50%;
+            z-index: 25;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        @media (max-width: 640px) {
+            :root {
+                --clock-size: 340px;
+            }
+
+            .clock-stage {
+                gap: 20px;
+            }
+
+            .scene-kicker {
+                font-size: 0.72rem;
+                letter-spacing: 0.26em;
+            }
+
+            .scene-title {
+                font-size: clamp(1.65rem, 8vw, 2.35rem);
+                letter-spacing: 0.14em;
+            }
+
+            .status-banner {
+                width: min(calc(100vw - 32px), 100%);
+                gap: 8px;
+                padding: 10px 12px;
+            }
+
+            .status-pill {
+                min-width: 0;
+                flex: 1;
+                padding: 9px 10px;
+                font-size: 0.72rem;
+                letter-spacing: 0.16em;
+            }
+
+            .broadcast-container {
+                width: min(280px, calc(100vw - 32px));
+                padding: 24px 20px;
+            }
+
+            .clock-display {
+                font-size: 2.3rem;
+            }
+
+            .seconds,
+            .seconds-separator {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="clock-stage">
+        <div class="scene-header">
+            <div class="scene-kicker">Coming Soon: Asset Tracking Made Easy</div>
+            <h1 id="scene-title" class="scene-title" data-default-title="KitFlow Pro">KitFlow Pro</h1>
+        </div>
+
+        <div class="status-banner" aria-label="Broadcast status indicators">
+            <div class="status-pill on-air">ON AIR</div>
+            <div class="status-pill mic-on">MIC ON</div>
+            <div class="status-pill tel">TEL</div>
+        </div>
+
+        <div class="analog-outer" id="clock-face">
+            <!-- Ticks will be injected by JS -->
+
+            <!-- Hands -->
+            <div class="hand hour-hand" id="hour-hand"></div>
+            <div class="hand min-hand" id="min-hand"></div>
+            <div class="hand sec-hand" id="sec-hand"></div>
+
+            <!-- Center Pin -->
+            <div class="center-dot"></div>
+        </div>
+
+        <div class="broadcast-container">
+            <div class="clock-display">
+                <span id="hours-mins" class="time-main">00:00</span><span class="seconds-separator">:</span><span
+                    id="seconds" class="seconds time-seconds">00</span>
+            </div>
+            <div id="date" class="date-display">JAN 01 2024</div>
+        </div>
+    </div>
+
+    <script>
+        // 1. GENERATE CLOCK TICKS (The "surrounding" part)
+        const clockFace = document.getElementById('clock-face');
+        const sceneTitle = document.getElementById('scene-title');
+        const DISPLAY_ADVANCE_MS = 175;
+
+        function configureSceneTitle() {
+            const params = new URLSearchParams(window.location.search);
+            const titleFromUrl = params.get('title');
+            const defaultTitle = sceneTitle.dataset.defaultTitle;
+            const nextTitle = (titleFromUrl || defaultTitle).trim();
+
+            if (nextTitle) {
+                sceneTitle.textContent = nextTitle;
+            }
+        }
+
+        function createTicks() {
+            for (let i = 0; i < 60; i++) {
+                const tick = document.createElement('div');
+                tick.className = (i % 5 === 0) ? 'tick large' : 'tick';
+                tick.style.transform = `translateX(-50%) rotate(${i * 6}deg)`;
+                clockFace.appendChild(tick);
+            }
+        }
+
+        createTicks();
+        configureSceneTitle();
+
+        // 2. CLOCK LOGIC (Digital + Analog)
+        function updateClock() {
+            const now = new Date(Date.now() + DISPLAY_ADVANCE_MS);
+
+            // --- ANALOG LOGIC ---
+            const seconds = now.getSeconds();
+            const minutes = now.getMinutes();
+            const hours = now.getHours();
+
+            const secDeg = (seconds * 6); // 360/60
+            const minDeg = (minutes * 6) + (seconds * 0.1); // Smooth motion
+            const hourDeg = (hours % 12 * 30) + (minutes * 0.5);
+
+            document.getElementById('sec-hand').style.transform = `translateX(-50%) rotate(${secDeg}deg)`;
+            document.getElementById('min-hand').style.transform = `translateX(-50%) rotate(${minDeg}deg)`;
+            document.getElementById('hour-hand').style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
+
+            // --- DIGITAL LOGIC ---
+            let h = hours < 10 ? '0' + hours : hours;
+            let m = minutes < 10 ? '0' + minutes : minutes;
+            let s = seconds < 10 ? '0' + seconds : seconds;
+
+            document.getElementById('hours-mins').textContent = `${h}:${m}`;
+            const secElement = document.getElementById('seconds');
+            secElement.textContent = s;
+
+            // Pulse effect for digital seconds
+            secElement.style.transform = 'scale(1.1)';
+            setTimeout(() => { secElement.style.transform = 'scale(1.0)'; }, 50);
+
+            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', options).toUpperCase();
+        }
+
+        function startClock() {
+            updateClock();
+
+            const scheduleNextTick = () => {
+                const delay = 1000 - (Date.now() % 1000);
+                setTimeout(() => {
+                    updateClock();
+                    scheduleNextTick();
+                }, delay);
+            };
+
+            scheduleNextTick();
+        }
+
+        startClock();
+    </script>
+</body>
+
+</html>
