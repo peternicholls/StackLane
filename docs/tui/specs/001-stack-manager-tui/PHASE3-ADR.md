@@ -94,7 +94,7 @@ StartedAt  time.Time     // Calculate uptime
 **Phase 3 Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 20i Stack Manager - myproject                              │
+│ Stacklane Manager - myproject                              │
 ├────────────────────┬────────────────────────────────────────┤
 │ Services (30%)     │ Status Messages (70%)                  │
 │                    │                                        │
@@ -110,7 +110,7 @@ StartedAt  time.Time     // Calculate uptime
 **Phase 5 Enhancement**:
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│ 20i Stack Manager - myproject                                │
+│ Stacklane Manager - myproject                                │
 ├──────────┬──────────────────────┬──────────────────────────────┤
 │ Services │ Container Details    │ Status Messages              │
 │ (20%)    │ (40%)                │ (40%)                        │
@@ -320,14 +320,14 @@ func containerActionCmd(client *docker.Client, containerID, action string) tea.C
 **Context**:
 - Phase 3 implements: ComposeStop, ComposeRestart, ComposeDown
 - User Story 2 doesn't mention starting entire stack
-- 20i-gui doesn't provide "start all" functionality
+- legacy GUI script doesn't provide "start all" functionality
 
 **Options Considered**:
 
 1. **Implement ComposeUp** (start entire stack)
    - ✅ Pro: Completes lifecycle symmetry (start/stop/restart)
    - ❌ Con: Not part of user story
-   - ❌ Con: Not in 20i-gui baseline
+   - ❌ Con: Not in legacy GUI script baseline
    - ❌ Con: Complex (needs pull, build, depends_on ordering)
 
 2. **Omit ComposeUp** (current plan)

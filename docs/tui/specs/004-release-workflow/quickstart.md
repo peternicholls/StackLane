@@ -8,7 +8,7 @@
 
 ## How Releases Work
 
-The 20i Stack uses **automated release management** powered by [release-please](https://github.com/googleapis/release-please). Here's what happens automatically:
+The Stacklane uses **automated release management** powered by [release-please](https://github.com/googleapis/release-please). Here's what happens automatically:
 
 1. **You merge PRs** with [conventional commit](https://www.conventionalcommits.org/) messages
 2. **release-please creates a Release PR** that accumulates your changes

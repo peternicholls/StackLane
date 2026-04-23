@@ -1,4 +1,4 @@
-# Quickstart: 20i Stack Manager TUI
+# Quickstart: Stacklane TUI
 
 **Feature**: 001-stack-manager-tui  
 **Date**: 2025-12-28  
@@ -6,7 +6,7 @@
 
 ## 30-Second Overview
 
-Building a terminal UI with Go + Bubble Tea to replace the 20i-gui bash script. Users get a modern, keyboard-driven dashboard for managing Docker containers, viewing logs, and monitoring resources - all without leaving the terminal.
+Building a terminal UI with Go + Bubble Tea to replace the earlier GUI script. Users get a modern, keyboard-driven dashboard for managing Docker containers, viewing logs, and monitoring resources - all without leaving the terminal.
 
 **Tech Stack**: Go 1.21+ | Bubble Tea (TUI framework) | Docker SDK | Lipgloss (styling)
 
@@ -18,7 +18,7 @@ Before starting implementation:
 
 1. **Go 1.21+** installed (`go version`)
 2. **Docker Desktop** running (tested against Docker 24.0+)
-3. **Existing 20i stack** to test against (clone repo, run `./20i-gui` to start stack)
+3. **Existing 20i stack** to test against (clone repo, run `stacklane` to start stack)
 4. **Terminal** with 256-color support (iTerm2, Terminal.app, or modern Linux terminal)
 5. **Read the research**: `/runbooks/research/01-tui-excellence/findings.md` (critical patterns)
 
@@ -97,7 +97,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-    return "20i Stack Manager TUI\n\nPress 'q' to quit.\n"
+    return "Stacklane TUI\n\nPress 'q' to quit.\n"
 }
 
 func main() {
@@ -570,7 +570,7 @@ MVP is complete when:
 ✅ Terminal resize works (min 80x24)  
 ✅ Errors show user-friendly messages  
 ✅ `Ctrl-C` or 'q' exits cleanly  
-✅ All 20i-gui features replicated (start/stop/restart/status/logs/destroy)
+✅ All legacy GUI script features replicated (start/stop/restart/status/logs/destroy)
 
 **Definition of Done**:
 - All acceptance scenarios from spec pass

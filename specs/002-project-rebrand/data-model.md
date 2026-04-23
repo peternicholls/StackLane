@@ -7,7 +7,7 @@
   - `display_name`: `Stacklane`
   - `command_name`: `stacklane`
   - `short_description`: single-line product description used across docs and help text
-  - `legacy_name`: `20i Stack`
+  - `legacy_name`: `Stacklane`
   - `legacy_prefix`: `20i-`
 - Relationships:
   - Drives text replacement across documentation, app labels, workflow labels, and shell help.
@@ -20,7 +20,7 @@
 - Purpose: Represents one operator-visible lifecycle action exposed through `stacklane`.
 - Fields:
   - `flag_name`: one of `--up`, `--attach`, `--down`, `--detach`, `--status`, `--logs`, `--dns-setup`
-  - `legacy_command`: matching current wrapper name such as `20i-up`
+  - `legacy_command`: matching current wrapper name such as `deprecated --up wrapper`
   - `runtime_action`: internal action passed to the existing helper engine
   - `supports_project_selector`: whether the action accepts `--project`
   - `supports_all`: whether the action accepts `--all`
@@ -36,7 +36,7 @@
 
 - Purpose: Represents a temporary compatibility script retained during migration.
 - Fields:
-  - `wrapper_name`: existing command file such as `20i-up`
+  - `wrapper_name`: existing command file such as `deprecated --up wrapper`
   - `forwarded_action`: target `stacklane` action flag
   - `deprecation_message`: concise guidance that shows the preferred new syntax
   - `retention_state`: temporary migration support only

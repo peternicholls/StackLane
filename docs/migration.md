@@ -1,6 +1,6 @@
-# Migration Guide: 20i Commands to Stacklane
+# Migration Guide: Legacy Commands to Stacklane
 
-This guide covers the transition from the original localhost-centric single-project workflow and `20i-*` commands to Stacklane and the shared-gateway multi-project model.
+This guide covers the transition from the original localhost-centric single-project workflow and legacy wrapper commands to Stacklane and the shared-gateway multi-project model.
 
 ## What Changed
 
@@ -24,10 +24,10 @@ docker compose -p myproject up -d
 # visit http://localhost
 docker compose -p myproject down
 
-# Or using older 20i scripts
+# Or using the older wrapper scripts
 cd /path/to/project
-20i-up   # started containers, published web port to localhost
-20i-down # stopped containers
+stacklane --up   # started containers, published web port to localhost
+stacklane --down # stopped containers
 ```
 
 Switching to a second project meant stopping the first.
@@ -54,7 +54,7 @@ stacklane --status        # shows hostname, container health, gateway and DNS st
 stacklane --down          # stops the project runtime; retains its state record
 ```
 
-Legacy `20i-*` wrappers are deprecated and only retained for the migration window. They still forward for now, but Stacklane is the primary workflow, the documented path, and the only interface that should be used in new scripts or docs.
+Legacy wrapper entrypoints are deprecated and only retained for the migration window. They still forward for now, but Stacklane is the primary workflow, the documented path, and the only interface that should be used in new scripts or docs.
 
 ### Running two projects concurrently
 
@@ -96,19 +96,7 @@ stacklane --down --all
 | _(no equivalent)_ | `stacklane --down --all` | Global teardown |
 | _(no equivalent)_ | `stacklane --dns-setup` | One-time local DNS bootstrap |
 
-Retained compatibility wrappers:
-
-These wrappers are deprecated and scheduled to be dropped in a future update once the migration window closes.
-
-| Legacy wrapper | Forwards to |
-|---|---|
-| `20i-up` | `stacklane --up` |
-| `20i-attach` | `stacklane --attach` |
-| `20i-down` | `stacklane --down` |
-| `20i-detach` | `stacklane --detach` |
-| `20i-status` | `stacklane --status` |
-| `20i-logs` | `stacklane --logs` |
-| `20i-dns-setup` | `stacklane --dns-setup` |
+Retained compatibility wrappers are deprecated and scheduled to be dropped in a future update once the migration window closes.
 
 ## Config Migration
 
@@ -146,7 +134,7 @@ export SITE_HOSTNAME=exact.test  # full override, no suffix appended
 - Config resolution order (CLI flags → `.20i-local` → environment → `.env` → defaults) is unchanged.
 - PHP version, database credentials, and document root overrides all work as before.
 - The `public_html` default document root fallback is unchanged.
-- The GUI layer (`20i Stack Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting. GUI assets and documentation have been moved to `previous-version-archive/GUI-HELP.md`.
+- The GUI layer (`Stacklane Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting. GUI assets and documentation have been moved to `previous-version-archive/GUI-HELP.md`.
 
 ## Repository Rename vs Local Folder Rename
 

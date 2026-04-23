@@ -5,7 +5,7 @@
 
 ## Summary
 
-Rebrand the project to Stacklane, replace the current family of `20i-*` entrypoints with a single `stacklane` command that uses action modifiers such as `--up` and `--down`, and update all maintained user-facing surfaces in the same delivery unit. Implementation will preserve the existing runtime model in `lib/stacklane-common.sh`, introduce one canonical command dispatcher, retain `20i-*` scripts temporarily as deprecation wrappers, and update docs plus GUI-facing text so the rename and migration are explicit and low-friction.
+Rebrand the project to Stacklane, replace the current family of `legacy wrapper commands` entrypoints with a single `stacklane` command that uses action modifiers such as `--up` and `--down`, and update all maintained user-facing surfaces in the same delivery unit. Implementation will preserve the existing runtime model in `lib/stacklane-common.sh`, introduce one canonical command dispatcher, retain `legacy wrapper commands` scripts temporarily as deprecation wrappers, and update docs plus GUI-facing text so the rename and migration are explicit and low-friction.
 
 ## Technical Context
 
@@ -44,7 +44,7 @@ Rebrand the project to Stacklane, replace the current family of `20i-*` entrypoi
 - Reliability is preserved by reusing the current helper library and keeping config precedence unchanged; only the invocation surface and user-facing vocabulary change.
 - Robustness work includes keeping current state files, shared gateway behavior, and project-selection safeguards intact while ensuring deprecated entrypoints fail clearly only after the migration period.
 - Same-change documentation scope includes all top-level docs, runtime contract terminology, migration content, shell integration examples, wrapper messaging, and macOS GUI labels/help.
-- Validation will cover `stacklane --up`, `stacklane --status`, `stacklane --down`, and one failure path for a legacy `20i-*` wrapper or invalid action syntax. GUI parity remains partial and any unvalidated asset-packaging step must be called out explicitly.
+- Validation will cover `stacklane --up`, `stacklane --status`, `stacklane --down`, and one failure path for a legacy `legacy wrapper commands` wrapper or invalid action syntax. GUI parity remains partial and any unvalidated asset-packaging step must be called out explicitly.
 
 ## Project Structure
 
@@ -64,14 +64,14 @@ specs/002-project-rebrand/
 ### Source Code (repository root)
 
 ```text
-20i-up
-20i-attach
-20i-down
-20i-detach
-20i-dns-setup
-20i-status
-20i-logs
-20i-gui-depricated
+deprecated --up wrapper
+deprecated --attach wrapper
+deprecated --down wrapper
+deprecated --detach wrapper
+deprecated --dns-setup wrapper
+deprecated --status wrapper
+deprecated --logs wrapper
+legacy GUI wrapper
 README.md
 AUTOMATION-README.md
 GUI-HELP.md
@@ -81,8 +81,8 @@ docs/
 └── plan.md
 lib/
 └── stacklane-common.sh
-20i Stack Manager.app/ (archived → previous-version-archive/)
-20i Stack Manager.workflow/ (archived → previous-version-archive/)
+Stacklane Manager.app/ (archived → previous-version-archive/)
+Stacklane Manager.workflow/ (archived → previous-version-archive/)
 20i-stack-launcher.workflow (archived → previous-version-archive/)
 20i-stack-manager.scpt (archived → previous-version-archive/)
 docker-compose.yml
@@ -90,7 +90,7 @@ docker-compose.shared.yml
 docker/
 ```
 
-**Structure Decision**: This is a single-repository shell and documentation feature. Core implementation will center on `lib/stacklane-common.sh`, a new top-level `stacklane` dispatcher script at the repo root, the existing `20i-*` wrapper scripts, and the maintained documentation and GUI-facing text surfaces listed above.
+**Structure Decision**: This is a single-repository shell and documentation feature. Core implementation will center on `lib/stacklane-common.sh`, a new top-level `stacklane` dispatcher script at the repo root, the existing `legacy wrapper commands` wrapper scripts, and the maintained documentation and GUI-facing text surfaces listed above.
 
 ## Post-Design Constitution Check
 

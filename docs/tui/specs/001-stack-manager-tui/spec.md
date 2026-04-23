@@ -1,4 +1,4 @@
-# Feature Specification: 20i Stack Manager TUI
+# Feature Specification: Stacklane TUI
 
 **Feature Branch**: `001-stack-manager-tui`  
 **Created**: 2025-12-28  
@@ -11,12 +11,12 @@
 
 ## Overview
 
-A professional terminal user interface (TUI) built with Bubble Tea framework to replace and enhance the existing 20i-gui bash script. This MVP replicates all 20i-gui functionality (start/stop/restart/status/logs/destroy) with a modern, keyboard-driven interface following best practices from lazydocker, lazygit, k9s, and gh-dash.
+A professional terminal user interface (TUI) built with Bubble Tea framework to replace and enhance the earlier GUI workflow. This MVP replicates all earlier GUI workflow (start/stop/restart/status/logs/destroy) with a modern, keyboard-driven interface following best practices from lazydocker, lazygit, k9s, and gh-dash.
 
 **Core Concept**: The TUI is a **project-aware web stack manager**, not a generic Docker container viewer. Users run it from their web project directory, and it manages the 20i stack for THAT project.
 
 **Phase 3a Scope** (MVP - this spec):
-- **PROJECT-AWARE STACK MANAGEMENT** (replicates 20i-gui):
+- **PROJECT-AWARE STACK MANAGEMENT** (matches the previous GUI script):
   - Detect current directory as web project root
   - Validate `public_html/` folder exists (pre-flight check)
   - Offer template installation from `demo-site-folder/` if missing
@@ -56,7 +56,7 @@ A professional terminal user interface (TUI) built with Bubble Tea framework to 
 
 ### User Story 0 - Project Detection & Pre-flight (Priority: P0 - Core) 🎯 MVP FIRST
 
-**Replaces**: 20i-gui project directory detection + public_html validation
+**Replaces**: legacy GUI script project directory detection + public_html validation
 
 As a developer, I want the TUI to detect my current directory as a web project and validate that `public_html/` exists, so that I can ensure my project is ready to run before starting the stack.
 
@@ -76,11 +76,11 @@ As a developer, I want the TUI to detect my current directory as a web project a
 
 ### User Story 1 - Stack Lifecycle (Priority: P0 - Core) 🎯 MVP
 
-**Replaces**: 20i-gui "Start Stack", "Stop Stack", "Restart Stack" commands
+**Replaces**: legacy GUI script "Start Stack", "Stop Stack", "Restart Stack" commands
 
 As a developer, I want to start, stop, and restart the entire 20i stack for my current project so that I can control my development environment with proper `CODE_DIR` mounting.
 
-**Why this priority**: Stack lifecycle is the PRIMARY use case - getting the web project running with proper environment variables. This is what 20i-gui does.
+**Why this priority**: Stack lifecycle is the PRIMARY use case - getting the web project running with proper environment variables. This is what legacy GUI script does.
 
 **Independent Test**: Press `S` to start stack, verify compose output streams in right panel, then status table appears showing all 4 services with URLs.
 
@@ -96,7 +96,7 @@ As a developer, I want to start, stop, and restart the entire 20i stack for my c
 
 ### User Story 2 - Stack Status Table (Priority: P0 - Core)
 
-**Replaces**: 20i-gui status view + Docker Desktop container table
+**Replaces**: legacy GUI script status view + Docker Desktop container table
 
 As a developer, I want to see a status table of all running stack services with URLs and resource usage so I can access my site and monitor health.
 
@@ -118,11 +118,11 @@ As a developer, I want to see a status table of all running stack services with 
 
 ### User Story 3 - Destroy Stack (Priority: P0 - Core)
 
-**Replaces**: 20i-gui "Destroy Stack" command (menu option 6)
+**Replaces**: legacy GUI script "Destroy Stack" command (menu option 6)
 
 As a developer, I want to destroy a stack (stop containers + remove volumes) so that I can clean up projects or reset database state.
 
-**Why this priority**: One of the 6 core 20i-gui commands - needed for cleanup and fresh starts.
+**Why this priority**: One of the 6 core legacy GUI script commands - needed for cleanup and fresh starts.
 
 **Independent Test**: Press `D` (shift-d), verify confirmation modal shows "⚠️ This will REMOVE ALL VOLUMES and data", type "yes", verify stack destroyed.
 
@@ -151,7 +151,7 @@ These features are intentionally excluded from Phase 3a MVP:
 - **Log Viewer**: View live container logs with follow mode (l key)
 - **Configuration Editor**: Edit .20i-local, .env, stack-vars.yml files in TUI
 - **phpMyAdmin Architecture Selection**: Choose ARM vs x86 image
-- **Custom Port Selection**: Interactive port picker like 20i-gui
+- **Custom Port Selection**: Interactive port picker like legacy GUI script
 
 **Rationale**: Phase 3a focuses on the CORE workflow: detect project → validate → start stack → show status. Individual container management and multi-project features come after the foundation is solid.
 
@@ -166,7 +166,7 @@ These features are intentionally excluded from Phase 3a MVP:
 - What happens when stack is not running? (right panel shows "Stack not running. Press S to start.")
 - What happens when `public_html/` is missing? (right panel shows warning with option to create from template)
 - What happens if demo-site-folder template is missing? (show error with path to expected template location)
-- How does project name sanitization work? (same as 20i-gui: lowercase, replace invalid chars with hyphens)
+- How does project name sanitization work? (same as legacy GUI script: lowercase, replace invalid chars with hyphens)
 
 ---
 
@@ -176,7 +176,7 @@ These features are intentionally excluded from Phase 3a MVP:
 
 **Project Detection & Pre-flight (Phase 3a)**
 - **FR-001**: TUI MUST detect current working directory (`$PWD`) as project root on startup
-- **FR-002**: TUI MUST derive project name from directory name, sanitized same as 20i-gui (lowercase, hyphens)
+- **FR-002**: TUI MUST derive project name from directory name, sanitized same as legacy GUI script (lowercase, hyphens)
 - **FR-003**: TUI MUST check for `public_html/` directory existence as pre-flight validation
 - **FR-004**: TUI MUST display pre-flight status in right panel: "Ready" (✅) or "Missing public_html/" (⚠️)
 - **FR-005**: TUI MUST support `T` key to create `public_html/` from `demo-site-folder/` template
@@ -221,7 +221,7 @@ These features are intentionally excluded from Phase 3a MVP:
 - **FR-050**: phpMyAdmin image MUST default to ARM-native on Apple Silicon: `arm64v8/phpmyadmin:latest`
 - **FR-050a**: phpMyAdmin image MUST fall back to standard image on x86: `phpmyadmin:latest`
 - **FR-050b**: phpMyAdmin image selection MUST be overridable via `PHPMYADMIN_IMAGE` environment variable
-- **FR-051**: Port selection MUST use auto-selection (find free port) like 20i-gui `find_free_port()` (deferred to Phase 4)
+- **FR-051**: Port selection MUST use auto-selection (find free port) like legacy GUI script `find_free_port()` (deferred to Phase 4)
 - **FR-052**: TUI MUST read `STACK_FILE` and `STACK_HOME` from environment if set
 - **FR-052a**: TUI MUST validate STACK_FILE exists before executing docker compose commands
 
@@ -392,7 +392,7 @@ Minimum: 80x24 characters
 Recommended: 120x40 characters
 
 Phase 3a MVP Layout (Project-Aware):
-┌─ 20i Stack Manager ─────────────────────────────────────────────┐
+┌─ Stacklane Manager ─────────────────────────────────────────────┐
 │                                                                  │
 ├───────────────────┬──────────────────────────────────────────────┤
 │ ✅ my-website     │ Stack Status (4 containers running)         │
@@ -416,7 +416,7 @@ Phase 3a MVP Layout (Project-Aware):
 └──────────────────────────────────────────────────────────────────┘
 
 Pre-flight State (missing public_html/):
-┌─ 20i Stack Manager ─────────────────────────────────────────────┐
+┌─ Stacklane Manager ─────────────────────────────────────────────┐
 ├───────────────────┬──────────────────────────────────────────────┤
 │ ⚠️ my-website     │                                              │
 │                   │   ⚠️  Missing public_html/ directory         │
@@ -433,7 +433,7 @@ Pre-flight State (missing public_html/):
 └──────────────────────────────────────────────────────────────────┘
 
 Starting State (compose output streaming):
-┌─ 20i Stack Manager ─────────────────────────────────────────────┐
+┌─ Stacklane Manager ─────────────────────────────────────────────┐
 ├───────────────────┬──────────────────────────────────────────────┤
 │ 🔄 my-website     │ Starting Stack...                            │
 │                   │                                              │
@@ -528,7 +528,7 @@ var (
    
 8. **❌ Too Many Features in v1**
    - DON'T: Try to build config editor + monitoring + image management all at once
-   - DO: MVP = dashboard + lifecycle + logs (match 20i-gui baseline)
+   - DO: MVP = dashboard + lifecycle + logs (match legacy GUI script baseline)
 
 ---
 
@@ -615,7 +615,7 @@ var (
 - **SC-009**: Error messages are actionable ("port 80 in use" not "bind error")
 
 **Reliability** (functional correctness):
-- **SC-010**: 100% parity with 20i-gui features (start, stop, restart, status, logs, destroy)
+- **SC-010**: 100% parity with legacy GUI script features (start, stop, restart, status, logs, destroy)
 - **SC-011**: Zero data loss from failed operations (atomic Docker API calls, clear error states)
 - **SC-012**: TUI handles Docker daemon restart gracefully (shows error, auto-retries, reconnects)
 - **SC-013**: Terminal resize never crashes or corrupts display (re-layout on SIGWINCH)
@@ -629,14 +629,14 @@ var (
 
 **Compatibility**:
 - **SC-014**: Works with existing .20i-local files (no migration needed)
-- **SC-015**: Runs on macOS (primary), Linux (secondary) - matches 20i-gui platform support
-- **SC-016**: Requires only Go 1.21+ and Docker (no additional dependencies beyond 20i-gui)
+- **SC-015**: Runs on macOS (primary), Linux (secondary) - matches legacy GUI script platform support
+- **SC-016**: Requires only Go 1.21+ and Docker (no additional dependencies beyond legacy GUI script)
 
-**Comparison to 20i-gui** (upgrade value):
-- **SC-017**: Faster workflow: TUI dashboard shows all services at once (vs 20i-gui multi-step menus)
-- **SC-018**: Live updates: Stats refresh every 2s (vs 20i-gui static status snapshots)
-- **SC-019**: Richer logs: Follow mode + search + scroll (vs 20i-gui `docker compose logs -f` passthrough)
-- **SC-020**: Keyboard-first: All actions <3 keystrokes (vs 20i-gui requires mouse for dialog selection)
+**Comparison to legacy GUI script** (upgrade value):
+- **SC-017**: Faster workflow: TUI dashboard shows all services at once (vs legacy GUI script multi-step menus)
+- **SC-018**: Live updates: Stats refresh every 2s (vs legacy GUI script static status snapshots)
+- **SC-019**: Richer logs: Follow mode + search + scroll (vs legacy GUI script `docker compose logs -f` passthrough)
+- **SC-020**: Keyboard-first: All actions <3 keystrokes (vs legacy GUI script requires mouse for dialog selection)
 
 ---
 
@@ -644,7 +644,7 @@ var (
 
 - Go 1.21+ is available (or install instructions provided in tui/README.md)
 - Docker daemon is running and accessible via default socket (unix:///var/run/docker.sock or similar)
-- User has permissions to manage Docker containers (same as 20i-gui requirements)
+- User has permissions to manage Docker containers (same as legacy GUI script requirements)
 - Terminal supports ANSI colors (8-color minimum, 256-color recommended)
 - Terminal supports alternate screen mode (standard since 1980s - xterm, iTerm2, Terminal.app, etc.)
 - Minimum terminal size: 80x24 characters (enforced with error message if smaller)
@@ -671,7 +671,7 @@ var (
 - No C dependencies (pure Go, cross-platform)
 
 **Runtime Requirements**:
-- Docker daemon accessible (same as 20i-gui)
+- Docker daemon accessible (same as legacy GUI script)
 - Docker Compose v2+
 
 ---
@@ -725,7 +725,7 @@ docs/
 - `.gitignore` - Add `tui/20i-stack-manager` (compiled binary)
 
 **Unchanged Files** (important for compatibility):
-- `20i-gui` - Existing GUI still works, can coexist
+- `legacy GUI script` - Existing GUI still works, can coexist
 - `docker-compose.yml` - No changes to stack definition
 - `config/stack-vars.yml` - No changes (Phase 2 will extend)
 - `.20i-local` - No changes to format

@@ -52,8 +52,8 @@
 - [X] T011 [P] [US1] Update Stacklane branding and GUI narrative in `GUI-HELP.md`
 - [X] T012 [P] [US1] Update active branding language in `docs/runtime-contract.md`
 - [X] T013 [P] [US1] Update active branding language in `docs/migration.md`
-- [X] T014 [P] [US1] Update macOS app and workflow display names in `20i Stack Manager.app/Contents/Info.plist` and `20i Stack Manager.workflow/Contents/Info.plist`
-- [X] T015 [P] [US1] Update AppleScript and workflow-facing brand text in `20i-stack-manager.scpt`, `20i-stack-launcher.workflow`, and `20i Stack Manager.app/Contents/Resources/Scripts/main.scpt`
+- [X] T014 [P] [US1] Update macOS app and workflow display names in `Stacklane Manager.app/Contents/Info.plist` and `Stacklane Manager.workflow/Contents/Info.plist`
+- [X] T015 [P] [US1] Update AppleScript and workflow-facing brand text in `20i-stack-manager.scpt`, `20i-stack-launcher.workflow`, and `Stacklane Manager.app/Contents/Resources/Scripts/main.scpt`
 - [X] T016 [US1] Validate that `README.md`, `AUTOMATION-README.md`, `GUI-HELP.md`, `docs/runtime-contract.md`, and the macOS wrapper metadata present Stacklane consistently with legacy naming only in migration contexts
 
 **Checkpoint**: Stacklane is the visible identity across maintained primary surfaces.
@@ -89,14 +89,14 @@
 
 ### Implementation for User Story 3
 
-- [X] T025 [P] [US3] Convert `20i-up`, `20i-attach`, and `20i-down` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
-- [X] T026 [P] [US3] Convert `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
+- [X] T025 [P] [US3] Convert `deprecated --up wrapper`, `deprecated --attach wrapper`, and `deprecated --down wrapper` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
+- [X] T026 [P] [US3] Convert `deprecated --detach wrapper`, `deprecated --status wrapper`, `deprecated --logs wrapper`, and `deprecated --dns-setup wrapper` into temporary forwarding wrappers with deprecation guidance toward `stacklane`
 - [X] T027 [US3] Update old-to-new command mapping, wrapper expectations, and migration wording in `docs/migration.md`
 - [X] T028 [US3] Update install, clone, and shell-path guidance to distinguish the repository rename from the manual containing-folder rename in `README.md`
 - [X] T029 [P] [US3] Update repo-rename, wrapper, and sync guidance in `AUTOMATION-README.md` and `GUI-HELP.md`
-- [X] T030 [US3] Validate that a retained wrapper invocation still succeeds and points users to the equivalent `stacklane` syntax using `20i-up` and the migration flow in `specs/002-project-rebrand/quickstart.md`
+- [X] T030 [US3] Validate that a retained wrapper invocation still succeeds and points users to the equivalent `stacklane` syntax using `deprecated --up wrapper` and the migration flow in `specs/002-project-rebrand/quickstart.md`
 
-**Checkpoint**: Existing users can migrate from `20i-*` to `stacklane` without guesswork.
+**Checkpoint**: Existing users can migrate from `legacy wrapper commands` to `stacklane` without guesswork.
 
 ---
 
@@ -104,8 +104,8 @@
 
 **Purpose**: Finalize parity, validation, and external rename follow-through across the full feature.
 
-- [X] T031 [P] Run shell syntax validation on `stacklane`, `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, `20i-dns-setup`, and `lib/stacklane-common.sh`
-- [X] T032 [P] Run `shellcheck` on changed shell scripts if available and resolve relevant findings in `stacklane`, `20i-*`, and `lib/stacklane-common.sh` (tool unavailable in the current environment; no local findings remained after syntax validation)
+- [X] T031 [P] Run shell syntax validation on `stacklane`, `deprecated --up wrapper`, `deprecated --attach wrapper`, `deprecated --down wrapper`, `deprecated --detach wrapper`, `deprecated --status wrapper`, `deprecated --logs wrapper`, `deprecated --dns-setup wrapper`, and `lib/stacklane-common.sh`
+- [X] T032 [P] Run `shellcheck` on changed shell scripts if available and resolve relevant findings in `stacklane`, `legacy wrapper commands`, and `lib/stacklane-common.sh` (tool unavailable in the current environment; no local findings remained after syntax validation)
 - [X] T033 Validate documentation and interface parity across `README.md`, `AUTOMATION-README.md`, `GUI-HELP.md`, `docs/migration.md`, and `docs/runtime-contract.md`
 - [X] T034 Validate configuration precedence and runtime isolation remain unchanged under `stacklane` for stack `.env`, project `.20i-local`, shell environment overrides, and CLI flags via `lib/stacklane-common.sh`
 - [X] T035 Validate claimed friction reduction by comparing the old multi-command flow against the new `stacklane` flow using `specs/002-project-rebrand/quickstart.md`
@@ -155,7 +155,7 @@ Task: "Update Stacklane branding and CLI references in AUTOMATION-README.md"
 Task: "Update Stacklane branding and GUI narrative in GUI-HELP.md"
 Task: "Update active branding language in docs/runtime-contract.md"
 Task: "Update active branding language in docs/migration.md"
-Task: "Update macOS app and workflow display names in 20i Stack Manager.app/Contents/Info.plist and 20i Stack Manager.workflow/Contents/Info.plist"
+Task: "Update macOS app and workflow display names in Stacklane Manager.app/Contents/Info.plist and Stacklane Manager.workflow/Contents/Info.plist"
 ```
 
 ---
@@ -163,8 +163,8 @@ Task: "Update macOS app and workflow display names in 20i Stack Manager.app/Cont
 ## Parallel Example: User Story 3
 
 ```bash
-Task: "Convert 20i-up, 20i-attach, and 20i-down into temporary forwarding wrappers with deprecation guidance toward stacklane"
-Task: "Convert 20i-detach, 20i-status, 20i-logs, and 20i-dns-setup into temporary forwarding wrappers with deprecation guidance toward stacklane"
+Task: "Convert deprecated --up wrapper, deprecated --attach wrapper, and deprecated --down wrapper into temporary forwarding wrappers with deprecation guidance toward stacklane"
+Task: "Convert deprecated --detach wrapper, deprecated --status wrapper, deprecated --logs wrapper, and deprecated --dns-setup wrapper into temporary forwarding wrappers with deprecation guidance toward stacklane"
 Task: "Update repo-rename, wrapper, and sync guidance in AUTOMATION-README.md and GUI-HELP.md"
 ```
 

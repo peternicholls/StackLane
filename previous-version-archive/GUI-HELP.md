@@ -7,7 +7,7 @@ The GUI is still experimental and trails the CLI. Use `stacklane` for the implem
 Use the installed app or Services workflow for the current GUI path:
 
 ```bash
-open "$HOME/docker/20i-stack/20i Stack Manager.app"
+open "$HOME/docker/20i-stack/Stacklane Manager.app"
 ```
 
 This currently gives you an interactive menu with these options:
@@ -52,7 +52,7 @@ For a full workflow walk-through including concurrent projects and migration fro
 
 If your live stack runs from a deployed copy such as `/Users/peternicholls/docker/20i-stack`, sync changes from your dev workspace before using the GUI wrappers. The GUI launches whatever copy is on disk at runtime.
 
-> **Note on `20i-gui-depricated`**: The `20i-gui-depricated` script in the repo root is the original pre-shared-gateway GUI wrapper. It is kept for historical reference but does not integrate with the shared gateway, hostname routing, or the project registry. Prefer `stacklane` instead.
+> **Note on `legacy GUI wrapper`**: The `legacy GUI wrapper` script in the repo root is the original pre-shared-gateway GUI wrapper. It is kept for historical reference but does not integrate with the shared gateway, hostname routing, or the project registry. Prefer `stacklane` instead.
 
 ## 💡 Pro Tips:
 
@@ -79,6 +79,6 @@ If your live stack runs from a deployed copy such as `/Users/peternicholls/docke
 
 - **From Anywhere**: The installed app and Services workflow can be launched outside the repo root
 
-Legacy `20i-*` wrappers still forward during migration, but the primary shell workflow is now `stacklane --action`.
+Legacy `legacy wrapper commands` wrappers still forward during migration, but the primary shell workflow is now `stacklane --action`.
 
 Use it as a secondary option alongside the shell workflow while the GUI remains partial.

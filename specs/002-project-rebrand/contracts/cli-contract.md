@@ -42,17 +42,17 @@
 
 | Primary action | Internal runtime action | Legacy wrapper | Notes |
 |---|---|---|---|
-| `--up` | `up` | `20i-up` | Starts current project and ensures shared infrastructure |
-| `--attach` | `attach` | `20i-attach` | Attaches an additional project |
-| `--down` | `down` | `20i-down` | Stops current project; `--all` keeps global teardown behavior |
-| `--detach` | `detach` | `20i-detach` | Stops current project and removes its record |
-| `--status` | `status` | `20i-status` | Reports gateway, DNS, registry, and project state |
-| `--logs` | `logs` | `20i-logs` | Supports optional service selection |
-| `--dns-setup` | `dns-setup` | `20i-dns-setup` | Bootstraps local DNS on macOS |
+| `--up` | `up` | `deprecated --up wrapper` | Starts current project and ensures shared infrastructure |
+| `--attach` | `attach` | `deprecated --attach wrapper` | Attaches an additional project |
+| `--down` | `down` | `deprecated --down wrapper` | Stops current project; `--all` keeps global teardown behavior |
+| `--detach` | `detach` | `deprecated --detach wrapper` | Stops current project and removes its record |
+| `--status` | `status` | `deprecated --status wrapper` | Reports gateway, DNS, registry, and project state |
+| `--logs` | `logs` | `deprecated --logs wrapper` | Supports optional service selection |
+| `--dns-setup` | `dns-setup` | `deprecated --dns-setup wrapper` | Bootstraps local DNS on macOS |
 
 ## Legacy Wrapper Contract
 
-- Existing `20i-*` scripts remain temporarily available only as deprecated migration wrappers.
+- Existing `legacy wrapper commands` scripts remain temporarily available only as deprecated migration wrappers.
 - Each wrapper must forward to the equivalent `stacklane` action.
 - Each wrapper must emit deprecation guidance that shows the preferred `stacklane` syntax and warns that the wrapper will be removed in a future update.
 - Wrappers must not be the primary path in help text or top-level docs.
@@ -65,7 +65,7 @@
   - supported primary action flags
   - shared options
   - at least one representative usage example
-  - legacy migration note pointing from `20i-*` commands to `stacklane`
+  - legacy migration note pointing from `legacy wrapper commands` commands to `stacklane`
 
 ## Error Contract
 

@@ -1,4 +1,4 @@
-# Research: 20i Stack Manager TUI
+# Research: Stacklane TUI
 
 **Feature**: 001-stack-manager-tui  
 **Date**: 2025-12-28  

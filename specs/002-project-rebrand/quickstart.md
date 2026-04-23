@@ -22,10 +22,10 @@ Validate the Stacklane rename and unified command surface without changing the u
 
 ## Migration Validation
 
-1. Invoke one retained wrapper such as `20i-up` from a sample project.
+1. Invoke one retained wrapper such as `deprecated --up wrapper` from a sample project.
 2. Confirm the command still works or forwards correctly during the migration window.
 3. Confirm the wrapper surfaces deprecation guidance toward `stacklane --up`.
-4. Review the top-level docs and migration guide to confirm they describe `stacklane` as the primary interface and `20i-*` as migration-only wrappers.
+4. Review the top-level docs and migration guide to confirm they describe `stacklane` as the primary interface and `legacy wrapper commands` as migration-only wrappers.
 
 ## Failure-Path Validation
 
@@ -45,8 +45,8 @@ Validate the Stacklane rename and unified command surface without changing the u
 
 - 2026-04-01: Validated `stacklane --help`, `stacklane --status`, `stacklane --status --project 20i-stack`, `stacklane --up --dry-run`, and `stacklane --down --dry-run` from the repository root.
 - 2026-04-01: Validated failure handling for `stacklane` with no primary action and with conflicting primary actions (`--up --down`).
-- 2026-04-01: Validated `20i-up --dry-run` forwards to `stacklane --up` and prints deprecation guidance.
-- 2026-04-01: Recompiled `20i Stack Manager.app/Contents/Resources/Scripts/main.scpt` from the updated AppleScript source.
+- 2026-04-01: Validated `deprecated --up wrapper --dry-run` forwards to `stacklane --up` and prints deprecation guidance.
+- 2026-04-01: Recompiled `Stacklane Manager.app/Contents/Resources/Scripts/main.scpt` from the updated AppleScript source.
 - 2026-04-01: Untested caveat: the macOS app and workflow packaging were not exercised through Finder or Services UI during this implementation pass.
 - 2026-04-01: Untested caveat: `shellcheck` was not available in the current environment.
 - 2026-04-01: GitHub repository rename completed to `StackLane`; clone URL guidance was updated while keeping the local containing-folder rename manual.

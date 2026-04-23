@@ -67,7 +67,7 @@ if err != nil {
 
 **Rationale**:
 
-1. **MVP Simplicity**: For the baseline 20i-gui replacement, the hard-fail approach is simpler and sufficient. Docker must be running for the application to have any meaningful functionality.
+1. **MVP Simplicity**: For the baseline legacy GUI script replacement, the hard-fail approach is simpler and sufficient. Docker must be running for the application to have any meaningful functionality.
 
 2. **Clear Requirements**: The application's entire purpose is Docker stack management. Without Docker, there is no value in showing a degraded UI.
 

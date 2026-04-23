@@ -1,4 +1,4 @@
-# Tasks: 20i Stack Manager TUI
+# Tasks: Stacklane TUI
 
 **Feature Branch**: `001-stack-manager-tui`  
 **Input**: Design documents from `/specs/001-stack-manager-tui/`  
@@ -16,7 +16,7 @@
 - `/runbooks/research/bubbletea-component-guide.md` - Component architecture patterns
 - `/runbooks/research/lipgloss-styling-reference.md` - Styling patterns and color palette
 - The TUI directory is `tui/` at the repository root
-- **CRITICAL**: Review `20i-gui` bash script to understand the project-aware workflow
+- **CRITICAL**: Review `legacy GUI script` bash script to understand the project-aware workflow
 
 The following documents provide essential context for Phase 3 implementation:
 - `/specs/001-stack-manager-tui/PHASE3-ADR.md` - Architecture Decision Records for Phase 3
@@ -27,7 +27,7 @@ The following documents provide essential context for Phase 3 implementation:
 
 **Go File Header Template**: Use this standard header at the top of each Go source file (update fields as needed).
 ```go
-// Project: 20i Stack Manager TUI
+// Project: Stacklane TUI
 // File: <filename.go>
 // Purpose: <short purpose>
 // Version: <semver or revision>
@@ -94,7 +94,7 @@ NOW SKIP TO `PHASE 3a` BELOW
 
 ## PHASE 3a: Project-Aware Stack Management (MVP) 🔄 IN PROGRESS
 
-**Goal**: Replicate 20i-gui core workflow in TUI - detect project, validate, start/stop stack
+**Goal**: Replicate legacy GUI script core workflow in TUI - detect project, validate, start/stop stack
 
 **Status**: ~75% complete per audit dated 2025-12-30. Core functionality implemented, critical issues blocking release.
 
@@ -239,8 +239,8 @@ p := tea.NewProgram(rootModel,
 - **[P] tasks**: Different files, no dependencies within their phase - can run in parallel
 - **[Story] labels**: Map tasks to user stories for traceability and independent testing
 - **Checkpoints**: Stop after Phase 2, Phase 3, and Phase 6 to validate progress
-- **MVP scope**: Phases 1-4 replicate all 20i-gui CORE functionality (US2 Lifecycle + US4 Destroy) ✅
-- **Enhancements**: Phases 5-7 add monitoring (US1), logs (US3), multi-project (US5) beyond 20i-gui
+- **MVP scope**: Phases 1-4 replicate all legacy GUI script CORE functionality (US2 Lifecycle + US4 Destroy) ✅
+- **Enhancements**: Phases 5-7 add monitoring (US1), logs (US3), multi-project (US5) beyond legacy GUI script
 - **Production-ready**: Phase 8 adds documentation, error handling, polish
 - **Priority**: GET STACKS RUNNING FIRST (lifecycle), then add nice-to-haves (monitoring/logs)
 - **Tests**: Not included per spec (no TDD requirement, manual testing via quickstart.md)
@@ -374,7 +374,7 @@ p := tea.NewProgram(rootModel,
   - Derive project name from directory basename
   - Return Project struct with Name, Path, HasPublicHTML fields
 - [X] T101 [US0] Create internal/project/sanitize.go with SanitizeProjectName() function ✅
-  - Port sanitization logic from 20i-gui `sanitize_project_name()` function
+  - Port sanitization logic from legacy GUI script `sanitize_project_name()` function
   - Lowercase, replace invalid chars with hyphens, ensure starts with letter/number
 - [X] T102 [P] [US0] [TEST] Create internal/project/detector_test.go ✅
   - Test project detection with various directory structures
@@ -402,7 +402,7 @@ p := tea.NewProgram(rootModel,
   - Inline comments for sanitization regex logic
   - Document public_html validation rules
 
-**Checkpoint**: ✅ Project detection works, sanitization matches 20i-gui, template installation works
+**Checkpoint**: ✅ Project detection works, sanitization matches legacy GUI script, template installation works
 
 ### User Story 1: Stack Lifecycle ✅ COMPLETE
 
@@ -411,7 +411,7 @@ p := tea.NewProgram(rootModel,
 - [X] T108 [US1] Create internal/stack/env.go with STACK_FILE and STACK_HOME detection ✅
   - Check environment variables first
   - Fall back to executable-relative path
-  - Match 20i-gui logic exactly
+  - Match legacy GUI script logic exactly
 - [X] T109 [US1] Add STACK_FILE validation helper function in env.go ✅
   - Return error if STACK_FILE not set and cannot be detected
   - Verify file exists and is readable
@@ -928,7 +928,7 @@ These phases are planned for after Phase 3a MVP is stable and will be defined in
 - [ ] T072 [TEST] Run `make test` to verify all Phase 3 tests pass (unit + integration), achieve >85% coverage
   > **📋 Reference**: See PHASE3-IMPLEMENTATION-NOTES.md Section 8 for testing strategy and coverage targets
 
-**Checkpoint**: Core 20i-gui functionality working - can start/stop/restart containers, verify status, >85% test coverage
+**Checkpoint**: Core earlier GUI workflow working - can start/stop/restart containers, verify status, >85% test coverage
 
 **📊 Phase 3 Success Criteria** (from PHASE3-ROADMAP.md):
 - ✅ All 47 tasks (T026-T072) checked off
@@ -944,7 +944,7 @@ These phases are planned for after Phase 3a MVP is stable and will be defined in
 
 ## Phase 4: User Story 4 - Destroy Stack (Priority: P0 - Core)
 
-**Goal**: Destroy stack (stop containers + remove volumes) - COMPLETE 20i-gui baseline
+**Goal**: Destroy stack (stop containers + remove volumes) - COMPLETE legacy GUI script baseline
 
 **Independent Test**: Press 'D', confirm with 'yes', verify stack destroyed and volumes removed
 
@@ -973,13 +973,13 @@ These phases are planned for after Phase 3a MVP is stable and will be defined in
 - [ ] T088 [TEST] Manual test per US4 acceptance: Press 'D', type "yes", verify stack destroyed and volumes removed
 - [ ] T089 [TEST] Run regression test suite (all previous tests + US4 tests) to ensure baseline functionality intact
 
-**Checkpoint**: ✅ BASELINE COMPLETE - All 20i-gui core functions replicated, >85% test coverage, regression suite passing
+**Checkpoint**: ✅ BASELINE COMPLETE - All legacy GUI script core functions replicated, >85% test coverage, regression suite passing
 
 ---
 
 ## Phase 5: User Story 1 - Dashboard Monitoring (Priority: P1 - Enhancement)
 
-**Goal**: Add live CPU/memory monitoring and detailed container info - ENHANCES baseline beyond 20i-gui
+**Goal**: Add live CPU/memory monitoring and detailed container info - ENHANCES baseline beyond legacy GUI script
 
 **Independent Test**: After lifecycle working, verify CPU% and memory bars update every 2s, detail panel shows ports/image/uptime
 
@@ -1019,7 +1019,7 @@ These phases are planned for after Phase 3a MVP is stable and will be defined in
 
 ## Phase 6: User Story 3 - Log Viewer (Priority: P2 - Enhancement)
 
-**Goal**: View live container logs with follow mode - ADDS debugging capability beyond 20i-gui
+**Goal**: View live container logs with follow mode - ADDS debugging capability beyond legacy GUI script
 
 **Independent Test**: Press 'l' on running container, verify logs show; press 'f' for follow mode, make web request, see new log line
 
@@ -1156,7 +1156,7 @@ These phases are planned for after Phase 3a MVP is stable and will be defined in
 - **Setup (Phase 1)**: No dependencies - START HERE
 - **Foundational (Phase 2)**: Depends on Setup (T001-T011) - BLOCKS all user stories
 - **User Story 2 - Lifecycle (Phase 3)**: Depends on Foundational - **THIS IS THE MVP** 🎯
-- **User Story 4 - Destroy (Phase 4)**: Depends on US2 dashboard - COMPLETES 20i-gui baseline
+- **User Story 4 - Destroy (Phase 4)**: Depends on US2 dashboard - COMPLETES legacy GUI script baseline
 - **User Story 1 - Dashboard (Phase 5)**: OPTIONAL enhancement - adds monitoring to baseline
 - **User Story 3 - Logs (Phase 6)**: OPTIONAL enhancement - adds debugging
 - **User Story 5 - Projects (Phase 7)**: OPTIONAL enhancement - adds multi-project
@@ -1164,25 +1164,25 @@ These phases are planned for after Phase 3a MVP is stable and will be defined in
 
 ### User Story Dependencies & Priority
 
-**BASELINE (20i-gui parity)**:
+**BASELINE (legacy GUI script parity)**:
 1. **User Story 2 (Lifecycle - P0)**: START HERE after Foundational - Creates simple dashboard with lifecycle ops
 2. **User Story 4 (Destroy - P0)**: Depends on US2 dashboard (T036-T041) - Completes baseline
 
-**ENHANCEMENTS (beyond 20i-gui)**:
+**ENHANCEMENTS (beyond legacy GUI script)**:
 3. **User Story 1 (Dashboard - P1)**: Depends on US2 container model (T023-T026) - Adds monitoring
 4. **User Story 3 (Logs - P2)**: Depends on US2 dashboard layout - Adds log viewer
 5. **User Story 5 (Projects - P3)**: Independent after Foundational - Adds multi-project
 
 ### Recommended Execution Order
 
-**MINIMUM VIABLE PRODUCT (20i-gui replacement)**:
+**MINIMUM VIABLE PRODUCT (legacy GUI script replacement)**:
 1. Phase 1: Setup (T001-T013) - Initialize project with test infrastructure
 2. Phase 2: Foundational (T014-T025) - Docker client + root model with tests
 3. Phase 3: User Story 2 - Lifecycle (T026-T072) - MVP with comprehensive tests
 4. Phase 4: User Story 4 - Destroy (T073-T089) - Baseline complete with regression tests
 5. Phase 8: Polish (T155-T182) - Production-ready with full test suite
 
-**STOP HERE FOR v1.0 RELEASE** - You now have full 20i-gui functionality in TUI with >85% test coverage
+**STOP HERE FOR v1.0 RELEASE** - You now have full earlier GUI workflow in TUI with >85% test coverage
 
 **ENHANCED VERSION (add monitoring & debugging)**:
 6. Phase 5: User Story 1 - Dashboard monitoring (T090-T110) - Live stats with performance tests
@@ -1279,7 +1279,7 @@ Task T049: Create restartContainerCmd
 
 ## Implementation Strategy
 
-### MVP First (Lifecycle + Destroy = 20i-gui Baseline) ✅ RECOMMENDED
+### MVP First (Lifecycle + Destroy = legacy GUI script Baseline) ✅ RECOMMENDED
 
 1. Complete Phase 1: Setup (T001-T011)
 2. Complete Phase 2: Foundational (T012-T022) ← FOUNDATION READY
@@ -1287,9 +1287,9 @@ Task T049: Create restartContainerCmd
 4. Complete Phase 4: User Story 4 - Destroy (T056-T067) ← **BASELINE COMPLETE** ✅
 5. Complete Phase 8: Polish (T118-T140) ← Production-ready
 6. **VALIDATE**: Start stack, verify running, stop stack, verify stopped, destroy stack
-7. **RELEASE v1.0**: Full 20i-gui replacement in TUI
+7. **RELEASE v1.0**: Full legacy GUI script replacement in TUI
 
-**Stop here for first release** - You have all essential 20i-gui functionality
+**Stop here for first release** - You have all essential earlier GUI workflow
 
 ### Enhanced Version (Add Monitoring & Debugging)
 
@@ -1304,7 +1304,7 @@ Each phase delivers testable value:
 
 - **After Phase 2 (Foundational)**: Docker client connects, can list containers
 - **After Phase 3 (US2 Lifecycle)**: ← **MVP!** Can start/stop/restart services, verify status ✅
-- **After Phase 4 (US4 Destroy)**: ← **BASELINE COMPLETE** Full 20i-gui parity ✅
+- **After Phase 4 (US4 Destroy)**: ← **BASELINE COMPLETE** Full legacy GUI script parity ✅
 - **After Phase 5 (US1 Dashboard)**: Live CPU/memory monitoring added
 - **After Phase 6 (US3 Logs)**: Log viewer with follow mode added
 - **After Phase 7 (US5 Projects)**: Multi-project switching added

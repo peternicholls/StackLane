@@ -32,5 +32,5 @@
 ## Notes
 
 - Validated on 2026-04-01 against the completed spec.
-- Clarified decisions are fixed in the spec: brand name `Stacklane`, primary CLI command `stacklane`, and temporary `20i-*` migration wrappers with deprecation guidance.
+- Clarified decisions are fixed in the spec: brand name `Stacklane`, primary CLI command `stacklane`, and temporary `legacy wrapper commands` migration wrappers with deprecation guidance.
 - Scope explicitly includes repo rename propagation, documentation updates, unified command UX, and migration guidance, while excluding automation of the local containing-folder rename.

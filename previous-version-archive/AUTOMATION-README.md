@@ -5,7 +5,7 @@ This automation provides experimental GUI interfaces for Stacklane on macOS. The
 ## 📱 What You Get
 
 ### 1. **Stacklane Manager.app** 
-- **Location**: `/Users/peternicholls/docker/20i-stack/20i Stack Manager.app`
+- **Location**: `/Users/peternicholls/docker/20i-stack/Stacklane Manager.app`
 - **Usage**: Double-click to launch
 - **Features**: 
   - 🚀 Start Stack (with folder picker and settings dialog)
@@ -39,15 +39,15 @@ The automation is already set up! Here's what was installed:
 
 ```bash
 # Standalone App (ready to use)
-~/docker/20i-stack/20i Stack Manager.app
+~/docker/20i-stack/Stacklane Manager.app
 
 # Services Menu (system-wide access)
-~/Library/Services/20i Stack Manager.workflow
+~/Library/Services/Stacklane Manager.workflow
 ```
 
 ## 🚀 Quick Start
 
-1. **Double-click** `20i Stack Manager.app`
+1. **Double-click** `Stacklane Manager.app`
 2. **Choose "🚀 Start Stack"**
 3. **Select your project folder**
 4. **Optionally configure settings** (or just click "Skip")

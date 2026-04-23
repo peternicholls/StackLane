@@ -232,7 +232,7 @@ dist/
 │   └── stack-vars.yml
 ├── scripts/
 │   └── setup-local.sh
-├── 20i-gui
+├── legacy GUI script
 ├── zsh-example-script.zsh
 ├── .env.example
 ├── README.md

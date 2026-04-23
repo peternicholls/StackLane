@@ -1,6 +1,6 @@
 ## Plan: Multi-site Attachable Stack
 
-Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stacklane` is the canonical entrypoint; `stacklane --up` becomes "ensure shared infra exists, start this project, register its hostname". `stacklane --attach` and `stacklane --detach` then manage additional repos against that same shared layer. The legacy `20i-up`, `20i-attach`, and `20i-detach` wrappers are retained for the migration window only.
+Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stacklane` is the canonical entrypoint; `stacklane --up` becomes "ensure shared infra exists, start this project, register its hostname". `stacklane --attach` and `stacklane --detach` then manage additional repos against that same shared layer. Legacy wrapper entrypoints are retained for the migration window only.
 
 I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is preferred only if it stays low-friction, and on macOS `.dev` becomes awkward fast because of HSTS and the implied need for local TLS.
 
@@ -22,7 +22,7 @@ I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is p
 
 ### Story 1: Shared runtime bootstrap
 
-As a developer, I want `20i-up` to ensure the shared gateway and DNS layer exist so I do not need to manually prepare the environment before starting a project.
+As a developer, I want `deprecated --up wrapper` to ensure the shared gateway and DNS layer exist so I do not need to manually prepare the environment before starting a project.
 
 ### Story 2: Project-specific hostname
 
@@ -42,18 +42,18 @@ As a developer, I want status commands to show what is attached, where it lives,
 
 ### Story 6: Low-friction migration
 
-As a developer, I want the new behavior to preserve existing `20i-up` and `20i-down` muscle memory so the migration from the current workflow is predictable.
+As a developer, I want the new behavior to preserve existing `deprecated --up wrapper` and `deprecated --down wrapper` muscle memory so the migration from the current workflow is predictable.
 
 ## Task List
 
 ### Phase 1: Runtime contract and CLI semantics
 
-- [x] Define exact command semantics for `20i-up`, `20i-attach`, `20i-detach`, `20i-down`, and global teardown.
+- [x] Define exact command semantics for `deprecated --up wrapper`, `deprecated --attach wrapper`, `deprecated --detach wrapper`, `deprecated --down wrapper`, and global teardown.
 - [x] Decide the canonical hostname derivation rule: folder name by default, `.20i-local` override when set.
 - [x] Define the first-stage suffix as `.test` and record `.dev` as a later HTTPS-capable option.
 - [x] Extend `.20i-local` contract with site name override, document root override, PHP version override, and project database settings.
 - [x] Define the expected state transitions for attached, detached, down, and global teardown.
-- [x] Document backward-compatible behavior for running `20i-up` in a single project with no other attachments.
+- [x] Document backward-compatible behavior for running `deprecated --up wrapper` in a single project with no other attachments.
 
 ### Phase 2: Shared infrastructure split
 
@@ -77,11 +77,11 @@ As a developer, I want the new behavior to preserve existing `20i-up` and `20i-d
 
 - [x] Add a registry/state file under the stack home to record attachments.
 - [x] Store repo path, project name, hostname, document root, runtime settings, and live container identity.
-- [x] Update `20i-up` to write registration state and validate it after startup.
-- [x] Implement `20i-attach` as attach-or-bootstrap behavior.
-- [x] Implement `20i-detach` to remove routing and stop only the targeted project runtime.
-- [x] Update `20i-down` to remain project-local by default.
-- [x] Add explicit global teardown behavior such as `20i-down --all`.
+- [x] Update `deprecated --up wrapper` to write registration state and validate it after startup.
+- [x] Implement `deprecated --attach wrapper` as attach-or-bootstrap behavior.
+- [x] Implement `deprecated --detach wrapper` to remove routing and stop only the targeted project runtime.
+- [x] Update `deprecated --down wrapper` to remain project-local by default.
+- [x] Add explicit global teardown behavior such as `deprecated --down wrapper --all`.
 
 ### Phase 5: Gateway routing
 
@@ -163,30 +163,30 @@ Pass criteria:
 
 ### Checkpoint 1: Single-project parity
 
-- [x] From a clean state, run `20i-up` in one repo.
+- [x] From a clean state, run `deprecated --up wrapper` in one repo.
 - [x] Confirm shared services bootstrap automatically.
 - [x] Confirm the project is reachable at its hostname, not `localhost`.
 - [x] Confirm database connectivity and existing dev workflow still work.
 
 ### Checkpoint 2: Concurrent attachment
 
-- [x] Run `20i-attach` in a second repo.
+- [x] Run `deprecated --attach wrapper` in a second repo.
 - [x] Confirm both sites stay reachable simultaneously.
 - [x] Confirm project A and project B route to the correct mounted codebases.
 - [x] Confirm both projects preserve isolated database state.
 
 ### Checkpoint 3: Safe detach and local down
 
-- [x] Run `20i-detach` in one repo.
+- [x] Run `deprecated --detach wrapper` in one repo.
 - [x] Confirm its hostname stops resolving or routing.
 - [x] Confirm the other project stays healthy.
-- [ ] Run `20i-down` from the remaining repo and confirm only that project stops.
+- [ ] Run `deprecated --down wrapper` from the remaining repo and confirm only that project stops.
 
 ### Checkpoint 4: Global teardown and recovery
 
 - [x] Run the global teardown command.
 - [x] Confirm all shared infrastructure and registrations are removed cleanly.
-- [ ] Re-run `20i-up` and confirm the environment can rebuild from scratch.
+- [ ] Re-run `deprecated --up wrapper` and confirm the environment can rebuild from scratch.
 - [ ] Reattach a previously used repo and confirm its project database persists correctly.
 
 ### Checkpoint 5: Failure-path validation
@@ -200,7 +200,7 @@ Pass criteria:
 
 - `docker-compose.yml` — current all-in-one runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
 - `docker/nginx.conf.tmpl` — current single-site `localhost` routing template to evolve into hostname-aware behavior.
-- `previous-version-archive/20i-gui` — legacy command semantics and status patterns extended with attach/detach and registry-backed monitoring.
+- `previous-version-archive/legacy GUI script` — legacy command semantics and status patterns extended with attach/detach and registry-backed monitoring.
 - `previous-version-archive/20i-stack-manager.scpt` — macOS automation entrypoint (archived); kept aligned with revised command behavior in `previous-version-archive/`.
 - `README.md` — current user contract describing localhost and one-project switching.
 - `previous-version-archive/AUTOMATION-README.md` — automation docs that currently assume stop/start project switching.

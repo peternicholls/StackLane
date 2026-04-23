@@ -14,7 +14,7 @@ This document defines the data structures, file formats, and configuration schem
 
 ### 1. Version
 
-**Description**: Represents the current version of the 20i Stack project following Semantic Versioning 2.0.
+**Description**: Represents the current version of the Stacklane project following Semantic Versioning 2.0.
 
 **Storage**: `/VERSION` file (plaintext, single line)
 

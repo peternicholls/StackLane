@@ -1,4 +1,4 @@
-# Stacklane - Docker Development Environment
+# Stacklane - 20i Shared Hosting Stack Emulation With Docker
 
 ## Overview
 
@@ -9,7 +9,7 @@ This is a work in progress. The CLI is the primary interface for the implemented
 ### What is implemented now:
 
 - `stacklane` is the canonical CLI entrypoint, with action flags such as `--up`, `--attach`, `--status`, and `--down`.
-- Legacy wrappers such as `20i-up` and `20i-status` are deprecated, now forward to `stacklane`, and are intended to be removed in a future update.
+- Legacy wrapper entrypoints are deprecated, now forward to `stacklane`, and are intended to be removed in a future update.
 - Project config is resolved consistently from `.env`, `.20i-local`, and CLI flags.
 - Project identity is standardized around a slug and a planned `.test` hostname.
 - Project state is recorded under `.20i-state`, with a stack-level `registry.tsv` snapshot for status, detach, and global teardown semantics.
@@ -167,14 +167,8 @@ This keeps the shell-first workflow intact while removing direct per-project web
 
 ```text
 20i-stack/
-├── stacklane
-├── 20i-up
-├── 20i-attach
-├── 20i-down
-├── 20i-detach
-├── 20i-dns-setup
-├── 20i-status
-├── 20i-logs
+├── stacklane               # canonical Stacklane entrypoint
+├── 20i-*                   # legacy wrapper scripts during the migration window
 ├── lib/
 │   └── 20i-common.sh        # shared config resolution, state helpers
 ├── docker-compose.yml        # per-project runtime template
@@ -187,7 +181,7 @@ This keeps the shell-first workflow intact while removing direct per-project web
 │   ├── registry.tsv          # registry snapshot
 │   └── shared/               # generated gateway config
 ├── docs/
-│   ├── migration.md          # old-to-new workflow guide
+│   ├── migration.md          # legacy-to-Stacklane workflow guide
 │   ├── runtime-contract.md   # command semantics and state model
 │   └── plan.md               # implementation plan and progress
 └── README.md

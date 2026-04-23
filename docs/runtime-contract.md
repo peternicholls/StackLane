@@ -8,7 +8,7 @@ This document locks the Stacklane command semantics and state model.
 - Make repeated command runs reliable and predictable.
 - Keep the stack robust under partial failure and stale state.
 - Make `up`, `attach`, `down`, `detach`, and status behavior explicit.
-- Keep `20i-*` wrappers in a migration-only role.
+- Keep legacy wrapper entrypoints in a migration-only role.
 
 ## Command Behavior
 
@@ -65,7 +65,7 @@ This document locks the Stacklane command semantics and state model.
 
 ## Legacy Wrappers
 
-- `20i-up`, `20i-attach`, `20i-down`, `20i-detach`, `20i-status`, `20i-logs`, and `20i-dns-setup` are deprecated compatibility wrappers retained only for the migration window.
+- Deprecated compatibility wrappers are retained only for the migration window.
 - Each wrapper forwards to the equivalent `stacklane --action` command and prints concise deprecation guidance, including that the wrapper will be removed in a future update.
 - Wrappers are retained for migration only and are not the primary documented interface.
 

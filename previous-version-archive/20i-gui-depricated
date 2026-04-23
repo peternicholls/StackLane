@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 20i Stack GUI Manager
+# Stacklane GUI Manager
 # A simple dialog-based interface for managing 20i Docker stacks
-# Usage: 20i-gui
+# Usage: legacy GUI script
 
 STACK_HOME="${STACK_HOME:-$HOME/docker/20i-stack}"
 STACK_FILE="$STACK_HOME/docker-compose.yml"
@@ -17,7 +17,7 @@ fi
 show_menu() {
     if command -v dialog >/dev/null 2>&1; then
         # Use dialog if available (prettier interface)
-        dialog --clear --title "20i Stack Manager" \
+        dialog --clear --title "Stacklane Manager" \
                --menu "Choose an action:" 15 50 4 \
                1 "🚀 Start Stack (current directory)" \
                2 "🛑 Stop Stack" \
@@ -33,7 +33,7 @@ show_menu() {
         fi
     else
         # Fallback to simple text menu
-        echo "🚀 20i Stack Manager"
+        echo "🚀 Stacklane Manager"
         echo "=================="
         echo "1) 🚀 Start Stack (current directory)"
         echo "2) 🛑 Stop Stack"
@@ -132,7 +132,7 @@ stop_stack() {
 
 # Function to view status
 view_status() {
-    echo "📊 20i Stack Status"
+    echo "📊 Stacklane Status"
     echo "=================="
     echo
     echo "🐳 All running containers:"

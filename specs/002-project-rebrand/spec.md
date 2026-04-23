@@ -62,8 +62,8 @@ As an existing user of the current project, I want the rename and command migrat
 
 ### Ease Of Use & Workflow Impact
 
-- Affected commands, wrappers, or entry points: all current `20i-*` CLI scripts, shell integration examples, AppleScript app naming, workflow service naming, and user-facing help text.
-- Backward compatibility or migration expectation: `stacklane` becomes the only primary documented workflow; the existing `20i-*` commands remain temporarily as wrappers that direct users toward the new syntax during migration.
+- Affected commands, wrappers, or entry points: all current `legacy wrapper commands` CLI scripts, shell integration examples, AppleScript app naming, workflow service naming, and user-facing help text.
+- Backward compatibility or migration expectation: `stacklane` becomes the only primary documented workflow; the existing `legacy wrapper commands` commands remain temporarily as wrappers that direct users toward the new syntax during migration.
 - Operator friction removed or introduced: memorizing multiple top-level commands is removed; the main temporary friction is learning the new command syntax and updated repository identity.
 
 ### Configuration & Precedence
@@ -92,7 +92,7 @@ As an existing user of the current project, I want the rename and command migrat
 - **FR-005**: The command experience MUST provide one central top-level command named `stacklane` that supports the current lifecycle actions through action modifiers rather than separate primary executable names.
 - **FR-006**: Users MUST be able to perform the currently supported lifecycle actions through the `stacklane` command pattern, including startup, attachment, shutdown, detachment, status review, log access, and local DNS setup.
 - **FR-007**: The project MUST provide clear help and documentation showing the central command syntax, including representative usage examples for the primary actions.
-- **FR-008**: The existing `20i-*` command names MUST remain temporarily as wrappers with deprecation guidance that redirects users to `stacklane`, and they MUST NOT remain the primary documented workflow.
+- **FR-008**: The existing `legacy wrapper commands` command names MUST remain temporarily as wrappers with deprecation guidance that redirects users to `stacklane`, and they MUST NOT remain the primary documented workflow.
 - **FR-009**: Migration documentation MUST include an old-to-new command mapping and a concise explanation of what changes for current users versus what remains operationally the same.
 - **FR-010**: User-facing text MUST use the new brand and command vocabulary consistently, including setup steps, shell integration, status descriptions, and GUI-support documentation.
 - **FR-011**: Historical references to the previous project name MUST be limited to migration or historical-context sections where they prevent confusion.
@@ -122,4 +122,4 @@ As an existing user of the current project, I want the rename and command migrat
 - Existing runtime behavior, project isolation, and configuration precedence remain materially the same unless a change is required to support the unified command UX.
 - GUI assets and automation wrappers remain in scope as user-facing surfaces even if they still lag behind full CLI parity in other areas.
 - Historical references to `20i` may remain only where needed to explain migration from the previous name and command set.
-- Existing `20i-*` commands remain available temporarily as migration wrappers and are expected to surface deprecation guidance toward `stacklane`.
+- Existing `legacy wrapper commands` commands remain available temporarily as migration wrappers and are expected to surface deprecation guidance toward `stacklane`.

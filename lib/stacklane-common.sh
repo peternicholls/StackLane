@@ -831,7 +831,7 @@ twentyi_refresh_registry() {
 
     # Run the state-file iteration in a subshell so that loading each project's
     # env does not clobber the current project's exported variables in the
-    # parent shell (which is critical when called from within 20i-up/attach).
+    # parent shell (which is critical when called from legacy wrapper entrypoints).
     (
         local state_file
         : > "$registry_file"
@@ -1598,35 +1598,6 @@ twentyi_stacklane_action_flag() {
     esac
 }
 
-twentyi_legacy_command_name() {
-    case "$1" in
-        up)
-            printf '%s' '20i-up'
-            ;;
-        attach)
-            printf '%s' '20i-attach'
-            ;;
-        down)
-            printf '%s' '20i-down'
-            ;;
-        detach)
-            printf '%s' '20i-detach'
-            ;;
-        status)
-            printf '%s' '20i-status'
-            ;;
-        logs)
-            printf '%s' '20i-logs'
-            ;;
-        dns-setup)
-            printf '%s' '20i-dns-setup'
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
 twentyi_stacklane_usage() {
     cat <<EOF
 Stacklane
@@ -1669,7 +1640,7 @@ Examples:
   stacklane --logs apache
 
 Migration:
-    Legacy wrappers such as 20i-up and 20i-status are deprecated, forward to Stacklane, and will be removed in a future update.
+    Legacy wrapper entrypoints are deprecated, forward to Stacklane, and will be removed in a future update.
   Prefer stacklane $(twentyi_stacklane_action_flag up), stacklane $(twentyi_stacklane_action_flag status), and related action flags in all new docs and shell aliases.
 EOF
 }
@@ -2041,11 +2012,7 @@ twentyi_status() {
 
     twentyi_refresh_registry
 
-    if [[ "${TWENTYI_ENTRYPOINT_MODE:-legacy}" == "stacklane" ]]; then
-        printf 'Stacklane status\n'
-    else
-        printf '20i stack status\n'
-    fi
+    printf 'Stacklane status\n'
     printf 'Stack home: %s\n' "$STACK_HOME"
     printf 'State dir: %s\n' "$TWENTYI_STATE_DIR"
     printf 'Registry file: %s\n' "$(twentyi_registry_file)"
@@ -2130,7 +2097,7 @@ twentyi_legacy_forward() {
 
     local preferred_flag legacy_command
     preferred_flag="$(twentyi_stacklane_action_flag "$runtime_action")"
-    legacy_command="$(twentyi_legacy_command_name "$runtime_action")"
+    legacy_command="$(basename "$0")"
 
     printf 'Notice: %s is deprecated and will be removed in a future update. Use stacklane %s instead.\n' "$legacy_command" "$preferred_flag" >&2
 

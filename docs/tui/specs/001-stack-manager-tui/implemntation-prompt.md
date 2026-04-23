@@ -2,7 +2,7 @@
 
 ## Project Context
 
-You are implementing **Phase 3a** of the 20i Stack Manager Terminal UI (TUI) - a project-aware web stack management tool built with Go and Bubble Tea framework.
+You are implementing **Phase 3a** of the Stacklane Manager Terminal UI (TUI) - a project-aware web stack management tool built with Go and Bubble Tea framework.
 
 **Repository**: `peternicholls/20i-Hosting-Stack-for-Docker`  
 **Branch**: `001-stack-manager-tui`  
@@ -11,11 +11,11 @@ You are implementing **Phase 3a** of the 20i Stack Manager Terminal UI (TUI) - a
 
 ### What This Replaces
 
-The TUI replaces the existing `20i-gui` bash script with a modern, keyboard-driven interface. The bash script workflow is:
+The TUI replaces the existing `legacy GUI script` bash script with a modern, keyboard-driven interface. The bash script workflow is:
 
 ```bash
 cd ~/my-website/              # Navigate to web project
-./20i-gui                     # Launch GUI
+stacklane                     # Launch GUI
 # Menu: 1=Start, 2=Stop, 3=Restart, 4=Status, 5=Logs, 6=Destroy
 ```
 
@@ -46,7 +46,7 @@ The bash script:
 
 **What's In Scope** (Phase 3a - 61 tasks):
 - ✅ Project detection from `$PWD`
-- ✅ Project name sanitization (same as 20i-gui)
+- ✅ Project name sanitization (same as legacy GUI script)
 - ✅ `public_html/` validation (pre-flight check)
 - ✅ Template installation from `demo-site-folder/`
 - ✅ Three-panel layout (left: project info, right: dynamic content, bottom: commands)
@@ -118,7 +118,7 @@ tui/
     │   └── messages.go        # Custom tea.Msg types
     ├── project/
     │   ├── detector.go        # DetectProject() - read $PWD, check public_html
-    │   ├── sanitize.go        # SanitizeProjectName() - 20i-gui compatible
+    │   ├── sanitize.go        # SanitizeProjectName() - legacy GUI script compatible
     │   └── template.go        # InstallTemplate() - copy demo-site-folder
     ├── stack/
     │   ├── compose.go         # ComposeUp/Down/Restart/Destroy
@@ -167,7 +167,7 @@ These principles from `.specify/memory/constitution.md` **MUST** be followed:
 
 ### III. Path Independence
 - ✅ Use `$PWD` for project root detection
-- ✅ Sanitize project names same as 20i-gui: lowercase, hyphens, no leading numbers
+- ✅ Sanitize project names same as legacy GUI script: lowercase, hyphens, no leading numbers
 
 ### V. User Experience & Feedback
 - ✅ Show pre-flight summary before stack start
@@ -202,7 +202,7 @@ These principles from `.specify/memory/constitution.md` **MUST** be followed:
    - Return `Project{Name, Path, HasPublicHTML, StackStatus}`
 
 2. **T101**: Create `internal/project/sanitize.go` with `SanitizeProjectName()`
-   - Port logic from `20i-gui` bash script (see `/20i-gui` line 45-60)
+   - Port logic from `legacy GUI script` bash script (see `/legacy GUI script` line 45-60)
    - Lowercase, replace invalid chars with hyphens, ensure starts with letter/number
    - Use regex: `[^a-z0-9-]+` to strip invalid chars
 
@@ -233,7 +233,7 @@ These principles from `.specify/memory/constitution.md` **MUST** be followed:
 10. **T108**: Create `internal/stack/env.go` with `STACK_FILE`/`STACK_HOME` detection
     - Check `os.Getenv("STACK_FILE")` first
     - Fall back to executable-relative: `filepath.Join(execDir, "../../docker-compose.yml")`
-    - Match 20i-gui logic from `/20i-gui` line 100-120
+    - Match legacy GUI script logic from `/legacy GUI script` line 100-120
 
 11. **T109**: Add `ValidateStackFile()` function in `env.go`
     - Return error if STACK_FILE not set and cannot be detected
@@ -530,7 +530,7 @@ func TestPhase3aWorkflow(t *testing.T) {
 
 ### Godoc Comments (NFR-010)
 ```go
-// Package project provides project detection and validation for the 20i Stack Manager TUI.
+// Package project provides project detection and validation for the Stacklane TUI.
 // It handles detecting the current directory as a web project root, validating the
 // presence of public_html/, and installing templates when needed.
 package project
@@ -550,7 +550,7 @@ func DetectProject() (*Project, error) {
 ```go
 // Sanitize project name to match Docker Compose requirements.
 // Why: Docker Compose project names must be lowercase alphanumeric with hyphens,
-// and cannot start with a number. This matches the logic from 20i-gui bash script.
+// and cannot start with a number. This matches the logic from previous GUI script.
 func SanitizeProjectName(name string) string {
     // Convert to lowercase first to simplify regex
     name = strings.ToLower(name)
@@ -606,7 +606,7 @@ func SanitizeProjectName(name string) string {
 1. `/runbooks/research/QUICK-REFERENCE.md` - Bubble Tea cheat sheet (keep open)
 2. `/runbooks/research/bubbletea-component-guide.md` - Component patterns
 3. `/runbooks/research/lipgloss-styling-reference.md` - Styling and colors
-4. `/20i-gui` - Original bash script (lines 45-60 for sanitization, 100-120 for env detection)
+4. `/legacy GUI script` - Original bash script (lines 45-60 for sanitization, 100-120 for env detection)
 5. `/specs/001-stack-manager-tui/spec.md` - Full specification
 6. `/specs/001-stack-manager-tui/tasks.md` - Detailed task breakdown
 7. `.specify/memory/constitution.md` - Non-negotiable principles
@@ -739,7 +739,7 @@ When complete, you should have:
 
 ## Final Notes
 
-This is **Phase 3a MVP** - focus on replicating the 20i-gui workflow first. Don't get distracted by Phase 3b features (individual container management) or Phase 4+ features (multi-project, logs, config editor). Those come later.
+This is **Phase 3a MVP** - focus on replicating the legacy GUI script workflow first. Don't get distracted by Phase 3b features (individual container management) or Phase 4+ features (multi-project, logs, config editor). Those come later.
 
 **Your mission**: Make it easy for web developers to start their 20i stack by simply running `20i-stack-manager` from their project directory. Everything else is secondary.
 

@@ -1,4 +1,4 @@
-# Implementation Plan: 20i Stack Manager TUI
+# Implementation Plan: Stacklane TUI
 
 **Branch**: `001-stack-manager-tui` | **Date**: 2025-12-28 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/001-stack-manager-tui/spec.md`
@@ -7,11 +7,11 @@
 
 ## Summary
 
-A professional terminal UI (TUI) built with Bubble Tea framework to replace the existing 20i-gui bash script. Provides a modern, keyboard-driven interface with **project-aware stack management**. The TUI is run from a web project directory and manages the 20i stack for THAT project.
+A professional terminal UI (TUI) built with Bubble Tea framework to replace the earlier GUI script. Provides a modern, keyboard-driven interface with **project-aware stack management**. The TUI is run from a web project directory and manages the 20i stack for THAT project.
 
 **Phase 3a MVP Focus**: Project detection → Pre-flight validation → Stack lifecycle → Status table with URLs
 
-**Core Workflow** (replicates 20i-gui):
+**Core Workflow** (matches the previous GUI script):
 1. User navigates to web project directory: `cd ~/my-website/`
 2. User launches TUI: `20i-stack-manager`
 3. TUI detects project, validates `public_html/`, shows status
@@ -134,7 +134,7 @@ tui/
     ├── project/               # Phase 3a - Project detection logic (singular)
     │   ├── detector.go        # Project detection ($PWD, public_html check)
     │   ├── template.go        # Template installation from demo-site-folder
-    │   └── sanitize.go        # Project name sanitization (20i-gui compatible)
+    │   └── sanitize.go        # Project name sanitization (legacy GUI script compatible)
     ├── views/
     │   ├── dashboard/
     │   │   ├── dashboard.go   # DashboardModel (three-panel layout)
@@ -164,7 +164,7 @@ tests/
     └── tui_test.go            # Integration tests (mock Docker client)
 ```
 
-**Structure Decision**: Single project structure with project-aware modules. The `internal/project/` package handles the core 20i-gui workflow (detect project, validate, sanitize name). The `internal/stack/` package wraps Docker Compose operations with proper environment variable handling.
+**Structure Decision**: Single project structure with project-aware modules. The `internal/project/` package handles the core legacy GUI script workflow (detect project, validate, sanitize name). The `internal/stack/` package wraps Docker Compose operations with proper environment variable handling.
 
 ## Complexity Tracking
 

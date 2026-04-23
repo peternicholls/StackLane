@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document captures research findings for implementing automated release versioning and workflow for 20i Stack. All NEEDS CLARIFICATION items from the Technical Context have been resolved.
+This document captures research findings for implementing automated release versioning and workflow for Stacklane. All NEEDS CLARIFICATION items from the Technical Context have been resolved.
 
 ---
 
@@ -16,7 +16,7 @@ This document captures research findings for implementing automated release vers
 
 ### Rationale
 - **Native GitHub Actions integration**: Designed as a GitHub Action first, eliminating complex setup
-- **"Simple" release type support**: Perfect for non-npm projects like 20i Stack - uses `VERSION` file without needing package.json
+- **"Simple" release type support**: Perfect for non-npm projects like Stacklane - uses `VERSION` file without needing package.json
 - **PR-based workflow**: Creates "Release PRs" that accumulate changes, giving maintainers control over when to release
 - **Automatic version calculation**: Parses conventional commits to determine semver bumps automatically
 - **Actively maintained**: 6.2k+ stars, 345+ releases, maintained by Google

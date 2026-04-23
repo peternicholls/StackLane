@@ -8,10 +8,10 @@
 
 ## Executive Summary
 
-Phase 3 implements **User Story 2: Container Lifecycle** - the core MVP functionality that replicates all 20i-gui baseline capabilities (start/stop/restart containers, view status). This is the FIRST user-facing feature and the foundation for all subsequent enhancements.
+Phase 3 implements **User Story 2: Container Lifecycle** - the core MVP functionality that replicates all legacy GUI script baseline capabilities (start/stop/restart containers, view status). This is the FIRST user-facing feature and the foundation for all subsequent enhancements.
 
 **Scope**: Tasks T026-T072 (47 tasks total, including comprehensive testing)  
-**Goal**: Replace 20i-gui bash script with professional TUI for container management  
+**Goal**: Replace previous GUI script with professional TUI for container management  
 **Success Criteria**: Can start/stop/restart individual containers and entire stack, verify status changes visually
 
 ---
@@ -64,7 +64,7 @@ type Container struct {
 **Phase 3 Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 20i Stack Manager - myproject                              │
+│ Stacklane Manager - myproject                              │
 ├────────────────────┬────────────────────────────────────────┤
 │ Services (30%)     │ Status Messages (70%)                  │
 │                    │                                        │
@@ -229,7 +229,7 @@ func containerActionCmd(client *docker.Client, containerID string, action string
 **Decision**: Implement ComposeStop, ComposeRestart, ComposeDown (NOT ComposeStart/Up)
 
 **Rationale**:
-- Phase 3 focus: STOPPING and DESTROYING stacks (matches 20i-gui)
+- Phase 3 focus: STOPPING and DESTROYING stacks (matches legacy GUI script)
 - Starting entire stack is NOT a TUI feature (users run `docker compose up` manually)
 - Keeps scope focused on management, not initialization
 
@@ -383,7 +383,7 @@ func TestContainerLifecycle(t *testing.T) {
 13. **T055-T056**: Wire 'S' and 'R' keys for stack operations
 14. **T063-T067**: Status messages, error formatting, footer
 
-**CHECKPOINT 3**: Full lifecycle working, all 20i-gui baseline replicated ✅
+**CHECKPOINT 3**: Full lifecycle working, all legacy GUI script baseline replicated ✅
 
 15. **T068-T069**: Detail panel + Tab focus (nice-to-have)
 16. **T070-T072**: Integration tests + final validation

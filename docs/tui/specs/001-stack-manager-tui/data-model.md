@@ -1,4 +1,4 @@
-# Data Model: 20i Stack Manager TUI
+# Data Model: Stacklane TUI
 
 **Feature**: 001-stack-manager-tui  
 **Date**: 2025-12-28  
@@ -160,7 +160,7 @@ PortMapping{ContainerPort: "443", HostPort: "8443", Protocol: "tcp"}
 - `ComposeFile` must exist and be readable
 - `Name` must match Docker Compose project name rules (lowercase, alphanumeric+hyphens, starts with letter/number)
 
-**20i Stack Detection**:
+**Stacklane Detection**:
 ```go
 func is20iStack(projectPath string) bool {
     // Check for .20i-local file

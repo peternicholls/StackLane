@@ -12,7 +12,7 @@
 - Rationale: The feature request explicitly calls for one central command with modifiers like `--up` and `--down`. This preserves the user's stated UX direction and makes the command model easy to scan from help output.
 - Alternatives considered: Subcommands such as `stacklane up` were rejected because they do not match the requested modifier-based interaction model.
 
-## Decision 3: Keep legacy `20i-*` commands temporarily as wrappers with deprecation guidance
+## Decision 3: Keep legacy `legacy wrapper commands` commands temporarily as wrappers with deprecation guidance
 
 - Decision: Retain the existing command files as compatibility wrappers that forward to `stacklane` and tell users what the new syntax is.
 - Rationale: Existing operators, shell aliases, and local habits already depend on the current command names. Temporary wrappers reduce migration shock while still making `stacklane` the only primary documented interface.

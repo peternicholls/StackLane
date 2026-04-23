@@ -197,7 +197,7 @@ The help view is implemented as a hardcoded string in `root.go` instead of using
 ```go
 // tui/internal/app/root.go:186-200 (CURRENT - BROKEN)
 case viewHelp:
-    helpText := `20i Stack Manager - Keyboard Shortcuts
+    helpText := `Stacklane Manager - Keyboard Shortcuts
 
 Navigation:
   ←/→ or h/l    Switch between panels

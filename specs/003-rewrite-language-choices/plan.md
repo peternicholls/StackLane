@@ -294,13 +294,13 @@ Replaces: `twentyi_status`, `twentyi_docker_status`, `twentyi_registry_drift_sta
 
 ### Phase 8 — CLI Surface and Legacy Forwarding (`cmd/stacklane`)
 
-Replaces: `stacklane` entry point, `20i-*` wrapper scripts
+Replaces: `stacklane` entry point, `legacy wrapper commands` wrapper scripts
 
 - Wire all cobra subcommands to their lifecycle implementations
-- Implement legacy forwarding: `20i-up` → `stacklane --up` (thin shell shim calling new binary; same contract as spec-002)
+- Implement legacy forwarding: `deprecated --up wrapper` → `stacklane --up` (thin shell shim calling new binary; same contract as spec-002)
 - Add `--help` output and version flag
 
-**Exit criteria**: All operator-visible commands from spec-002 work with the compiled binary; `20i-*` shims produce deprecation notice and delegate correctly
+**Exit criteria**: All operator-visible commands from spec-002 work with the compiled binary; `legacy wrapper commands` shims produce deprecation notice and delegate correctly
 
 ---
 
@@ -317,7 +317,7 @@ Replaces: `stacklane` entry point, `20i-*` wrapper scripts
 ### Phase 10 — Deprecation and Cleanup
 
 - Remove `lib/stacklane-common.sh` (archive to `previous-version-archive/`)
-- Remove Bash-era `20i-*` shims from repository root (replace with compiled-binary shims)
+- Remove Bash-era `legacy wrapper commands` shims from repository root (replace with compiled-binary shims)
 - Update `README.md`, `docs/runtime-contract.md`, `docs/migration.md` to reflect Go binary
 
 **Gate**: Only executed after a defined stabilisation period where both Bash and Go implementations run in parallel and produce identical state

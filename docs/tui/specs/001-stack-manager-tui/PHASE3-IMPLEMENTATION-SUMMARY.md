@@ -58,7 +58,7 @@ From the spec alignment analysis:
 
 ## Overview
 
-Successfully implemented **Phase 3: Container Lifecycle (MVP)** tasks T047-T065, establishing the core dashboard UI with container management capabilities. This represents the primary functionality of the 20i Stack Manager TUI.
+Successfully implemented **Phase 3: Container Lifecycle (MVP)** tasks T047-T065, establishing the core dashboard UI with container management capabilities. This represents the primary functionality of the Stacklane TUI.
 
 ---
 
@@ -266,7 +266,7 @@ These are enhancement/testing tasks that don't block core functionality. The MVP
 
 ### Short-term (Phase 4)
 1. Implement destroy stack confirmation modal (T073-T089)
-2. Complete 20i-gui baseline parity
+2. Complete legacy GUI script baseline parity
 
 ### Medium-term (Phase 5+)
 1. Add monitoring dashboard (CPU/memory stats)
@@ -355,7 +355,7 @@ case tea.WindowSizeMsg:
 
 ✅ **Phase 3 MVP functionality is complete and working**
 
-The 20i Stack Manager TUI can now:
+The Stacklane TUI can now:
 - Display all containers with color-coded status
 - Navigate services using keyboard
 - Start/stop individual containers

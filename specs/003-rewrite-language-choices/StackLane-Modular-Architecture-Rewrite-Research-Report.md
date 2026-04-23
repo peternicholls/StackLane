@@ -7,7 +7,7 @@
 | File | Role |  |  |  |  |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | - | - | - | - |
 | stacklane | Primary CLI entry; sources lib/stacklane-common.sh and calls stacklane_main "$@" |  |  |  |  |
-| 20i-up, 20i-down, etc. | Deprecated thin shims; each calls twentyi_legacy_forward <action> (common.sh L1612) which re-invokes stacklane_main with the equivalent --flag |  |  |  |  |
+| deprecated --up wrapper, deprecated --down wrapper, etc. | Deprecated thin shims; each calls twentyi_legacy_forward <action> (common.sh L1612) which re-invokes stacklane_main with the equivalent --flag |  |  |  |  |
 | lib/stacklane-common.sh | Single 2,213-line monolith containing every abstraction layer |  |  |  |  |
   
 ****1.2 Functional Areas Inside stacklane-common.sh****  
@@ -391,10 +391,10 @@ The current stacklane binary must continue to work throughout the migration. Ope
 **Phase M6 — Full orchestration and binary release**  
 * Wire all modules into cmd/stacklane; the new Go binary is now the canonical implementation  
 * Bash stacklane script becomes a thin wrapper: exec /usr/local/bin/stacklane-bin "$@" (or distributes the binary directly)  
-* Remove lib/stacklane-common.sh in the next release; existing 20i-* wrappers forward to the new binary  
+* Remove lib/stacklane-common.sh in the next release; existing legacy wrapper commands wrappers forward to the new binary  
 * Gate: all existing checkpoint validations from docs/plan.md pass against the new binary  
 **Phase M7 — Debt cleanup**  
-* Remove legacy 20i-* wrappers (end of migration window)  
+* Remove legacy legacy wrapper commands wrappers (end of migration window)  
 * Move MariaDB to host-bound mounts (as noted in README and constitution)  
 * Add Compose healthchecks and depends_on.condition: service_healthy  
 * Add --json output to --status  
