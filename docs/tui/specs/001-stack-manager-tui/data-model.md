@@ -142,7 +142,7 @@ PortMapping{ContainerPort: "443", HostPort: "8443", Protocol: "tcp"}
 
 ### 5. Project
 
-**Description**: A Docker Compose project containing one or more 20i stack services.
+**Description**: A Docker Compose project containing one or more Stacklane services.
 
 **Attributes**:
 - `Name` (string, required): Project name (directory name, sanitized)
@@ -150,7 +150,7 @@ PortMapping{ContainerPort: "443", HostPort: "8443", Protocol: "tcp"}
 - `ComposeFile` (string, required): Path to docker-compose.yml (usually `Path/docker-compose.yml`)
 - `IsActive` (bool, required): True if this is the currently displayed project
 - `ContainerCount` (int, required): Number of running containers (for project switcher display)
-- `Is20iStack` (bool, required): True if project has 20i stack services (apache+mariadb+nginx OR .20i-local exists)
+- `IsStacklaneProject` (bool, required): True if project has Stacklane services (apache+mariadb+nginx OR .20i-local exists)
 
 **Relationships**:
 - Has many `Container` (0..N)
@@ -162,7 +162,7 @@ PortMapping{ContainerPort: "443", HostPort: "8443", Protocol: "tcp"}
 
 **Stacklane Detection**:
 ```go
-func is20iStack(projectPath string) bool {
+func isStacklaneProject(projectPath string) bool {
     // Check for .20i-local file
     if _, err := os.Stat(filepath.Join(projectPath, ".20i-local")); err == nil {
         return true
@@ -402,7 +402,7 @@ type ProjectListModel struct {
 
 **Responsibilities**:
 - Scan for docker-compose.yml files (current dir + up 2 levels)
-- Filter for 20i stacks (apache+mariadb+nginx OR .20i-local)
+- Filter for Stacklane projects (apache+mariadb+nginx OR .20i-local)
 - Display with current project marked, running container counts
 - Switch project context on selection
 

@@ -83,8 +83,8 @@ lib/
 └── stacklane-common.sh
 Stacklane Manager.app/ (archived → previous-version-archive/)
 Stacklane Manager.workflow/ (archived → previous-version-archive/)
-20i-stack-launcher.workflow (archived → previous-version-archive/)
-20i-stack-manager.scpt (archived → previous-version-archive/)
+archived launcher workflow (archived → previous-version-archive/)
+archived AppleScript entrypoint (archived → previous-version-archive/)
 docker-compose.yml
 docker-compose.shared.yml
 docker/

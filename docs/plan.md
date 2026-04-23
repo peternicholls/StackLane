@@ -201,7 +201,7 @@ Pass criteria:
 - `docker-compose.yml` — current all-in-one runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
 - `docker/nginx.conf.tmpl` — current single-site `localhost` routing template to evolve into hostname-aware behavior.
 - `previous-version-archive/legacy GUI script` — legacy command semantics and status patterns extended with attach/detach and registry-backed monitoring.
-- `previous-version-archive/20i-stack-manager.scpt` — macOS automation entrypoint (archived); kept aligned with revised command behavior in `previous-version-archive/`.
+- `previous-version-archive/` archived AppleScript entrypoint — kept aligned with revised command behavior in `previous-version-archive/`.
 - `README.md` — current user contract describing localhost and one-project switching.
 - `previous-version-archive/AUTOMATION-README.md` — automation docs that currently assume stop/start project switching.
 - `.env.example` — environment contract to update for shared-layer and project-layer settings.

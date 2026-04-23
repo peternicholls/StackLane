@@ -130,7 +130,7 @@ GitHubRelease:
 ```yaml
 ReleaseAsset:
   id: integer               # GitHub asset ID
-  name: string              # Filename (e.g., "20i-stack-v2.0.0.tar.gz")
+  name: string              # Filename (e.g., "stacklane-v2.0.0.tar.gz")
   label: string | null      # Display label (optional)
   content_type: string      # MIME type
   size: integer             # Size in bytes
@@ -143,7 +143,7 @@ ReleaseAsset:
 **Required Assets**:
 | Asset Name | Content Type | Description |
 |------------|--------------|-------------|
-| `20i-stack-v{VERSION}.tar.gz` | application/gzip | Main distribution archive |
+| `stacklane-v{VERSION}.tar.gz` | application/gzip | Main distribution archive |
 | `install.sh` | text/x-shellscript | Standalone installer script |
 | `checksums.sha256` | text/plain | SHA256 checksums for verification |
 
@@ -152,8 +152,8 @@ ReleaseAsset:
 {project}-v{version}.{extension}
 
 Examples:
-20i-stack-v2.0.0.tar.gz
-20i-stack-v2.0.0-alpha.1.tar.gz
+stacklane-v2.0.0.tar.gz
+stacklane-v2.0.0-alpha.1.tar.gz
 ```
 
 ---
@@ -197,7 +197,7 @@ ChangelogEntry:
 ### Fixed
 - Container detection regex for hyphenated project names
 
-[2.0.0]: https://github.com/peternicholls/20i-stack/compare/v1.0.0...v2.0.0
+[2.0.0]: https://github.com/peternicholls/StackLane/compare/v1.0.0...v2.0.0
 ```
 
 ---
@@ -264,7 +264,7 @@ release:
   draft: false
   prerelease_pattern: ".*-(alpha|beta|rc)\\."
   assets:
-    - name: "20i-stack-v*.tar.gz"
+    - name: "stacklane-v*.tar.gz"
       path: "dist/"
     - name: "install.sh"
       path: "dist/"
@@ -354,7 +354,7 @@ versioning:
 
 ### Checksums File (checksums.sha256)
 ```
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  20i-stack-v2.0.0.tar.gz
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  stacklane-v2.0.0.tar.gz
 a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2  install.sh
 ```
 - BSD-style format: `{hash}  {filename}`

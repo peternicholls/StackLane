@@ -144,8 +144,8 @@ prerelease-type: alpha  # or beta, rc
 
 ### Artifact Structure
 ```
-20i-stack-v2.0.0/
-├── 20i-stack-v2.0.0.tar.gz   # Main distribution archive
+stacklane-v2.0.0/
+├── stacklane-v2.0.0.tar.gz   # Main distribution archive
 ├── install.sh                 # Quick install script (standalone)
 ├── checksums.sha256           # SHA256 verification file
 └── RELEASE_NOTES.md           # Version-specific notes
@@ -171,7 +171,7 @@ sha256sum *.tar.gz *.sh > checksums.sha256
   uses: softprops/action-gh-release@v2
   with:
     files: |
-      dist/20i-stack-*.tar.gz
+      dist/stacklane-*.tar.gz
       dist/install.sh
       dist/checksums.sha256
 ```

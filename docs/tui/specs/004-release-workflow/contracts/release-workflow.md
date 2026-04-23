@@ -84,7 +84,7 @@ build-artifacts:
       with:
         tag_name: ${{ needs.release-please.outputs.tag_name }}
         files: |
-          dist/20i-stack-*.tar.gz
+          dist/stacklane-*.tar.gz
           dist/install.sh
           dist/checksums.sha256
 ```
@@ -213,14 +213,14 @@ scripts/release/artifacts.sh <version>
 ### Output Files
 ```
 dist/
-├── 20i-stack-v{version}.tar.gz
+├── stacklane-v{version}.tar.gz
 ├── install.sh
 └── checksums.sha256
 ```
 
 ### Archive Contents
 ```
-20i-stack-v{version}/
+stacklane-v{version}/
 ├── docker-compose.yml
 ├── docker/
 │   ├── nginx.conf.tmpl

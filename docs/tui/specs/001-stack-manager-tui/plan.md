@@ -7,13 +7,13 @@
 
 ## Summary
 
-A professional terminal UI (TUI) built with Bubble Tea framework to replace the earlier GUI script. Provides a modern, keyboard-driven interface with **project-aware stack management**. The TUI is run from a web project directory and manages the 20i stack for THAT project.
+A professional terminal UI (TUI) built with Bubble Tea framework to replace the earlier GUI script. Provides a modern, keyboard-driven interface with **project-aware stack management**. The TUI is run from a web project directory and manages the Stacklane runtime for THAT project.
 
 **Phase 3a MVP Focus**: Project detection → Pre-flight validation → Stack lifecycle → Status table with URLs
 
 **Core Workflow** (matches the previous GUI script):
 1. User navigates to web project directory: `cd ~/my-website/`
-2. User launches TUI: `20i-stack-manager`
+2. User launches TUI: `stacklane-tui`
 3. TUI detects project, validates `public_html/`, shows status
 4. User presses `S` to start stack (sets `CODE_DIR`, `COMPOSE_PROJECT_NAME`)
 5. Right panel shows compose output, then status table with URLs

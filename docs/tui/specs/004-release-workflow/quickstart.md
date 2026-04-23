@@ -124,15 +124,15 @@ Each release includes:
 
 | File | Description |
 |------|-------------|
-| `20i-stack-vX.Y.Z.tar.gz` | Complete distribution archive |
+| `stacklane-vX.Y.Z.tar.gz` | Complete distribution archive |
 | `install.sh` | Standalone quick installer |
 | `checksums.sha256` | SHA256 verification hashes |
 
 ### Verify Downloads
 ```bash
 # Download the checksum file and archive
-curl -LO https://github.com/peternicholls/20i-stack/releases/download/vX.Y.Z/checksums.sha256
-curl -LO https://github.com/peternicholls/20i-stack/releases/download/vX.Y.Z/20i-stack-vX.Y.Z.tar.gz
+curl -LO https://github.com/peternicholls/StackLane/releases/download/vX.Y.Z/checksums.sha256
+curl -LO https://github.com/peternicholls/StackLane/releases/download/vX.Y.Z/stacklane-vX.Y.Z.tar.gz
 
 # Verify
 sha256sum -c checksums.sha256

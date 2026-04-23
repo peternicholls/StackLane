@@ -53,7 +53,7 @@
 - [X] T012 [P] [US1] Update active branding language in `docs/runtime-contract.md`
 - [X] T013 [P] [US1] Update active branding language in `docs/migration.md`
 - [X] T014 [P] [US1] Update macOS app and workflow display names in `Stacklane Manager.app/Contents/Info.plist` and `Stacklane Manager.workflow/Contents/Info.plist`
-- [X] T015 [P] [US1] Update AppleScript and workflow-facing brand text in `20i-stack-manager.scpt`, `20i-stack-launcher.workflow`, and `Stacklane Manager.app/Contents/Resources/Scripts/main.scpt`
+- [X] T015 [P] [US1] Update AppleScript and workflow-facing brand text in the archived script sources and `Stacklane Manager.app/Contents/Resources/Scripts/main.scpt`
 - [X] T016 [US1] Validate that `README.md`, `AUTOMATION-README.md`, `GUI-HELP.md`, `docs/runtime-contract.md`, and the macOS wrapper metadata present Stacklane consistently with legacy naming only in migration contexts
 
 **Checkpoint**: Stacklane is the visible identity across maintained primary surfaces.

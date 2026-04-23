@@ -107,7 +107,7 @@ on startStack()
 	end tell
 	
 	# Show success message
-	display notification "Starting 20i stack for: " &amp; (basename(projectPath)) with title "Stacklane"
+	display notification "Starting Stacklane stack for: " &amp; (basename(projectPath)) with title "Stacklane"
 end startStack
 
 # Function to stop the stack
@@ -127,7 +127,7 @@ on stopStack()
 		do script shellScript
 	end tell
 	
-	display notification "Stopping 20i stack: " &amp; projectName with title "Stacklane"
+	display notification "Stopping Stacklane stack: " &amp; projectName with title "Stacklane"
 end stopStack
 
 # Function to view status

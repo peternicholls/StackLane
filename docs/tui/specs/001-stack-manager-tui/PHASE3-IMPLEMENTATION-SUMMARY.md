@@ -177,9 +177,9 @@ $ cd tui && go test ./... -v
 
 **Build Status**: ✅ SUCCESS
 ```bash
-$ go build -o bin/20i-stack-manager .
+$ go build -o bin/stacklane-tui .
 ```
-Binary created successfully at `tui/bin/20i-stack-manager`
+Binary created successfully at `tui/bin/stacklane-tui`
 
 ---
 
@@ -212,7 +212,7 @@ Current implementation covers:
 ### New Files (3)
 1. `tui/internal/views/dashboard/service_list.go` - 58 lines
 2. `tui/internal/views/dashboard/dashboard_test.go` - 67 lines
-3. `tui/bin/20i-stack-manager` - Compiled binary
+3. `tui/bin/stacklane-tui` - Compiled binary
 
 ### Modified Files (1)
 1. `tui/internal/views/dashboard/dashboard.go` - Extended from 70 to 285 lines

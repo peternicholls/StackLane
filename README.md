@@ -170,7 +170,7 @@ This keeps the shell-first workflow intact while removing direct per-project web
 ├── stacklane               # canonical Stacklane entrypoint
 ├── 20i-*                   # legacy wrapper scripts during the migration window
 ├── lib/
-│   └── 20i-common.sh        # shared config resolution, state helpers
+│   └── stacklane-common.sh  # shared config resolution, state helpers
 ├── docker-compose.yml        # per-project runtime template
 ├── docker-compose.shared.yml # shared gateway and network
 ├── docker/

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# shellcheck source=lib/20i-common.sh
-source "$(cd "$(dirname "$0")" && pwd -P)/lib/20i-common.sh"
+# shellcheck source=lib/stacklane-common.sh
+source "$(cd "$(dirname "$0")" && pwd -P)/lib/stacklane-common.sh"
 
 twentyi_legacy_forward up "$@"

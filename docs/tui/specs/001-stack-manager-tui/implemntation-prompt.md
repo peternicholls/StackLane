@@ -4,7 +4,7 @@
 
 You are implementing **Phase 3a** of the Stacklane Manager Terminal UI (TUI) - a project-aware web stack management tool built with Go and Bubble Tea framework.
 
-**Repository**: `peternicholls/20i-Hosting-Stack-for-Docker`  
+**Repository**: `peternicholls/StackLane`  
 **Branch**: `001-stack-manager-tui`  
 **Working Directory**: `/Users/peternicholls/docker/20i-stack`  
 **TUI Source**: `tui/` (at repository root)
@@ -36,7 +36,7 @@ The bash script:
 
 **Core Workflow** (what the user experiences):
 1. User navigates to web project: `cd ~/my-website/`
-2. User launches TUI: `20i-stack-manager`
+2. User launches TUI: `stacklane-tui`
 3. TUI detects project name from directory, validates `public_html/` exists
 4. Right panel shows pre-flight status (✅ Ready or ⚠️ Missing public_html)
 5. User presses `S` to start stack (or `T` to create template if missing)
@@ -454,8 +454,8 @@ These principles from `.specify/memory/constitution.md` **MUST** be followed:
 
 72. **T188d**: Update main `README.md` with TUI section
     - Add after GUI section
-    - Include installation: `go install github.com/peternicholls/20i-stack/tui@latest`
-    - Quick start: `cd ~/my-project && 20i-stack-manager`
+    - Include installation: `go install github.com/peternicholls/stacklane/tui@latest`
+    - Quick start: `cd ~/my-project && stacklane-tui`
     - Keyboard shortcuts table
 
 73. **T188e**: Update `CHANGELOG.md`
@@ -652,8 +652,8 @@ go mod download  # Download dependencies (already in go.mod)
 
 **Build & Run**:
 ```bash
-make build       # Compile binary to bin/20i-stack-manager
-./bin/20i-stack-manager  # Run TUI
+make build       # Compile binary to bin/stacklane-tui
+./bin/stacklane-tui  # Run TUI
 
 # Or during development:
 go run main.go
@@ -670,8 +670,8 @@ go test ./internal/stack/... -v
 ```
 
 **Manual Testing Checklist**:
-1. Test from demo-site-folder: `cd ../demo-site-folder && ../tui/bin/20i-stack-manager`
-2. Test from empty directory: `mkdir /tmp/test-project && cd /tmp/test-project && .../20i-stack-manager`
+1. Test from demo-site-folder: `cd ../demo-site-folder && ../tui/bin/stacklane-tui`
+2. Test from empty directory: `mkdir /tmp/test-project && cd /tmp/test-project && .../stacklane-tui`
 3. Test template creation (press T)
 4. Test stack start (press S)
 5. Test clicking URLs in status table
@@ -706,7 +706,7 @@ go test ./internal/stack/... -v
 
 When complete, you should have:
 
-1. **Working TUI Binary**: `tui/bin/20i-stack-manager`
+1. **Working TUI Binary**: `tui/bin/stacklane-tui`
 2. **Test Coverage**: >80% across all packages
 3. **User Documentation**:
    - `/docs/tui/user-guide.md`
@@ -741,6 +741,6 @@ When complete, you should have:
 
 This is **Phase 3a MVP** - focus on replicating the legacy GUI script workflow first. Don't get distracted by Phase 3b features (individual container management) or Phase 4+ features (multi-project, logs, config editor). Those come later.
 
-**Your mission**: Make it easy for web developers to start their 20i stack by simply running `20i-stack-manager` from their project directory. Everything else is secondary.
+**Your mission**: Make it easy for web developers to start their Stacklane runtime by simply running `stacklane-tui` from their project directory. Everything else is secondary.
 
 Good luck! 🚀

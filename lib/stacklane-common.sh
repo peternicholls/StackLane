@@ -702,7 +702,7 @@ twentyi_dns_setup() {
     fi
 
     if ! grep -Fqx "$include_line" "$dnsmasq_main_conf"; then
-        printf '\n# 20i stack managed include\n%s\n' "$include_line" >> "$dnsmasq_main_conf"
+        printf '\n# Stacklane managed include\n%s\n' "$include_line" >> "$dnsmasq_main_conf"
     fi
 
     if ! brew services restart dnsmasq >/dev/null 2>&1; then
@@ -1297,7 +1297,7 @@ server {
 
     location / {
         default_type text/plain;
-        return 503 "20i shared gateway has no hostname routes.\\n";
+        return 503 "Stacklane shared gateway has no hostname routes.\\n";
     }
 }
 EOF
@@ -1321,7 +1321,7 @@ server {
 
     location / {
         default_type text/plain;
-        return 503 "20i shared gateway has no hostname routes.\\n";
+        return 503 "Stacklane shared gateway has no hostname routes.\\n";
     }
 }
 EOF
@@ -1358,7 +1358,7 @@ server {
     location / {
         default_type text/plain;
         add_header X-20i-Route-State "unmatched-host" always;
-        return 404 "20i shared gateway has no route for host '\$host'.\\n";
+        return 404 "Stacklane shared gateway has no route for host '\$host'.\\n";
     }
 }
 EOF
@@ -1383,7 +1383,7 @@ server {
     location / {
         default_type text/plain;
         add_header X-20i-Route-State "unmatched-host" always;
-        return 404 "20i shared gateway has no route for host '\$host'.\\n";
+        return 404 "Stacklane shared gateway has no route for host '\$host'.\\n";
     }
 }
 EOF

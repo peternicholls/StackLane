@@ -18,7 +18,7 @@ Before starting implementation:
 
 1. **Go 1.21+** installed (`go version`)
 2. **Docker Desktop** running (tested against Docker 24.0+)
-3. **Existing 20i stack** to test against (clone repo, run `stacklane` to start stack)
+3. **Existing Stacklane setup** to test against (clone repo, run `stacklane` to start the local 20i hosting emulation stack)
 4. **Terminal** with 256-color support (iTerm2, Terminal.app, or modern Linux terminal)
 5. **Read the research**: `/runbooks/research/01-tui-excellence/findings.md` (critical patterns)
 
@@ -41,7 +41,7 @@ mkdir -p tui
 cd tui
 
 # Initialize Go module
-go mod init github.com/peternicholls/20i-stack/tui
+go mod init github.com/peternicholls/stacklane/tui
 
 # Add dependencies
 go get github.com/charmbracelet/bubbletea@latest
@@ -394,7 +394,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 ```bash
 # 1. Start TUI with running stack
 cd /path/to/project
-/path/to/20i-tui
+/path/to/stacklane-tui
 
 # 2. Verify dashboard shows 4 services
 # 3. Press 's' on running service → should stop
@@ -437,16 +437,16 @@ docker compose down -v
 
 ```bash
 # Build binary
-go build -o 20i-tui
+go build -o stacklane-tui
 
 # Install to system
-sudo cp 20i-tui /usr/local/bin/
+sudo cp stacklane-tui /usr/local/bin/
 
 # Create symlink
-sudo ln -s /usr/local/bin/20i-tui /usr/local/bin/tui
+sudo ln -s /usr/local/bin/stacklane-tui /usr/local/bin/tui
 
 # Test
-cd /path/to/20i-project
+cd /path/to/stacklane-project
 tui
 ```
 

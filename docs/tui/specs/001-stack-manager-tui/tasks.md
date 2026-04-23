@@ -52,7 +52,7 @@ NOW SKIP TO `PHASE 3a` BELOW
 **Purpose**: Initialize Go project structure and dependencies
 
 - [X] T001 Create tui/ directory at repository root
-- [X] T002 Initialize Go module with `go mod init github.com/peternicholls/20i-stack/tui`
+- [X] T002 Initialize Go module with `go mod init github.com/peternicholls/stacklane/tui`
 - [X] T003 [P] Add Bubble Tea dependency v1.3.10+ in go.mod
 - [X] T004 [P] Add Bubbles dependency v1.0.0+ in go.mod
 - [X] T005 [P] Add Lipgloss dependency v1.0.0+ in go.mod
@@ -99,7 +99,7 @@ NOW SKIP TO `PHASE 3a` BELOW
 **Status**: ~75% complete per audit dated 2025-12-30. Core functionality implemented, critical issues blocking release.
 
 **Core Workflow**:
-1. User runs TUI from web project directory (`cd ~/my-website/ && 20i-stack-manager`)
+1. User runs TUI from web project directory (`cd ~/my-website/ && stacklane-tui`)
 2. TUI detects project name and path from `$PWD`
 3. TUI validates `public_html/` exists (pre-flight check)
 4. User presses `S` to start stack (or `T` to create template if missing)
@@ -701,8 +701,8 @@ p := tea.NewProgram(rootModel,
   - Integration with docker-compose
 - [ ] T188d [DOC] Update main README.md with TUI section ❌ NOT DONE
   - Add "Terminal UI" section after GUI section
-  - Installation: `go install github.com/peternicholls/20i-stack/tui@latest`
-  - Quick start: `cd ~/my-project && 20i-stack-manager`
+  - Installation: `go install github.com/peternicholls/stacklane/tui@latest`
+  - Quick start: `cd ~/my-project && stacklane-tui`
   - Link to /docs/tui/user-guide.md for details
   - Screenshot/ASCII art of TUI (copy from spec.md visual design)
   - Keyboard shortcuts summary table

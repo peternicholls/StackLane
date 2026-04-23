@@ -883,7 +883,7 @@ ls: docs/tui/: No such file or directory
 
 **Before Each Sprint**:
 1. ✅ Run `make build` - compiles without errors
-2. ✅ Run `./bin/20i-stack-manager` - TUI launches
+2. ✅ Run `./bin/stacklane-tui` - TUI launches
 3. ✅ Press 'q' - exits cleanly
 
 **After Sprint 1 (Critical Fixes)**:

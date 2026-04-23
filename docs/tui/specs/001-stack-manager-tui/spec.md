@@ -5,7 +5,7 @@
 **Updated**: 2025-12-28  
 **Status**: Draft  
 **Priority**: 🔴 Critical  
-**Input**: User description: "Full-featured terminal UI for managing 20i stack: containers, config, logs, monitoring, projects"
+**Input**: User description: "Full-featured terminal UI for managing the Stacklane runtime: containers, config, logs, monitoring, projects"
 
 ---
 
@@ -13,7 +13,7 @@
 
 A professional terminal user interface (TUI) built with Bubble Tea framework to replace and enhance the earlier GUI workflow. This MVP replicates all earlier GUI workflow (start/stop/restart/status/logs/destroy) with a modern, keyboard-driven interface following best practices from lazydocker, lazygit, k9s, and gh-dash.
 
-**Core Concept**: The TUI is a **project-aware web stack manager**, not a generic Docker container viewer. Users run it from their web project directory, and it manages the 20i stack for THAT project.
+**Core Concept**: The TUI is a **project-aware web stack manager**, not a generic Docker container viewer. Users run it from their web project directory, and it manages the Stacklane runtime for THAT project.
 
 **Phase 3a Scope** (MVP - this spec):
 - **PROJECT-AWARE STACK MANAGEMENT** (matches the previous GUI script):
@@ -78,7 +78,7 @@ As a developer, I want the TUI to detect my current directory as a web project a
 
 **Replaces**: legacy GUI script "Start Stack", "Stop Stack", "Restart Stack" commands
 
-As a developer, I want to start, stop, and restart the entire 20i stack for my current project so that I can control my development environment with proper `CODE_DIR` mounting.
+As a developer, I want to start, stop, and restart the entire Stacklane runtime for my current project so that I can control my development environment with proper `CODE_DIR` mounting.
 
 **Why this priority**: Stack lifecycle is the PRIMARY use case - getting the web project running with proper environment variables. This is what legacy GUI script does.
 
@@ -589,7 +589,7 @@ var (
 
 ### Key Entities
 
-- **Service**: A logical component of the 20i stack (apache, mariadb, nginx, phpmyadmin); maps 1:1 to a Docker Compose service definition
+- **Service**: A logical component of the Stacklane runtime (apache, mariadb, nginx, phpmyadmin); maps 1:1 to a Docker Compose service definition
 - **Container**: Runtime Docker container instance; attributes: ID, name, image, status ("running"|"stopped"|"restarting"|"error"), state, ports, stats (CPU%, memory%, network I/O)
 - **Project**: Directory containing docker-compose.yml; identified by directory name; may have .20i-local file for project-specific config
 - **Log Stream**: Container stdout/stderr output; tail mode (last N lines) or follow mode (real-time); max 10,000 lines buffered
@@ -650,7 +650,7 @@ var (
 - Minimum terminal size: 80x24 characters (enforced with error message if smaller)
 - Docker Compose v2+ installed (docker compose, not docker-compose)
 - Projects follow standard structure: docker-compose.yml at root, services named apache/mariadb/nginx/phpmyadmin
-- User runs TUI from project directory (cd into project, then run `20i-tui`)
+- User runs TUI from project directory (cd into project, then run `stacklane-tui`)
 
 ---
 
@@ -663,7 +663,7 @@ var (
 - **Docker SDK for Go** v27.0.0+ - Docker API client ([github.com/docker/docker/client](https://github.com/docker/docker))
 
 **Optional** (not in MVP):
-- Cobra - CLI flags/subcommands (if we add `20i-tui --project /path` later)
+- Cobra - CLI flags/subcommands (if we add `stacklane-tui --project /path` later)
 - YAML v3 - Config parsing (Phase 2 when we add config editor)
 
 **Build Requirements**:
@@ -722,7 +722,7 @@ docs/
 **Modified Files**:
 - `README.md` - Add "Terminal UI" section with install/usage/shortcuts
 - `CHANGELOG.md` - Document Phase 3a features in [Unreleased] section
-- `.gitignore` - Add `tui/20i-stack-manager` (compiled binary)
+- `.gitignore` - Add `tui/stacklane-tui` (compiled binary)
 
 **Unchanged Files** (important for compatibility):
 - `legacy GUI script` - Existing GUI still works, can coexist
@@ -731,6 +731,6 @@ docs/
 - `.20i-local` - No changes to format
 
 **Installation**:
-- Binary installed to `/usr/local/bin/20i-tui` (or user's $GOBIN)
-- Symlink `tui` → `20i-tui` for shorter command
+- Binary installed to `/usr/local/bin/stacklane-tui` (or user's $GOBIN)
+- Symlink `tui` → `stacklane-tui` for shorter command
 - No config files needed for MVP (all defaults hardcoded)
