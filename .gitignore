@@ -19,7 +19,7 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+/logs/
 
 # IDE files
 .vscode/
