@@ -65,7 +65,7 @@ Node/Deno/Bun rejected: runtime dependency and `node_modules` model conflict wit
 **Target platform**: macOS (arm64/amd64); Linux portability preserved by design  
 **Testing strategy**: Unit tests mock all interface boundaries; integration tests shell out to the compiled binary against a real Docker daemon  
 **Distribution**: Single binary; Homebrew formula deferred to a follow-up spec  
-**Operator-visible surface**: Current Stacklane subcommands (`stacklane up`, `down`, `status`, `attach`, `detach`, `logs`, `dns-setup`)  
+**Operator-visible surface**: Current Stacklane subcommands (`stacklane up`, `down`, `status`, `attach`, `detach`, `logs`, `dns-setup`)
 **Constraints**: Must use the current config precedence chain (CLI flags → `.stacklane-local` → shell env → `.env` → defaults), `.stacklane-state`, and shared gateway semantics
 
 ---

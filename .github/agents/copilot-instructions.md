@@ -35,4 +35,7 @@ Bash on macOS with POSIX shell workflow, Docker Compose YAML: Follow standard co
 - 002-project-rebrand: Rebranded CLI to Stacklane; `stacklane` is now the canonical entrypoint; `20i-*` scripts are deprecated wrappers; shared helper moved to `lib/stacklane-common.sh`
 
 <!-- MANUAL ADDITIONS START -->
+- Legacy compatibility is no longer a project constraint. Agents should prefer the current Stacklane naming, state layout, and command surface even when that breaks `20i-*` wrappers, `.20i-*` files, migration fallbacks, or older workflow assumptions.
+- Do not preserve backward compatibility, migration shims, or legacy behavior by default. Only keep or add compatibility paths when the user explicitly asks for them.
+- When choosing between simplifying the codebase and retaining legacy workflows, choose simplification and update docs/specs/instructions to reflect the break.
 <!-- MANUAL ADDITIONS END -->
