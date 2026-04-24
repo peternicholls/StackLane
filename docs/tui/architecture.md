@@ -12,7 +12,7 @@ Today, Stacklane already has a real core:
 
 - a canonical CLI entrypoint: `stacklane`,
 - a defined runtime contract,
-- project-scoped state under `.20i-state`,
+- project-scoped state under `.stacklane-state`,
 - registry-driven routing and attachment semantics,
 - Docker Compose-based runtime orchestration,
 - local DNS and shared gateway behavior.
@@ -27,7 +27,7 @@ That yields one strong recommendation:
 
 - avoid embedding fresh lifecycle rules in the UI layer,
 - avoid duplicating config resolution logic in the UI layer,
-- avoid building separate state files for UI concepts that already exist in `.20i-state`,
+- avoid building separate state files for UI concepts that already exist in `.stacklane-state`,
 - prefer thin orchestration boundaries that call or wrap the existing Stacklane operations.
 
 ## Recommended Layering
@@ -41,7 +41,7 @@ Responsibilities:
 - resolve config precedence,
 - derive project identity and hostname,
 - manage Docker Compose projects,
-- update `.20i-state` and `registry.tsv`,
+- update `.stacklane-state` and generated gateway state,
 - manage shared gateway and DNS integration,
 - surface status and logs.
 

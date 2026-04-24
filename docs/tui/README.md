@@ -34,8 +34,8 @@ That means any future TUI or GUI should wrap the existing Stacklane behavior rat
 ## What A Future Operator Surface Must Respect
 
 - The source of truth is the existing Stacklane runtime contract.
-- Config precedence remains CLI flags, `.20i-local`, shell environment, stack `.env`, then defaults.
-- The current state model is based on project slugs, hostname planning, `.20i-state`, registry rows, and live Docker identity.
+- Config precedence remains CLI flags, `.stacklane-local`, shell environment, stack `.env`, then defaults.
+- The current state model is based on project slugs, hostname planning, `.stacklane-state`, registry rows, and live Docker identity.
 - Multi-project attachment and shared-gateway behavior are core parts of the product, not optional embellishments.
 - The interface must help with diagnosis and trust, not hide the runtime behind opaque abstractions.
 

@@ -26,7 +26,7 @@ Symptoms:
 
 - they talk about a generic stack manager instead of Stacklane,
 - they assume a simpler stack lifecycle than the current attachable multi-project model,
-- they do not center `.20i-state`, registry-driven routing, shared gateway health, or DNS readiness,
+- they do not center `.stacklane-state`, registry-driven routing, shared gateway health, or DNS readiness,
 - they use an older product vocabulary.
 
 Correction:
@@ -107,6 +107,6 @@ If revisiting this direction later:
 - Docker documentation: https://docs.docker.com/
 - Stack Overflow: tag `docker` and `docker-compose`
 
-**For 20i-Specific Issues**:
-- Check 20i Hosting Stack documentation
-- Contact 20i support
+**For Stack Emulation Issues**:
+- Check the Stacklane docs for the relevant emulation target and migration notes
+- Check the hosting provider's own documentation when a production-only behavior differs from local emulation

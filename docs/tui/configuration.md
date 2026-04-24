@@ -11,7 +11,7 @@ That means the first configuration question is not "how should the TUI be config
 The active Stacklane runtime currently resolves configuration in this order:
 
 1. CLI flags
-2. `.20i-local`
+2. `.stacklane-local`
 3. shell environment
 4. stack `.env`
 5. built-in defaults
@@ -26,7 +26,7 @@ These are runtime settings, not UI settings:
 - `SITE_HOSTNAME`
 - `SITE_SUFFIX`
 - `DOCROOT`
-- `CODE_DIR` as a legacy alias
+- `CODE_DIR` as an alias
 - `PHP_VERSION`
 - `MYSQL_VERSION`
 - `MYSQL_ROOT_PASSWORD`
@@ -48,8 +48,8 @@ Any richer interface should display and edit these carefully, but should not sil
 
 The current runtime also has persistent state that matters to any operator surface:
 
-- `.20i-state/projects/<slug>.env`
-- `.20i-state/registry.tsv`
+- `.stacklane-state/projects/<slug>.json`
+- `.stacklane-state/shared/gateway.conf`
 - live Docker state
 - shared gateway health
 - local DNS health
@@ -69,7 +69,7 @@ Likely UI-only preferences:
 - whether to show archived or down projects by default,
 - theme or accessibility preferences.
 
-These should not live in `.20i-local` because they are operator preferences, not project runtime settings.
+These should not live in `.stacklane-local` because they are operator preferences, not project runtime settings.
 
 ## What Should Not Happen
 

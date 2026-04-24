@@ -8,9 +8,8 @@
 ## Summary
 
 Deliver the spec's primary requirement — replace the 2,213-line Bash monolith
-(`lib/stacklane-common.sh`) with a single distributable executable that preserves the
-`stacklane` command surface from spec-002 — by rewriting in Go with enforced module
-boundaries.
+(`lib/stacklane-common.sh`) with a single distributable executable that uses the current
+`stacklane` command surface directly — by rewriting in Go with enforced module boundaries.
 
 The rewrite eliminates the three documented coupling hotspots: the 22-variable global
 save/restore pattern, the hard-coded TSV column dependency between the registry and the
@@ -19,8 +18,9 @@ It also leverages Docker's own declarative capabilities (healthchecks, `depends_
 conditions, label filtering, profiles) rather than reimplementing them in application code.
 
 Operator-visible scope, command surface, configuration precedence, and state file semantics
-are frozen by [spec.md](./spec.md). Everything below describes implementation choices that
-sit underneath that contract.
+are defined by [spec.md](./spec.md). The current contract is `stacklane <subcommand>`,
+`.stacklane-local`, and `.stacklane-state`; legacy `.20i-*` paths and `20i-*` wrappers are
+not live requirements.
 
 ---
 
@@ -31,11 +31,10 @@ specific phases below; each is referenced again in-context where it applies:
 
 | Spec decision | Where it lands in this plan |
 |---|---|
-| FR-004 — legacy state files preserved as `<original>.legacy` alongside the migrated file (no auto-delete) | Phase 2 (state migration) |
+| FR-004 — `.stacklane-state` is the sole default state location; no automatic legacy migration on startup | Phase 2 (state storage) |
 | FR-009 — health-wait default 120 s; override via `--wait-timeout` flag and `STACKLANE_WAIT_TIMEOUT` env using the standard precedence chain | Phase 4 (Docker client / WaitHealthy) |
-| SC-004 — parity contract: nginx config and state files are byte-for-byte; human-readable status, logs, and error messages are semantic-equivalence only, with documented differences captured in `docs/migration.md` | Phase 5 (gateway, byte parity), Phase 7 (status/logs, semantic parity), Phase 9 (parity stabilisation) |
+| SC-004 — current Stacklane contract validation: nginx config and state JSON are stable machine artifacts; human-readable status, logs, and error messages are semantic-equivalence only | Phase 5 (gateway), Phase 7 (status/logs), Phase 9 (integration validation) |
 | SC-007 — cold-shell `stacklane --help` MUST complete in ≤100 ms on the macOS reference machine and within 2× the captured Bash entry-point baseline on the same machine | Phase 7 (release / CI benchmark) |
-| Phase 10 stabilisation — ≥4 weeks of binary in the field, zero unresolved divergences in `docs/migration.md` "Known differences", successful migration confirmed on every reporter's machine | Phase 10 gate |
 
 ---
 
@@ -66,8 +65,8 @@ Node/Deno/Bun rejected: runtime dependency and `node_modules` model conflict wit
 **Target platform**: macOS (arm64/amd64); Linux portability preserved by design  
 **Testing strategy**: Unit tests mock all interface boundaries; integration tests shell out to the compiled binary against a real Docker daemon  
 **Distribution**: Single binary; Homebrew formula deferred to a follow-up spec  
-**Operator-visible surface**: Unchanged from spec-002 (`stacklane --up`, `--down`, `--status`, `--attach`, `--detach`, `--logs`, `--dns-setup`)  
-**Constraints**: Must preserve config precedence chain (CLI flags → `.20i-local` → shell env → `.env` → defaults), state file locations, and shared gateway semantics
+**Operator-visible surface**: Current Stacklane subcommands (`stacklane up`, `down`, `status`, `attach`, `detach`, `logs`, `dns-setup`)  
+**Constraints**: Must use the current config precedence chain (CLI flags → `.stacklane-local` → shell env → `.env` → defaults), `.stacklane-state`, and shared gateway semantics
 
 ---
 
@@ -76,13 +75,11 @@ Node/Deno/Bun rejected: runtime dependency and `node_modules` model conflict wit
 *GATE: Must pass before Phase 0. Re-check after Phase 1.*
 
 - [x] **Ease of use**: Single binary install replaces a multi-file Bash library; the
-  shortest obvious operator path (`stacklane --up`) is preserved unchanged. The one-time
-  state migration runs silently on first contact (FR-004, SC-002). No new prompts, no new
-  setup steps for the common path.
+  shortest obvious operator path (`stacklane up`) is direct. No new prompts, no compatibility
+  shims, and no old state migration are part of the common path.
 - [x] **Reliability**: Configuration precedence chain is preserved (FR-003, SC-003), state
-  writes are atomic (FR-008), the rewrite is verified against the existing Bash
-  implementation through golden-file tests (Phase 1 exit criteria, Phase 5 exit criteria),
-  and migration is non-destructive and idempotent (FR-004, Phase 9).
+  writes are atomic (FR-008), and the rewrite is verified against current Stacklane
+  contract tests.
 - [x] **Robustness**: Per-project isolation preserved; partial-failure recovery is
   explicit in the Orchestration Flow (rollback at steps 6–9); status command reports
   drift between recorded state and live containers (FR-010, SC-005); Docker healthchecks
@@ -91,12 +88,12 @@ Node/Deno/Bun rejected: runtime dependency and `node_modules` model conflict wit
   positional TSV format, and the bash polling loops. Operators get readiness reporting
   instead of polling, opt-in dev services instead of always-on phpMyAdmin, and clear
   error messages instead of shell stack traces (FR-011, FR-013).
-- [x] **Documentation parity**: Phase 10 explicitly updates `README.md`,
+- [x] **Documentation alignment**: Phase 10 explicitly updates `README.md`,
   `docs/runtime-contract.md`, `docs/migration.md`, plus contributor-facing module layout
   documentation (FR-015).
 - [x] **Validation coverage**: Each phase has typed exit criteria; Phase 9 covers
-  end-to-end startup, status, teardown, and the legacy state migration path. Stress
-  scenario for concurrent `--up` invocations (SC-008) is part of Phase 3 exit criteria.
+  end-to-end startup, status, and teardown. Stress
+  scenario for concurrent `stacklane up` invocations (SC-008) is part of Phase 3 exit criteria.
 
 **Result**: Constitution Check passes. No violations to record in Complexity Tracking.
 
@@ -120,8 +117,8 @@ specs/003-rewrite-language-choices/
 ### Source Code (repository root)
 
 See "Target Module Structure" below for the concrete Go module layout.
-Legacy Bash entry points (`stacklane`, `lib/stacklane-common.sh`, the deprecated wrapper
-scripts at the repo root) remain in place until the Phase 10 deprecation gate.
+The repo-root `stacklane` launcher execs `stacklane-bin` directly. Bash-era wrappers and
+the shell runtime are archived under `previous-version-archive/`, not kept at the repo root.
 
 **Structure Decision**: Single Go module rooted at the repository root, with the binary
 defined under `cmd/stacklane/`. Module boundaries are enforced by package layout under
@@ -262,7 +259,7 @@ These gaps are addressed during the rewrite, not as separate work:
 |---|---|
 | Bash retry loop polling nginx readiness (L~1000–1020) | `HEALTHCHECK` in compose files + `docker compose up --wait` / `DockerClient.WaitHealthy` |
 | phpMyAdmin always starts | Compose `--profile debug`; opt-in |
-| Per-service sequential label queries | `docker ps --filter label=io.20i.project.slug=<slug>` — single atomic query |
+| Per-service sequential label queries | One Docker SDK label query per Stacklane project slug |
 | Bash subprocess calls to Docker CLI | Docker Engine SDK typed client in `infra/docker` |
 | Hard-coded TSV column order in gateway config generation | Typed `RegistryRow` struct; gateway reads fields by name |
 | Sequential port checks with global variable save/restore | `StateStore.Registry()` returns typed slice; port check is a pure function over that slice |
@@ -295,11 +292,11 @@ Replaces: `twentyi_init_defaults`, `twentyi_load_env_file`, `twentyi_finalize_co
 `twentyi_resolve_docroot`, `twentyi_resolve_hostname`, `twentyi_resolve_ports`,
 `twentyi_load_stack_and_project_config`
 
-- Implement `ConfigLoader` with the full precedence chain: CLI flags → `.20i-local` → shell env → `.env` → defaults
+- Implement `ConfigLoader` with the full precedence chain: CLI flags → `.stacklane-local` → shell env → `.env` → defaults
 - Implement slug derivation and hostname resolution as pure functions in `core/project`
 - Unit-test precedence rules exhaustively — this is the most logic-dense module
 
-**Exit criteria**: `ConfigLoader.Load` returns an identical `ProjectConfig` for every combination of input that the current Bash `twentyi_finalize_context` handles; verified by golden-file tests
+**Exit criteria**: `ConfigLoader.Load` returns the documented current Stacklane `ProjectConfig` for every supported input combination; verified by unit tests
 
 ---
 
@@ -310,11 +307,10 @@ Replaces: `twentyi_write_state`, `twentyi_load_state_file`, `twentyi_remove_stat
 
 - Implement `StateStore` backed by per-project JSON files (atomic write via temp-file + `os.Rename`)
 - Implement `Registry()` returning `[]RegistryRow` (typed; no TSV column positions)
-- Write a one-time migration function that reads existing `.env`-format state files and writes JSON equivalents
-- Preserve every legacy file as `<original>.legacy` alongside the new file; never auto-delete (FR-004)
-- Unit-test atomic write behavior, registry round-trip, and migration idempotency
+- Do not read `.20i-state` or run automatic state migration on startup
+- Unit-test atomic write behavior and registry round-trip
 
-**Exit criteria**: State round-trips without data loss; existing state files migrate non-destructively, the legacy file is preserved as `<original>.legacy`, and re-running migration on an already-migrated directory is a no-op
+**Exit criteria**: State round-trips without data loss under `.stacklane-state`; no active runtime path reads `.20i-state`.
 
 ---
 
@@ -325,7 +321,7 @@ Replaces: `twentyi_port_in_use`, `twentyi_port_reserved`, `twentyi_find_availabl
 
 - Implement port availability check using `net.Listen` (no `lsof`/`netstat` subprocess) with `ss`/`lsof` as a fallback on platforms where bind-check is insufficient
 - Implement collision detection as a pure function over `[]RegistryRow` — eliminates the 22-variable save/restore pattern entirely
-- Add file-based lock (`flock`-equivalent via `os.File` exclusive open) to prevent race between concurrent `stacklane --up` invocations
+- Add file-based lock (`flock`-equivalent via `os.File` exclusive open) to prevent race between concurrent `stacklane up` invocations
 
 **Exit criteria**: Port allocation is deterministic and race-safe; no subprocess calls to `lsof` on the happy path
 
@@ -342,7 +338,7 @@ Replaces: all `twentyi_compose`, `twentyi_shared_compose`, `twentyi_ensure_share
 - Add `depends_on: condition: service_healthy` where applicable
 - Add Compose `profiles` for phpMyAdmin (`--profile debug`)
 
-**Exit criteria**: `stacklane --up` and `--down` work end-to-end against a real Docker daemon; no per-service `docker ps` / `docker network` subprocess calls remain (those go through the SDK); compose orchestration may continue to subprocess `docker compose` until SDK-native compose support is available
+**Exit criteria**: `stacklane up` and `stacklane down` work end-to-end against a real Docker daemon; no per-service `docker ps` / `docker network` subprocess calls remain (those go through the SDK); compose orchestration may continue to subprocess `docker compose` until SDK-native compose support is available
 
 ---
 
@@ -356,7 +352,7 @@ Replaces: `twentyi_write_gateway_config`, `twentyi_gateway_route_lines`,
 - Atomic config writes (temp-file + rename); preserve the existing nginx upstream/DNS resolver pattern (127.0.0.11)
 - Unit-test template rendering against known-good nginx config fixtures
 
-**Exit criteria**: Generated nginx configs are byte-for-byte equivalent to the current Bash output for all documented route shapes (machine artifact — bound by the SC-004 byte-parity contract)
+**Exit criteria**: Generated nginx configs match the current Stacklane gateway contract for all documented route shapes.
 
 ---
 
@@ -369,7 +365,7 @@ Replaces: `twentyi_dns_setup`, `twentyi_dnsmasq_*`, `twentyi_ensure_tls_cert`, `
 - Implement TLS via `mkcert` subprocess wrapper in `platform/tls`
 - Isolate all `osascript` and `brew` calls to the `darwin` build-tagged file — Linux builds compile clean without them
 
-**Exit criteria**: `stacklane --dns-setup` works on macOS; Linux build compiles and returns a clear error; `tls` package returns correct cert/key paths and detects expiry
+**Exit criteria**: `stacklane dns-setup` works on macOS; Linux build compiles and returns a clear error; `tls` package returns correct cert/key paths and detects expiry
 
 ---
 
@@ -382,42 +378,37 @@ Replaces: `twentyi_status`, `twentyi_docker_status`, `twentyi_registry_drift_sta
 - Implement drift detection by comparing `StateStore.Registry()` against live container labels
 - Implement log streaming via Docker SDK `ContainerLogs` with `Follow: true`
 
-**Exit criteria**: `stacklane --status` and `stacklane --logs` satisfy the SC-004 parity contract — semantic equivalence to the Bash implementation for human-readable text. Differences in error wording, table layout, or log formatting are documented in `docs/migration.md` "Known differences" rather than treated as defects.
+**Exit criteria**: `stacklane status` and `stacklane logs` satisfy the current output contract for human-readable text.
 
 ---
 
-### Phase 8 — CLI Surface and Legacy Forwarding (`cmd/stacklane`)
+### Phase 8 — CLI Surface (`cmd/stacklane`)
 
-Replaces: `stacklane` entry point, `legacy wrapper commands` wrapper scripts
+Replaces: `stacklane` entry point
 
 - Wire all cobra subcommands to their lifecycle implementations
-- Implement legacy forwarding: `deprecated --up wrapper` → `stacklane --up` (thin shell shim calling new binary; same contract as spec-002)
 - Add `--help` output and version flag
 
-**Exit criteria**: All operator-visible commands from spec-002 work with the compiled binary; `legacy wrapper commands` shims produce deprecation notice and delegate correctly
+**Exit criteria**: All current operator-visible Stacklane subcommands work with the compiled binary; the repo-root `stacklane` shim execs the binary directly.
 
 ---
 
-### Phase 9 — Integration Tests and State Migration
+### Phase 9 — Integration Tests
 
-- Write integration tests that exercise the full `--up` / `--status` / `--down` lifecycle against a real Docker daemon (CI-gated, not run by default locally)
-- Write and validate the state migration script: existing `.env`-format state + TSV registry → JSON
-- Validate that a system mid-flight (some projects up in Bash state format) migrates cleanly on first `stacklane --status` run
+- Write integration tests that exercise the full `up` / `status` / `down` lifecycle against a real Docker daemon (CI-gated, not run by default locally)
+- Validate that obsolete `.20i-*` files are ignored by default
 
-**Exit criteria**: Integration test suite passes; migration is non-destructive and idempotent
+**Exit criteria**: Integration test suite passes; the active runtime uses only current Stacklane paths.
 
 ---
 
 ### Phase 10 — Deprecation and Cleanup
 
-- Remove `lib/stacklane-common.sh` (archive to `previous-version-archive/`)
-- Remove Bash-era `legacy wrapper commands` shims from repository root (replace with compiled-binary shims)
+- Remove `lib/stacklane-common.sh` from the active tree (archive to `previous-version-archive/`)
+- Remove Bash-era `20i-*` wrapper scripts from the repository root
 - Update `README.md`, `docs/runtime-contract.md`, `docs/migration.md` to reflect Go binary
 
-**Gate**: Only executed after the stabilisation criteria from [spec.md](./spec.md) Assumptions are met:
-- ≥4 weeks of the Go binary running in the field alongside Bash
-- Zero unresolved divergences in `docs/migration.md` "Known differences"
-- Successful silent state migration confirmed on every reporter's machine
+**Gate**: Execute as part of the current rewrite once the Go command path is functional.
 
 ---
 
@@ -427,7 +418,7 @@ Replaces: `stacklane` entry point, `legacy wrapper commands` wrapper scripts
 |---|---|---|---|
 | 1 | Minimum Go version: 1.22 (for `slices`/`maps` stdlib) or 1.21? | Module and test code style | Resolve before Phase 0 |
 | 2 | Integration test Docker daemon: use a real local Docker Desktop or a CI service container? | CI config, test isolation | Resolve before Phase 9 |
-| 3 | ~~Incremental migration path: run Go binary and Bash monolith in parallel during a stabilisation period?~~ | Resolved | **Resolved** by spec.md Clarifications Q5 — parallel-run period is ≥4 weeks gated by zero divergences and successful migration on every reporter's machine. |
+| 3 | ~~Incremental migration path: run Go binary and Bash monolith in parallel during a stabilisation period?~~ | Resolved | **Resolved** by current repository policy — no stabilization window is required for removing migration-era runtime paths. |
 | 4 | Homebrew formula: day-one alongside Phase 10, or separate follow-up spec? | Distribution | Defer unless ops demand it |
 | 5 | ~~Linux DNS support scope: stub that errors clearly, or implement systemd-resolved integration?~~ | Resolved | **Resolved** by spec.md FR-012 and Assumptions — Linux build emits a clear unsupported-platform error; full Linux DNS is a separate spec. |
 
@@ -437,8 +428,8 @@ Replaces: `stacklane` entry point, `legacy wrapper commands` wrapper scripts
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Golden-file tests for config/gateway diverge from Bash output on edge cases | Low–Medium | Bound by the SC-004 parity contract: nginx config requires byte parity (will be caught by golden-file tests in Phase 5) but human-readable status/logs/errors require only semantic equivalence — wording differences are documented in `docs/migration.md` "Known differences", not treated as regressions |
+| Golden-file tests for gateway output diverge from the current contract on edge cases | Low–Medium | Keep machine-artifact tests focused on the current nginx template and state schema |
 | Docker Engine SDK version mismatch with Docker Desktop installation | Low | Pin SDK to the oldest Docker Desktop version in active use; test against it in CI |
-| State migration corrupts registry on systems with non-standard state file encoding | Low | Migration preserves the legacy file as `<original>.legacy` alongside the new file (FR-004), so any corruption is recoverable by deleting the new file; idempotency means re-running is safe |
+| Operators still have obsolete `.20i-*` files | Medium | The binary ignores them by default; document current `.stacklane-*` paths clearly |
 | Go toolchain version management for contributors | Low | `.go-version` file in repo root; `go.mod` minimum version constraint |
 | macOS-only DNS code compiled into non-Darwin builds | None | Build tags (`//go:build darwin`) ensure clean cross-compilation |
