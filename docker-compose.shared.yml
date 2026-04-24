@@ -10,10 +10,10 @@ services:
     networks:
       shared-gateway:
         aliases:
-          - twentyi-gateway
+          - stacklane-gateway
     restart: unless-stopped
 
 networks:
   shared-gateway:
-    name: ${SHARED_GATEWAY_NETWORK:-twentyi-shared}
+    name: ${SHARED_GATEWAY_NETWORK:-stacklane-shared}
     external: true

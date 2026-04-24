@@ -1,5 +1,7 @@
 # Environment files
 .env
+.stacklane-local
+.stacklane-state/
 .20i-local
 .20i-state/
 
@@ -49,3 +51,12 @@ build/
 # Test files
 test-site/
 demo-site/
+
+# Go build artefacts
+/stacklane-bin
+/bin/
+*.test
+*.out
+*.prof*
+coverage.out
+coverage.html

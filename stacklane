@@ -1,8 +1,6 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
-set -euo pipefail
+set -eu
 
-# shellcheck source=lib/stacklane-common.sh
-source "$(cd "$(dirname "$0")" && pwd -P)/lib/stacklane-common.sh"
-
-stacklane_main "$@"
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+exec "$SCRIPT_DIR/stacklane-bin" "$@"

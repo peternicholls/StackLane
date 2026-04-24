@@ -1,0 +1,29 @@
+name: ci
+
+on:
+    push:
+        branches:
+            - master
+            - 003-rewrite-language-choices
+    pull_request:
+
+jobs:
+    go:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-go@v5
+              with:
+                  go-version-file: .go-version
+                  check-latest: false
+            - name: build
+              run: go build ./...
+            - name: vet
+              run: go vet ./...
+            - name: staticcheck
+              run: |
+                  go install honnef.co/go/tools/cmd/staticcheck@2024.1.1
+                  $(go env GOPATH)/bin/staticcheck ./...
+            # FR-006 / SC-006: unit suite must run without a Docker daemon.
+            - name: test (no docker)
+              run: go test -race -short ./...

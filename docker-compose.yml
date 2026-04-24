@@ -1,24 +1,32 @@
-x-20i-project-labels: &twentyi-project-labels
-  io.20i.project.name: ${PROJECT_NAME:?err}
-  io.20i.project.slug: ${PROJECT_SLUG:?err}
-  io.20i.project.dir: ${PROJECT_ROOT:?err}
-  io.20i.project.hostname: ${PROJECT_HOSTNAME:?err}
-  io.20i.project.docroot: ${PROJECT_DOCROOT:?err}
-  io.20i.compose_project: ${COMPOSE_PROJECT_NAME:?err}
+x-stacklane-project-labels: &stacklane-project-labels
+  io.stacklane.project.name: ${PROJECT_NAME:?err}
+  io.stacklane.project.slug: ${PROJECT_SLUG:?err}
+  io.stacklane.project.dir: ${PROJECT_ROOT:?err}
+  io.stacklane.project.hostname: ${PROJECT_HOSTNAME:?err}
+  io.stacklane.project.docroot: ${PROJECT_DOCROOT:?err}
+  io.stacklane.compose_project: ${COMPOSE_PROJECT_NAME:?err}
 
 services:
   nginx:
     image: nginx:1.25-alpine
     expose: ["80"]
     labels:
-      <<: *twentyi-project-labels
-      io.20i.service: nginx
+      <<: *stacklane-project-labels
+      io.stacklane.service: nginx
     environment:
       CONTAINER_DOCROOT: ${CONTAINER_DOCROOT:?err}
     volumes:
       - ${PROJECT_ROOT:?err}:${CONTAINER_SITE_ROOT:?err}:ro
       - ./docker/nginx.conf.tmpl:/etc/nginx/templates/default.conf.template:ro
-    depends_on: [apache]
+    depends_on:
+      apache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 0"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
     networks:
       default:
       shared-gateway:
@@ -32,17 +40,26 @@ services:
         PHP_VERSION: ${PHP_VERSION:-8.5}
     expose: ["9000"]
     labels:
-      <<: *twentyi-project-labels
-      io.20i.service: apache
+      <<: *stacklane-project-labels
+      io.stacklane.service: apache
     working_dir: ${CONTAINER_DOCROOT:?err}
     volumes:
       - ${PROJECT_ROOT:?err}:${CONTAINER_SITE_ROOT:?err}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   mariadb:
     image: mariadb:${MYSQL_VERSION:-10.6}
     labels:
-      <<: *twentyi-project-labels
-      io.20i.service: mariadb
+      <<: *stacklane-project-labels
+      io.stacklane.service: mariadb
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?err}
       MYSQL_DATABASE: ${MYSQL_DATABASE:?err}
@@ -51,21 +68,31 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     ports: ["${MYSQL_PORT:-3306}:3306"]
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized || mysqladmin ping -h 127.0.0.1 -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 15s
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    profiles: ["debug"]
     labels:
-      <<: *twentyi-project-labels
-      io.20i.service: phpmyadmin
+      <<: *stacklane-project-labels
+      io.stacklane.service: phpmyadmin
     environment:
       PMA_HOST: mariadb
     ports: ["${PMA_PORT:-8081}:80"]
+    depends_on:
+      mariadb:
+        condition: service_healthy
 
 networks:
   default:
     name: ${PROJECT_RUNTIME_NETWORK:?err}
   shared-gateway:
-    name: ${SHARED_GATEWAY_NETWORK:-twentyi-shared}
+    name: ${SHARED_GATEWAY_NETWORK:-stacklane-shared}
     external: true
 
 volumes:

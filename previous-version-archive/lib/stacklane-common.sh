@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-twentyi_script_dir() {
+stacklane_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "$source_path" ]]; do
         local source_dir
@@ -14,14 +14,14 @@ twentyi_script_dir() {
     cd "$(dirname "$source_path")/.." && pwd -P
 }
 
-twentyi_trim() {
+stacklane_trim() {
     local value="$1"
     value="${value#${value%%[![:space:]]*}}"
     value="${value%${value##*[![:space:]]}}"
     printf '%s' "$value"
 }
 
-twentyi_load_env_file() {
+stacklane_load_env_file() {
     local env_file="$1"
     local mode="$2"
 
@@ -30,14 +30,14 @@ twentyi_load_env_file() {
     while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
         local line key value
 
-        line="$(twentyi_trim "$raw_line")"
+        line="$(stacklane_trim "$raw_line")"
         [[ -z "$line" || "${line#\#}" != "$line" ]] && continue
 
         line="${line#export }"
         [[ "$line" == *=* ]] || continue
 
-        key="$(twentyi_trim "${line%%=*}")"
-        value="$(twentyi_trim "${line#*=}")"
+        key="$(stacklane_trim "${line%%=*}")"
+        value="$(stacklane_trim "${line#*=}")"
         [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
 
         if [[ "$value" == \"*\" && "$value" == *\" ]]; then
@@ -57,20 +57,43 @@ twentyi_load_env_file() {
     done < "$env_file"
 }
 
-twentyi_default_stack_home() {
+stacklane_default_stack_home() {
     local repo_home
-    repo_home="$(twentyi_script_dir)"
+    repo_home="$(stacklane_script_dir)"
 
     if [[ -n "${STACK_HOME:-}" ]]; then
         printf '%s' "$STACK_HOME"
     elif [[ -f "$repo_home/docker-compose.yml" ]]; then
         printf '%s' "$repo_home"
     else
-        printf '%s' "$HOME/docker/20i-stack"
+        printf '%s' "$HOME/docker/stacklane"
     fi
 }
 
-twentyi_abs_dir() {
+stacklane_default_state_dir() {
+    local current legacy
+
+    current="$STACK_HOME/.stacklane-state"
+    legacy="$STACK_HOME/.20i-state"
+
+    if [[ -d "$current" ]]; then
+        printf '%s' "$current"
+    elif [[ -d "$legacy" ]]; then
+        printf '%s' "$legacy"
+    else
+        printf '%s' "$current"
+    fi
+}
+
+stacklane_project_local_env_file() {
+    if [[ -f "$PROJECT_DIR/.stacklane-local" ]]; then
+        printf '%s' "$PROJECT_DIR/.stacklane-local"
+    else
+        printf '%s' "$PROJECT_DIR/.20i-local"
+    fi
+}
+
+stacklane_abs_dir() {
     local path="$1"
 
     if [[ "$path" == /* ]]; then
@@ -80,7 +103,7 @@ twentyi_abs_dir() {
     fi
 }
 
-twentyi_abs_path_from_base() {
+stacklane_abs_path_from_base() {
     local base_dir="$1"
     local path="$2"
 
@@ -91,7 +114,7 @@ twentyi_abs_path_from_base() {
     fi
 }
 
-twentyi_slugify() {
+stacklane_slugify() {
     local input="$1"
     local value
 
@@ -107,23 +130,23 @@ twentyi_slugify() {
     printf '%s' "$value"
 }
 
-twentyi_project_state_file() {
-    printf '%s/projects/%s.env' "$TWENTYI_STATE_DIR" "$PROJECT_SLUG"
+stacklane_project_state_file() {
+    printf '%s/projects/%s.env' "$STACKLANE_STATE_DIR" "$PROJECT_SLUG"
 }
 
-twentyi_registry_file() {
-    printf '%s/registry.tsv' "$TWENTYI_STATE_DIR"
+stacklane_registry_file() {
+    printf '%s/registry.tsv' "$STACKLANE_STATE_DIR"
 }
 
-twentyi_shared_env_file() {
-    printf '%s/shared/gateway.env' "$TWENTYI_STATE_DIR"
+stacklane_shared_env_file() {
+    printf '%s/shared/gateway.env' "$STACKLANE_STATE_DIR"
 }
 
-twentyi_shared_gateway_config_file() {
-    printf '%s/shared/gateway.conf' "$TWENTYI_STATE_DIR"
+stacklane_shared_gateway_config_file() {
+    printf '%s/shared/gateway.conf' "$STACKLANE_STATE_DIR"
 }
 
-twentyi_load_state_file() {
+stacklane_load_state_file() {
     local state_file="$1"
 
     [[ -f "$state_file" ]] || return 1
@@ -131,19 +154,19 @@ twentyi_load_state_file() {
     source "$state_file"
 }
 
-twentyi_unset_project_state_vars() {
+stacklane_unset_project_state_vars() {
     unset PROJECT_NAME PROJECT_SLUG PROJECT_DIR DOCROOT DOCROOT_RELATIVE HOSTNAME SITE_SUFFIX COMPOSE_PROJECT_NAME HOST_PORT MYSQL_PORT PMA_PORT MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_VERSION MYSQL_ROOT_PASSWORD PHP_VERSION ATTACHMENT_STATE WEB_NETWORK_ALIAS CONTAINER_SITE_ROOT CONTAINER_DOCROOT PROJECT_RUNTIME_NETWORK PROJECT_DATABASE_VOLUME NGINX_CONTAINER_NAME NGINX_CONTAINER_ID NGINX_CONTAINER_STATUS APACHE_CONTAINER_NAME APACHE_CONTAINER_ID APACHE_CONTAINER_STATUS MARIADB_CONTAINER_NAME MARIADB_CONTAINER_ID MARIADB_CONTAINER_STATUS PHPMYADMIN_CONTAINER_NAME PHPMYADMIN_CONTAINER_ID PHPMYADMIN_CONTAINER_STATUS RUNTIME_CONTAINER_SUMMARY
 }
 
-twentyi_registry_escape() {
+stacklane_registry_escape() {
     printf '%s' "$1" | tr '\t\r\n' '   '
 }
 
-twentyi_state_files() {
+stacklane_state_files() {
     local found=0
     local state_file
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
         found=1
         printf '%s\n' "$state_file"
@@ -152,11 +175,11 @@ twentyi_state_files() {
     return $((found == 0))
 }
 
-twentyi_count_state_files() {
+stacklane_count_state_files() {
     local count=0
     local state_file
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
         count=$((count + 1))
     done
@@ -164,7 +187,7 @@ twentyi_count_state_files() {
     printf '%s' "$count"
 }
 
-twentyi_port_in_use() {
+stacklane_port_in_use() {
     local port="$1"
 
     if command -v lsof >/dev/null 2>&1; then
@@ -181,15 +204,15 @@ twentyi_port_in_use() {
     return 1
 }
 
-twentyi_port_reserved() {
+stacklane_port_reserved() {
     local var_name="$1"
     local port="$2"
     local state_file current_port
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
         unset HOST_PORT MYSQL_PORT PMA_PORT PROJECT_DIR HOSTNAME ATTACHMENT_STATE COMPOSE_PROJECT_NAME
-        twentyi_load_state_file "$state_file"
+        stacklane_load_state_file "$state_file"
         current_port="${!var_name:-}"
         [[ -n "$current_port" && "$current_port" == "$port" ]] && return 0
     done
@@ -197,13 +220,13 @@ twentyi_port_reserved() {
     return 1
 }
 
-twentyi_find_available_port() {
+stacklane_find_available_port() {
     local var_name="$1"
     local start_port="$2"
     local port="$start_port"
 
     while [[ "$port" -lt 65535 ]]; do
-        if ! twentyi_port_in_use "$port" && ! twentyi_port_reserved "$var_name" "$port"; then
+        if ! stacklane_port_in_use "$port" && ! stacklane_port_reserved "$var_name" "$port"; then
             printf '%s' "$port"
             return 0
         fi
@@ -213,49 +236,49 @@ twentyi_find_available_port() {
     return 1
 }
 
-twentyi_resolve_shared_gateway_ports() {
+stacklane_resolve_shared_gateway_ports() {
     local requested_https_port="${SHARED_GATEWAY_HTTPS_PORT:-}"
     local shared_env_file existing_https_port
 
-    TWENTYI_HTTPS_PORT_AUTO_FALLBACK=0
+    STACKLANE_HTTPS_PORT_AUTO_FALLBACK=0
 
-    if ! twentyi_tls_available; then
+    if ! stacklane_tls_available; then
         return 0
     fi
 
     if [[ "${LOCAL_DNS_SUFFIX:-${SITE_SUFFIX:-}}" == "dev" ]]; then
         if [[ -z "$requested_https_port" || "$requested_https_port" == "443" ]]; then
             SHARED_GATEWAY_HTTPS_PORT=8443
-            TWENTYI_HTTPS_PORT_AUTO_FALLBACK=1
+            STACKLANE_HTTPS_PORT_AUTO_FALLBACK=1
         fi
         return 0
     fi
 
     requested_https_port="${SHARED_GATEWAY_HTTPS_PORT:-443}"
 
-    shared_env_file="$(twentyi_shared_env_file)"
+    shared_env_file="$(stacklane_shared_env_file)"
     if [[ -f "$shared_env_file" ]]; then
         existing_https_port="$(grep '^SHARED_GATEWAY_HTTPS_PORT=' "$shared_env_file" | head -1 | cut -d= -f2-)"
         if [[ -n "$existing_https_port" && "$requested_https_port" == "443" ]]; then
             SHARED_GATEWAY_HTTPS_PORT="$existing_https_port"
             if [[ "$existing_https_port" != "443" ]]; then
-                TWENTYI_HTTPS_PORT_AUTO_FALLBACK=1
+                STACKLANE_HTTPS_PORT_AUTO_FALLBACK=1
             fi
             return 0
         fi
     fi
 
-    if [[ "$requested_https_port" == "443" ]] && twentyi_port_in_use 443; then
-        SHARED_GATEWAY_HTTPS_PORT="$(twentyi_find_available_port SHARED_GATEWAY_HTTPS_PORT 8443)"
-        TWENTYI_HTTPS_PORT_AUTO_FALLBACK=1
+    if [[ "$requested_https_port" == "443" ]] && stacklane_port_in_use 443; then
+        SHARED_GATEWAY_HTTPS_PORT="$(stacklane_find_available_port SHARED_GATEWAY_HTTPS_PORT 8443)"
+        STACKLANE_HTTPS_PORT_AUTO_FALLBACK=1
     fi
 }
 
-twentyi_resolve_docroot() {
+stacklane_resolve_docroot() {
     if [[ -n "${DOCROOT:-}" ]]; then
-        DOCROOT="$(twentyi_abs_path_from_base "$PROJECT_DIR" "$DOCROOT")"
+        DOCROOT="$(stacklane_abs_path_from_base "$PROJECT_DIR" "$DOCROOT")"
     elif [[ -n "${CODE_DIR:-}" ]]; then
-        DOCROOT="$(twentyi_abs_path_from_base "$PROJECT_DIR" "$CODE_DIR")"
+        DOCROOT="$(stacklane_abs_path_from_base "$PROJECT_DIR" "$CODE_DIR")"
     elif [[ -d "$PROJECT_DIR/public_html" ]]; then
         DOCROOT="$PROJECT_DIR/public_html"
     else
@@ -279,9 +302,9 @@ twentyi_resolve_docroot() {
     fi
 }
 
-twentyi_resolve_hostname() {
+stacklane_resolve_hostname() {
     SITE_SUFFIX="${SITE_SUFFIX:-test}"
-    SITE_SUFFIX="$(twentyi_slugify "$SITE_SUFFIX")"
+    SITE_SUFFIX="$(stacklane_slugify "$SITE_SUFFIX")"
 
     if [[ -n "${SITE_HOSTNAME:-}" ]]; then
         HOSTNAME="$SITE_HOSTNAME"
@@ -290,50 +313,50 @@ twentyi_resolve_hostname() {
     fi
 }
 
-twentyi_resolve_ports() {
+stacklane_resolve_ports() {
     local project_count
-    project_count="$(twentyi_count_state_files)"
+    project_count="$(stacklane_count_state_files)"
 
     if [[ -z "${HOST_PORT:-}" ]]; then
-        if [[ "$TWENTYI_COMMAND" == "up" && "$project_count" -eq 0 ]] && ! twentyi_port_in_use 80; then
+        if [[ "$STACKLANE_COMMAND" == "up" && "$project_count" -eq 0 ]] && ! stacklane_port_in_use 80; then
             HOST_PORT=80
         else
-            HOST_PORT="$(twentyi_find_available_port HOST_PORT 8080)"
+            HOST_PORT="$(stacklane_find_available_port HOST_PORT 8080)"
         fi
     fi
 
     if [[ -z "${MYSQL_PORT:-}" ]]; then
-        if [[ "$project_count" -eq 0 ]] && ! twentyi_port_in_use 3306; then
+        if [[ "$project_count" -eq 0 ]] && ! stacklane_port_in_use 3306; then
             MYSQL_PORT=3306
         else
-            MYSQL_PORT="$(twentyi_find_available_port MYSQL_PORT 3307)"
+            MYSQL_PORT="$(stacklane_find_available_port MYSQL_PORT 3307)"
         fi
     fi
 
     if [[ -z "${PMA_PORT:-}" ]]; then
-        if [[ "$project_count" -eq 0 ]] && ! twentyi_port_in_use 8081; then
+        if [[ "$project_count" -eq 0 ]] && ! stacklane_port_in_use 8081; then
             PMA_PORT=8081
         else
-            PMA_PORT="$(twentyi_find_available_port PMA_PORT 8082)"
+            PMA_PORT="$(stacklane_find_available_port PMA_PORT 8082)"
         fi
     fi
 }
 
-twentyi_require_docker() {
+stacklane_require_docker() {
     if ! command -v docker >/dev/null 2>&1; then
-        printf 'Error: docker is required for %s\n' "$TWENTYI_COMMAND" >&2
+        printf 'Error: docker is required for %s\n' "$STACKLANE_COMMAND" >&2
         exit 1
     fi
 }
 
-twentyi_validate_requested_ports() {
+stacklane_validate_requested_ports() {
     local port_var current_value state_file existing_project_dir
     local current_state_file existing_port allow_current_project_port
     local current_project_dir
     local resolved_host_port resolved_mysql_port resolved_pma_port
     local current_project_name current_project_slug current_compose_project_name current_hostname current_web_network_alias current_site_suffix current_docroot current_docroot_relative current_container_site_root current_container_docroot current_mysql_database current_mysql_user current_mysql_password current_mysql_version current_mysql_root_password current_php_version
 
-    current_state_file="$(twentyi_project_state_file)"
+    current_state_file="$(stacklane_project_state_file)"
     current_project_dir="$PROJECT_DIR"
     current_project_name="$PROJECT_NAME"
     current_project_slug="$PROJECT_SLUG"
@@ -363,22 +386,22 @@ twentyi_validate_requested_ports() {
 
         if [[ -f "$current_state_file" ]]; then
             unset PROJECT_DIR HOST_PORT MYSQL_PORT PMA_PORT
-            twentyi_load_state_file "$current_state_file"
+            stacklane_load_state_file "$current_state_file"
             existing_port="${!port_var:-}"
             if [[ "${PROJECT_DIR:-}" == "$current_project_dir" && "$existing_port" == "$current_value" ]]; then
                 allow_current_project_port=1
             fi
         fi
 
-        if [[ "$allow_current_project_port" -eq 0 ]] && twentyi_port_in_use "$current_value"; then
+        if [[ "$allow_current_project_port" -eq 0 ]] && stacklane_port_in_use "$current_value"; then
             printf 'Error: %s is already listening on port %s\n' "$port_var" "$current_value" >&2
             exit 1
         fi
 
-        for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+        for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
             [[ -e "$state_file" ]] || continue
             unset PROJECT_DIR HOST_PORT MYSQL_PORT PMA_PORT
-            twentyi_load_state_file "$state_file"
+            stacklane_load_state_file "$state_file"
             existing_project_dir="${PROJECT_DIR:-}"
 
             if [[ "$existing_project_dir" != "$current_project_dir" && "${!port_var:-}" == "$current_value" ]]; then
@@ -410,7 +433,7 @@ twentyi_validate_requested_ports() {
     done
 }
 
-twentyi_validate_collision() {
+stacklane_validate_collision() {
     local state_file
     local existing_project_dir existing_hostname
     local current_project_name current_project_slug current_compose_project_name current_hostname current_web_network_alias current_site_suffix current_docroot current_project_dir current_docroot_relative current_container_site_root current_container_docroot current_mysql_database current_mysql_user current_mysql_password current_mysql_version current_mysql_root_password current_php_version current_mysql_port current_pma_port
@@ -435,19 +458,19 @@ twentyi_validate_collision() {
     current_mysql_port="$MYSQL_PORT"
     current_pma_port="$PMA_PORT"
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
         unset PROJECT_DIR HOSTNAME ATTACHMENT_STATE PROJECT_NAME PROJECT_SLUG COMPOSE_PROJECT_NAME HOST_PORT MYSQL_PORT PMA_PORT
-        twentyi_load_state_file "$state_file"
+        stacklane_load_state_file "$state_file"
         existing_project_dir="${PROJECT_DIR:-}"
         existing_hostname="${HOSTNAME:-}"
 
-        if [[ "$state_file" == "$(twentyi_project_state_file)" && "$existing_project_dir" != "$current_project_dir" ]]; then
+        if [[ "$state_file" == "$(stacklane_project_state_file)" && "$existing_project_dir" != "$current_project_dir" ]]; then
             printf 'Error: project slug collision for %s (already registered by %s)\n' "$PROJECT_SLUG" "$existing_project_dir" >&2
             exit 1
         fi
 
-        if [[ "$state_file" != "$(twentyi_project_state_file)" && "$existing_hostname" == "$current_hostname" ]]; then
+        if [[ "$state_file" != "$(stacklane_project_state_file)" && "$existing_hostname" == "$current_hostname" ]]; then
             printf 'Error: hostname collision for %s (%s already registered by %s)\n' "$HOSTNAME" "$existing_hostname" "$existing_project_dir" >&2
             exit 1
         fi
@@ -474,7 +497,7 @@ twentyi_validate_collision() {
     done
 }
 
-twentyi_export_runtime_env() {
+stacklane_export_runtime_env() {
     export CODE_DIR="$DOCROOT"
     export PROJECT_ROOT="$PROJECT_DIR"
     export PROJECT_NAME
@@ -498,7 +521,7 @@ twentyi_export_runtime_env() {
     export SHARED_GATEWAY_NETWORK
 }
 
-twentyi_export_shared_env() {
+stacklane_export_shared_env() {
     export SHARED_GATEWAY_NETWORK
     export SHARED_GATEWAY_HTTP_PORT
     export SHARED_GATEWAY_HTTPS_PORT
@@ -506,19 +529,19 @@ twentyi_export_shared_env() {
     export SHARED_GATEWAY_CONFIG_FILE
 }
 
-twentyi_dns_preview_config_file() {
-    printf '%s/shared/dnsmasq-%s.conf' "$TWENTYI_STATE_DIR" "$LOCAL_DNS_SUFFIX"
+stacklane_dns_preview_config_file() {
+    printf '%s/shared/dnsmasq-%s.conf' "$STACKLANE_STATE_DIR" "$LOCAL_DNS_SUFFIX"
 }
 
-twentyi_dns_preview_resolver_file() {
-    printf '%s/shared/resolver-%s.conf' "$TWENTYI_STATE_DIR" "$LOCAL_DNS_SUFFIX"
+stacklane_dns_preview_resolver_file() {
+    printf '%s/shared/resolver-%s.conf' "$STACKLANE_STATE_DIR" "$LOCAL_DNS_SUFFIX"
 }
 
-twentyi_dns_resolver_file() {
+stacklane_dns_resolver_file() {
     printf '/etc/resolver/%s' "$LOCAL_DNS_SUFFIX"
 }
 
-twentyi_dnsmasq_conf_dir() {
+stacklane_dnsmasq_conf_dir() {
     local brew_prefix
 
     if ! command -v brew >/dev/null 2>&1; then
@@ -530,7 +553,7 @@ twentyi_dnsmasq_conf_dir() {
     printf '%s/etc/dnsmasq.d' "$brew_prefix"
 }
 
-twentyi_dnsmasq_main_conf_file() {
+stacklane_dnsmasq_main_conf_file() {
     local brew_prefix
 
     if ! command -v brew >/dev/null 2>&1; then
@@ -542,18 +565,18 @@ twentyi_dnsmasq_main_conf_file() {
     printf '%s/etc/dnsmasq.conf' "$brew_prefix"
 }
 
-twentyi_dnsmasq_managed_file() {
+stacklane_dnsmasq_managed_file() {
     local conf_dir
 
-    conf_dir="$(twentyi_dnsmasq_conf_dir)" || return 1
-    printf '%s/20i-stack-%s.conf' "$conf_dir" "$LOCAL_DNS_SUFFIX"
+    conf_dir="$(stacklane_dnsmasq_conf_dir)" || return 1
+    printf '%s/stacklane-%s.conf' "$conf_dir" "$LOCAL_DNS_SUFFIX"
 }
 
-twentyi_write_dns_support_files() {
+stacklane_write_dns_support_files() {
     local preview_config preview_resolver
 
-    preview_config="$(twentyi_dns_preview_config_file)"
-    preview_resolver="$(twentyi_dns_preview_resolver_file)"
+    preview_config="$(stacklane_dns_preview_config_file)"
+    preview_resolver="$(stacklane_dns_preview_resolver_file)"
     mkdir -p "$(dirname "$preview_config")"
 
     cat > "$preview_config" <<EOF
@@ -569,7 +592,7 @@ port $LOCAL_DNS_PORT
 EOF
 }
 
-twentyi_dns_service_running() {
+stacklane_dns_service_running() {
     if command -v lsof >/dev/null 2>&1; then
         lsof -nP -iUDP:"$LOCAL_DNS_PORT" 2>/dev/null | grep -qi dnsmasq
     else
@@ -577,7 +600,7 @@ twentyi_dns_service_running() {
     fi
 }
 
-twentyi_dns_status() {
+stacklane_dns_status() {
     local managed_file resolver_file
 
     [[ "$(uname -s)" == "Darwin" ]] || {
@@ -585,8 +608,8 @@ twentyi_dns_status() {
         return 0
     }
 
-    managed_file="$(twentyi_dnsmasq_managed_file 2>/dev/null || true)"
-    resolver_file="$(twentyi_dns_resolver_file)"
+    managed_file="$(stacklane_dnsmasq_managed_file 2>/dev/null || true)"
+    resolver_file="$(stacklane_dns_resolver_file)"
 
     if ! command -v brew >/dev/null 2>&1; then
         printf 'brew-missing'
@@ -603,7 +626,7 @@ twentyi_dns_status() {
         return 0
     fi
 
-    if ! twentyi_dns_service_running; then
+    if ! stacklane_dns_service_running; then
         printf 'dnsmasq-stopped'
         return 0
     fi
@@ -621,8 +644,8 @@ twentyi_dns_status() {
     printf 'ready'
 }
 
-twentyi_dns_status_message() {
-    case "$(twentyi_dns_status)" in
+stacklane_dns_status_message() {
+    case "$(stacklane_dns_status)" in
         ready)
             printf 'ready (%s on %s:%s for .%s)' "$LOCAL_DNS_PROVIDER" "$LOCAL_DNS_IP" "$LOCAL_DNS_PORT" "$LOCAL_DNS_SUFFIX"
             ;;
@@ -642,7 +665,7 @@ twentyi_dns_status_message() {
             printf 'dnsmasq not running on %s:%s' "$LOCAL_DNS_IP" "$LOCAL_DNS_PORT"
             ;;
         resolver-missing)
-            printf 'resolver file missing: %s' "$(twentyi_dns_resolver_file)"
+            printf 'resolver file missing: %s' "$(stacklane_dns_resolver_file)"
             ;;
         resolver-mismatch)
             printf 'resolver file does not point at %s:%s' "$LOCAL_DNS_IP" "$LOCAL_DNS_PORT"
@@ -653,17 +676,17 @@ twentyi_dns_status_message() {
     esac
 }
 
-twentyi_warn_if_dns_not_ready() {
+stacklane_warn_if_dns_not_ready() {
     local dns_status
 
-    dns_status="$(twentyi_dns_status)"
+    dns_status="$(stacklane_dns_status)"
     [[ "$dns_status" == "ready" || "$dns_status" == "unsupported-os" ]] && return 0
 
-    printf 'Local DNS: %s\n' "$(twentyi_dns_status_message)" >&2
+    printf 'Local DNS: %s\n' "$(stacklane_dns_status_message)" >&2
     printf 'Run stacklane --dns-setup to bootstrap .%s resolution on macOS.\n' "$LOCAL_DNS_SUFFIX" >&2
 }
 
-twentyi_dns_setup() {
+stacklane_dns_setup() {
     local preview_config preview_resolver managed_file resolver_file resolver_dir dnsmasq_main_conf conf_dir include_line
 
     if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -681,19 +704,19 @@ twentyi_dns_setup() {
         exit 1
     fi
 
-    twentyi_write_dns_support_files
-    preview_config="$(twentyi_dns_preview_config_file)"
-    preview_resolver="$(twentyi_dns_preview_resolver_file)"
-    managed_file="$(twentyi_dnsmasq_managed_file)"
-    resolver_file="$(twentyi_dns_resolver_file)"
+    stacklane_write_dns_support_files
+    preview_config="$(stacklane_dns_preview_config_file)"
+    preview_resolver="$(stacklane_dns_preview_resolver_file)"
+    managed_file="$(stacklane_dnsmasq_managed_file)"
+    resolver_file="$(stacklane_dns_resolver_file)"
     resolver_dir="$(dirname "$resolver_file")"
 
     mkdir -p "$(dirname "$managed_file")"
-    rm -f "$(dirname "$managed_file")"/20i-stack-*.conf
+    rm -f "$(dirname "$managed_file")"/stacklane-*.conf
     cp "$preview_config" "$managed_file"
 
-    dnsmasq_main_conf="$(twentyi_dnsmasq_main_conf_file)"
-    conf_dir="$(twentyi_dnsmasq_conf_dir)"
+    dnsmasq_main_conf="$(stacklane_dnsmasq_main_conf_file)"
+    conf_dir="$(stacklane_dnsmasq_conf_dir)"
     include_line="conf-dir=$conf_dir,*.conf"
 
     if [[ ! -f "$dnsmasq_main_conf" ]]; then
@@ -716,13 +739,13 @@ twentyi_dns_setup() {
     # before the privileged resolver copy. That way a fresh machine still gets
     # the expected cert artifacts even if /etc/resolver/<suffix> needs a manual
     # approval step.
-    twentyi_ensure_tls_cert
+    stacklane_ensure_tls_cert
 
-    _twentyi_resolver_needs_update() {
+    _stacklane_resolver_needs_update() {
         [[ ! -f "$resolver_file" ]] || ! diff -q "$preview_resolver" "$resolver_file" >/dev/null 2>&1
     }
 
-    if _twentyi_resolver_needs_update; then
+    if _stacklane_resolver_needs_update; then
         if [[ -w "$resolver_dir" || ( ! -e "$resolver_dir" && -w /etc ) ]]; then
             mkdir -p "$resolver_dir"
             cp "$preview_resolver" "$resolver_file"
@@ -743,16 +766,16 @@ twentyi_dns_setup() {
         fi
     fi
 
-    if [[ "$(twentyi_dns_status)" != "ready" ]]; then
-        printf 'Error: local DNS bootstrap did not reach a ready state (%s)\n' "$(twentyi_dns_status_message)" >&2
+    if [[ "$(stacklane_dns_status)" != "ready" ]]; then
+        printf 'Error: local DNS bootstrap did not reach a ready state (%s)\n' "$(stacklane_dns_status_message)" >&2
         exit 1
     fi
 
     printf 'Local DNS ready for .%s via %s\n' "$LOCAL_DNS_SUFFIX" "$LOCAL_DNS_PROVIDER"
 }
 
-twentyi_hostname_route_url() {
-    if twentyi_tls_available; then
+stacklane_hostname_route_url() {
+    if stacklane_tls_available; then
         if [[ "$SHARED_GATEWAY_HTTPS_PORT" == "443" ]]; then
             printf 'https://%s' "$HOSTNAME"
         else
@@ -765,7 +788,7 @@ twentyi_hostname_route_url() {
     fi
 }
 
-twentyi_gateway_probe_url() {
+stacklane_gateway_probe_url() {
     if [[ "$SHARED_GATEWAY_HTTP_PORT" == "80" ]]; then
         printf 'http://localhost'
     else
@@ -773,7 +796,7 @@ twentyi_gateway_probe_url() {
     fi
 }
 
-twentyi_reset_runtime_identity() {
+stacklane_reset_runtime_identity() {
     NGINX_CONTAINER_NAME=""
     NGINX_CONTAINER_ID=""
     NGINX_CONTAINER_STATUS=""
@@ -789,10 +812,10 @@ twentyi_reset_runtime_identity() {
     RUNTIME_CONTAINER_SUMMARY=""
 }
 
-twentyi_capture_runtime_identity() {
+stacklane_capture_runtime_identity() {
     local service line container_name container_id container_status prefix summary=()
 
-    twentyi_reset_runtime_identity
+    stacklane_reset_runtime_identity
 
     for service in nginx apache mariadb phpmyadmin; do
         line="$(docker ps -a --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=$service" --format '{{.Names}}|{{.ID}}|{{.Status}}' | head -n 1)"
@@ -823,11 +846,11 @@ twentyi_capture_runtime_identity() {
     RUNTIME_CONTAINER_SUMMARY="${summary[*]}"
 }
 
-twentyi_refresh_registry() {
+stacklane_refresh_registry() {
     local registry_file
 
-    registry_file="$(twentyi_registry_file)"
-    mkdir -p "$TWENTYI_STATE_DIR"
+    registry_file="$(stacklane_registry_file)"
+    mkdir -p "$STACKLANE_STATE_DIR"
 
     # Run the state-file iteration in a subshell so that loading each project's
     # env does not clobber the current project's exported variables in the
@@ -838,38 +861,38 @@ twentyi_refresh_registry() {
 
         printf 'project_slug\tattachment_state\tproject_name\tproject_dir\thostname\tdocroot\tcompose_project\truntime_network\tdb_volume\tphp_version\tmysql_database\tmysql_port\tpma_port\tweb_network_alias\tcontainer_summary\n' >> "$registry_file"
 
-        for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+        for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
             [[ -e "$state_file" ]] || continue
-            twentyi_unset_project_state_vars
-            twentyi_load_state_file "$state_file"
+            stacklane_unset_project_state_vars
+            stacklane_load_state_file "$state_file"
             printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-                "$(twentyi_registry_escape "$PROJECT_SLUG")" \
-                "$(twentyi_registry_escape "$ATTACHMENT_STATE")" \
-                "$(twentyi_registry_escape "$PROJECT_NAME")" \
-                "$(twentyi_registry_escape "$PROJECT_DIR")" \
-                "$(twentyi_registry_escape "$HOSTNAME")" \
-                "$(twentyi_registry_escape "$DOCROOT")" \
-                "$(twentyi_registry_escape "$COMPOSE_PROJECT_NAME")" \
-                "$(twentyi_registry_escape "${PROJECT_RUNTIME_NETWORK:-${COMPOSE_PROJECT_NAME}-runtime}")" \
-                "$(twentyi_registry_escape "${PROJECT_DATABASE_VOLUME:-${COMPOSE_PROJECT_NAME}-db-data}")" \
-                "$(twentyi_registry_escape "$PHP_VERSION")" \
-                "$(twentyi_registry_escape "$MYSQL_DATABASE")" \
-                "$(twentyi_registry_escape "$MYSQL_PORT")" \
-                "$(twentyi_registry_escape "$PMA_PORT")" \
-                "$(twentyi_registry_escape "$WEB_NETWORK_ALIAS")" \
-                "$(twentyi_registry_escape "${RUNTIME_CONTAINER_SUMMARY:-}")" >> "$registry_file"
+                "$(stacklane_registry_escape "$PROJECT_SLUG")" \
+                "$(stacklane_registry_escape "$ATTACHMENT_STATE")" \
+                "$(stacklane_registry_escape "$PROJECT_NAME")" \
+                "$(stacklane_registry_escape "$PROJECT_DIR")" \
+                "$(stacklane_registry_escape "$HOSTNAME")" \
+                "$(stacklane_registry_escape "$DOCROOT")" \
+                "$(stacklane_registry_escape "$COMPOSE_PROJECT_NAME")" \
+                "$(stacklane_registry_escape "${PROJECT_RUNTIME_NETWORK:-${COMPOSE_PROJECT_NAME}-runtime}")" \
+                "$(stacklane_registry_escape "${PROJECT_DATABASE_VOLUME:-${COMPOSE_PROJECT_NAME}-db-data}")" \
+                "$(stacklane_registry_escape "$PHP_VERSION")" \
+                "$(stacklane_registry_escape "$MYSQL_DATABASE")" \
+                "$(stacklane_registry_escape "$MYSQL_PORT")" \
+                "$(stacklane_registry_escape "$PMA_PORT")" \
+                "$(stacklane_registry_escape "$WEB_NETWORK_ALIAS")" \
+                "$(stacklane_registry_escape "${RUNTIME_CONTAINER_SUMMARY:-}")" >> "$registry_file"
         done
     )
 }
 
-twentyi_state_file_for_selector() {
+stacklane_state_file_for_selector() {
     local selector="$1"
     local state_file
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
-        twentyi_unset_project_state_vars
-        twentyi_load_state_file "$state_file"
+        stacklane_unset_project_state_vars
+        stacklane_load_state_file "$state_file"
 
         if [[ "$selector" == "$PROJECT_SLUG" || "$selector" == "$PROJECT_NAME" || "$selector" == "$HOSTNAME" || "$selector" == "$PROJECT_DIR" ]]; then
             printf '%s' "$state_file"
@@ -880,7 +903,7 @@ twentyi_state_file_for_selector() {
     return 1
 }
 
-twentyi_live_container_summary() {
+stacklane_live_container_summary() {
     local compose_project="$1"
     local service line summary=()
 
@@ -898,7 +921,7 @@ twentyi_live_container_summary() {
     fi
 }
 
-twentyi_registry_drift_status() {
+stacklane_registry_drift_status() {
     local live_summary normalized_recorded normalized_live
 
     if ! command -v docker >/dev/null 2>&1; then
@@ -906,7 +929,7 @@ twentyi_registry_drift_status() {
         return 0
     fi
 
-    live_summary="$(twentyi_live_container_summary "$COMPOSE_PROJECT_NAME")"
+    live_summary="$(stacklane_live_container_summary "$COMPOSE_PROJECT_NAME")"
 
     if [[ "$ATTACHMENT_STATE" == "attached" && -z "$live_summary" ]]; then
         printf 'attached-but-missing-runtime'
@@ -928,18 +951,18 @@ twentyi_registry_drift_status() {
     fi
 }
 
-twentyi_validate_runtime_registration() {
-    twentyi_capture_runtime_identity
-    twentyi_write_state
-    twentyi_refresh_registry
+stacklane_validate_runtime_registration() {
+    stacklane_capture_runtime_identity
+    stacklane_write_state
+    stacklane_refresh_registry
 
-    if ! grep -Fq "$PROJECT_SLUG"$'\t' "$(twentyi_registry_file)"; then
+    if ! grep -Fq "$PROJECT_SLUG"$'\t' "$(stacklane_registry_file)"; then
         printf 'Error: registry update failed for %s\n' "$PROJECT_SLUG" >&2
         exit 1
     fi
 }
 
-twentyi_print_runtime_summary() {
+stacklane_print_runtime_summary() {
     cat <<EOF
 Project name:      $PROJECT_NAME
 Project slug:      $PROJECT_SLUG
@@ -952,21 +975,21 @@ Runtime network:   ${COMPOSE_PROJECT_NAME}-runtime
 DB volume:         ${COMPOSE_PROJECT_NAME}-db-data
 Planned hostname:  $HOSTNAME
 Gateway alias:     $WEB_NETWORK_ALIAS
-Hostname route:    $(twentyi_hostname_route_url)
-Gateway probe:     $(twentyi_gateway_probe_url)
+Hostname route:    $(stacklane_hostname_route_url)
+Gateway probe:     $(stacklane_gateway_probe_url)
 Database port:     $MYSQL_PORT
 phpMyAdmin port:   $PMA_PORT
 PHP version:       $PHP_VERSION
 MySQL database:    $MYSQL_DATABASE
-State dir:         $TWENTYI_STATE_DIR
+State dir:         $STACKLANE_STATE_DIR
 EOF
 }
 
-twentyi_write_state() {
+stacklane_write_state() {
     local state_file
-    state_file="$(twentyi_project_state_file)"
+    state_file="$(stacklane_project_state_file)"
 
-    mkdir -p "$TWENTYI_STATE_DIR/projects"
+    mkdir -p "$STACKLANE_STATE_DIR/projects"
     : > "$state_file"
 
     {
@@ -1008,14 +1031,14 @@ twentyi_write_state() {
     } >> "$state_file"
 }
 
-twentyi_remove_state() {
+stacklane_remove_state() {
     local state_file
-    state_file="$(twentyi_project_state_file)"
+    state_file="$(stacklane_project_state_file)"
     [[ -f "$state_file" ]] && rm -f "$state_file"
-    twentyi_refresh_registry
+    stacklane_refresh_registry
 }
 
-twentyi_docker_status() {
+stacklane_docker_status() {
     local compose_project="$1"
     local status_lines
 
@@ -1032,7 +1055,7 @@ twentyi_docker_status() {
     fi
 }
 
-twentyi_shared_gateway_status() {
+stacklane_shared_gateway_status() {
     local status_lines
 
     if ! command -v docker >/dev/null 2>&1; then
@@ -1048,19 +1071,19 @@ twentyi_shared_gateway_status() {
     fi
 }
 
-twentyi_compose() {
-    docker compose -f "$TWENTYI_STACK_FILE" -p "$COMPOSE_PROJECT_NAME" "$@"
+stacklane_compose() {
+    docker compose -f "$STACKLANE_STACK_FILE" -p "$COMPOSE_PROJECT_NAME" "$@"
 }
 
-twentyi_shared_compose() {
-    docker compose --env-file "$(twentyi_shared_env_file)" -f "$TWENTYI_SHARED_STACK_FILE" -p "$SHARED_GATEWAY_COMPOSE_PROJECT_NAME" "$@"
+stacklane_shared_compose() {
+    docker compose --env-file "$(stacklane_shared_env_file)" -f "$STACKLANE_SHARED_STACK_FILE" -p "$SHARED_GATEWAY_COMPOSE_PROJECT_NAME" "$@"
 }
 
-twentyi_wait_for_gateway_ready() {
+stacklane_wait_for_gateway_ready() {
     local attempt
 
     for attempt in $(seq 1 25); do
-        if twentyi_shared_compose exec -T gateway sh -c 'wget -qO- http://127.0.0.1/__20i_gateway_health >/dev/null 2>&1' >/dev/null 2>&1; then
+        if stacklane_shared_compose exec -T gateway sh -c 'wget -qO- http://127.0.0.1/__stacklane_gateway_health >/dev/null 2>&1' >/dev/null 2>&1; then
             return 0
         fi
         sleep 0.2
@@ -1069,16 +1092,16 @@ twentyi_wait_for_gateway_ready() {
     return 1
 }
 
-twentyi_wait_for_route_target() {
+stacklane_wait_for_route_target() {
     local route_target="$1"
     local attempt
 
-    if [[ "$route_target" == "twentyi-no-route" ]]; then
+    if [[ "$route_target" == "stacklane-no-route" ]]; then
         return 0
     fi
 
     for attempt in $(seq 1 25); do
-        if twentyi_shared_compose exec -T gateway sh -c "wget -qO- http://$route_target >/dev/null 2>&1" >/dev/null 2>&1; then
+        if stacklane_shared_compose exec -T gateway sh -c "wget -qO- http://$route_target >/dev/null 2>&1" >/dev/null 2>&1; then
             return 0
         fi
         sleep 0.2
@@ -1087,7 +1110,7 @@ twentyi_wait_for_route_target() {
     return 1
 }
 
-twentyi_wait_for_gateway_route() {
+stacklane_wait_for_gateway_route() {
     local route_hostname="$1"
     local attempt
 
@@ -1096,7 +1119,7 @@ twentyi_wait_for_gateway_route() {
     fi
 
     for attempt in $(seq 1 25); do
-        if twentyi_shared_compose exec -T gateway sh -c "wget -S --spider --header='Host: $route_hostname' http://127.0.0.1/ 2>&1 | grep -Eq 'HTTP/[0-9.]+ (200|301)'" >/dev/null 2>&1; then
+        if stacklane_shared_compose exec -T gateway sh -c "wget -S --spider --header='Host: $route_hostname' http://127.0.0.1/ 2>&1 | grep -Eq 'HTTP/[0-9.]+ (200|301)'" >/dev/null 2>&1; then
             return 0
         fi
         sleep 0.2
@@ -1105,7 +1128,7 @@ twentyi_wait_for_gateway_route() {
     return 1
 }
 
-twentyi_hostname_valid() {
+stacklane_hostname_valid() {
     local hostname="$1"
     local remaining label
 
@@ -1129,28 +1152,28 @@ twentyi_hostname_valid() {
     return 0
 }
 
-twentyi_alias_valid() {
+stacklane_alias_valid() {
     local alias_name="$1"
 
     [[ "$alias_name" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]
 }
 
-twentyi_gateway_route_lines() {
+stacklane_gateway_route_lines() {
     local registry_file line
     local project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary
 
-    registry_file="$(twentyi_registry_file)"
+    registry_file="$(stacklane_registry_file)"
     [[ -f "$registry_file" ]] || return 0
 
     while IFS=$'\t' read -r project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary; do
         [[ "$project_slug" == "project_slug" ]] && continue
         [[ "$attachment_state" == "attached" ]] || continue
 
-        if ! twentyi_hostname_valid "$hostname"; then
+        if ! stacklane_hostname_valid "$hostname"; then
             continue
         fi
 
-        if ! twentyi_alias_valid "$web_network_alias"; then
+        if ! stacklane_alias_valid "$web_network_alias"; then
             continue
         fi
 
@@ -1158,7 +1181,7 @@ twentyi_gateway_route_lines() {
     done < "$registry_file"
 }
 
-twentyi_gateway_block_for_route() {
+stacklane_gateway_block_for_route() {
     local hostname="$1"
     local route_target="$2"
     local https_redirect_host='https://$host$request_uri'
@@ -1167,7 +1190,7 @@ twentyi_gateway_block_for_route() {
         https_redirect_host="https://\$host:$SHARED_GATEWAY_HTTPS_PORT\$request_uri"
     fi
 
-    if twentyi_tls_available; then
+    if stacklane_tls_available; then
         # HTTP → HTTPS redirect
         cat <<EOF
 server {
@@ -1191,9 +1214,9 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "$route_target" always;
-    add_header X-20i-Hostname "$hostname" always;
+    add_header X-Stacklane-Gateway "shared" always;
+    add_header X-Stacklane-Route-Target "$route_target" always;
+    add_header X-Stacklane-Hostname "$hostname" always;
 
     location / {
         resolver 127.0.0.11 valid=5s;
@@ -1222,9 +1245,9 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "$route_target" always;
-    add_header X-20i-Hostname "$hostname" always;
+    add_header X-Stacklane-Gateway "shared" always;
+    add_header X-Stacklane-Route-Target "$route_target" always;
+    add_header X-Stacklane-Hostname "$hostname" always;
 
     location / {
         # Use Docker's embedded DNS so the upstream is resolved at request-time,
@@ -1249,11 +1272,11 @@ EOF
     fi
 }
 
-twentyi_write_gateway_config() {
+stacklane_write_gateway_config() {
     local preferred_slug="$1"
     local config_file temp_config route_lines=() route_line preferred_hostname="" preferred_target="" hostname route_target route_slug
 
-    config_file="$(twentyi_shared_gateway_config_file)"
+    config_file="$(stacklane_shared_gateway_config_file)"
     mkdir -p "$(dirname "$config_file")"
     temp_config="$(mktemp "${config_file}.tmp.XXXXXX")"
 
@@ -1269,10 +1292,10 @@ twentyi_write_gateway_config() {
             preferred_hostname="$hostname"
             preferred_target="$route_target"
         fi
-    done < <(twentyi_gateway_route_lines)
+    done < <(stacklane_gateway_route_lines)
 
     if [[ ${#route_lines[@]} -eq 0 ]]; then
-        if twentyi_tls_available; then
+        if stacklane_tls_available; then
             cat > "$temp_config" <<EOF
 server {
     listen 80 default_server;
@@ -1287,10 +1310,10 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "twentyi-no-route" always;
+    add_header X-Stacklane-Gateway "shared" always;
+    add_header X-Stacklane-Route-Target "stacklane-no-route" always;
 
-    location = /__20i_gateway_health {
+    location = /__stacklane_gateway_health {
         default_type text/plain;
         return 200 "gateway ok\\n";
     }
@@ -1311,10 +1334,10 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "twentyi-no-route" always;
+    add_header X-Stacklane-Gateway "shared" always;
+    add_header X-Stacklane-Route-Target "stacklane-no-route" always;
 
-    location = /__20i_gateway_health {
+    location = /__stacklane_gateway_health {
         default_type text/plain;
         return 200 "gateway ok\\n";
     }
@@ -1327,12 +1350,12 @@ server {
 EOF
         fi
     mv "$temp_config" "$config_file"
-        TWENTYI_GATEWAY_PROBE_TARGET="twentyi-no-route"
-        TWENTYI_GATEWAY_PROBE_HOSTNAME="localhost"
+        STACKLANE_GATEWAY_PROBE_TARGET="stacklane-no-route"
+        STACKLANE_GATEWAY_PROBE_HOSTNAME="localhost"
         return 0
     fi
 
-    if twentyi_tls_available; then
+    if stacklane_tls_available; then
     cat > "$temp_config" <<EOF
 server {
     listen 80 default_server;
@@ -1347,17 +1370,17 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "unmatched-host" always;
+    add_header X-Stacklane-Gateway "shared" always;
+    add_header X-Stacklane-Route-Target "unmatched-host" always;
 
-    location = /__20i_gateway_health {
+    location = /__stacklane_gateway_health {
         default_type text/plain;
         return 200 "gateway ok\\n";
     }
 
     location / {
         default_type text/plain;
-        add_header X-20i-Route-State "unmatched-host" always;
+        add_header X-Stacklane-Route-State "unmatched-host" always;
         return 404 "Stacklane shared gateway has no route for host '\$host'.\\n";
     }
 }
@@ -1372,17 +1395,17 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-20i-Gateway "shared" always;
-    add_header X-20i-Route-Target "unmatched-host" always;
+    add_header X-Stacklane-Gateway "shared" always;
+    add_header X-Stacklane-Route-Target "unmatched-host" always;
 
-    location = /__20i_gateway_health {
+    location = /__stacklane_gateway_health {
         default_type text/plain;
         return 200 "gateway ok\\n";
     }
 
     location / {
         default_type text/plain;
-        add_header X-20i-Route-State "unmatched-host" always;
+        add_header X-Stacklane-Route-State "unmatched-host" always;
         return 404 "Stacklane shared gateway has no route for host '\$host'.\\n";
     }
 }
@@ -1393,7 +1416,7 @@ EOF
         hostname="${route_line%%|*}"
         route_target="${route_line#*|}"
         route_target="${route_target%%|*}"
-        twentyi_gateway_block_for_route "$hostname" "$route_target" >> "$temp_config"
+        stacklane_gateway_block_for_route "$hostname" "$route_target" >> "$temp_config"
     done
 
     mv "$temp_config" "$config_file"
@@ -1405,41 +1428,41 @@ EOF
         preferred_hostname="$hostname"
     fi
 
-    TWENTYI_GATEWAY_PROBE_TARGET="$preferred_target"
-    TWENTYI_GATEWAY_PROBE_HOSTNAME="$preferred_hostname"
+    STACKLANE_GATEWAY_PROBE_TARGET="$preferred_target"
+    STACKLANE_GATEWAY_PROBE_HOSTNAME="$preferred_hostname"
 }
 
-twentyi_tls_cert_file() {
-    printf '%s/shared/certs/tls.pem' "$TWENTYI_STATE_DIR"
+stacklane_tls_cert_file() {
+    printf '%s/shared/certs/tls.pem' "$STACKLANE_STATE_DIR"
 }
 
-twentyi_tls_key_file() {
-    printf '%s/shared/certs/tls-key.pem' "$TWENTYI_STATE_DIR"
+stacklane_tls_key_file() {
+    printf '%s/shared/certs/tls-key.pem' "$STACKLANE_STATE_DIR"
 }
 
-twentyi_tls_hostnames() {
+stacklane_tls_hostnames() {
     local registry_file
     local project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary
 
     printf 'localhost\n127.0.0.1\n'
 
-    if [[ -n "${HOSTNAME:-}" ]] && twentyi_hostname_valid "$HOSTNAME"; then
+    if [[ -n "${HOSTNAME:-}" ]] && stacklane_hostname_valid "$HOSTNAME"; then
         printf '%s\n' "$HOSTNAME"
     fi
 
-    registry_file="$(twentyi_registry_file)"
+    registry_file="$(stacklane_registry_file)"
     [[ -f "$registry_file" ]] || return 0
 
     while IFS=$'\t' read -r project_slug attachment_state project_name project_dir hostname docroot compose_project runtime_network db_volume php_version mysql_database mysql_port pma_port web_network_alias container_summary; do
         [[ "$project_slug" == "project_slug" ]] && continue
         [[ "$attachment_state" == "attached" ]] || continue
-        if twentyi_hostname_valid "$hostname"; then
+        if stacklane_hostname_valid "$hostname"; then
             printf '%s\n' "$hostname"
         fi
     done < "$registry_file"
 }
 
-twentyi_ensure_tls_cert() {
+stacklane_ensure_tls_cert() {
     local cert_file key_file certs_dir host_list_file cert_summary cert_target
     local cert_targets=()
 
@@ -1452,13 +1475,13 @@ twentyi_ensure_tls_cert() {
         exit 1
     fi
 
-    cert_file="$(twentyi_tls_cert_file)"
-    key_file="$(twentyi_tls_key_file)"
+    cert_file="$(stacklane_tls_cert_file)"
+    key_file="$(stacklane_tls_key_file)"
     certs_dir="$(dirname "$cert_file")"
     mkdir -p "$certs_dir"
 
     host_list_file="$(mktemp)"
-    twentyi_tls_hostnames | awk 'NF' | sort -u > "$host_list_file"
+    stacklane_tls_hostnames | awk 'NF' | sort -u > "$host_list_file"
 
     while IFS= read -r cert_target; do
         [[ -n "$cert_target" ]] || continue
@@ -1480,15 +1503,15 @@ twentyi_ensure_tls_cert() {
     printf 'TLS certificate ready for %s (expires %s)\n' "$cert_summary" "$(openssl x509 -noout -enddate -in "$cert_file" 2>/dev/null | cut -d= -f2 || echo 'see cert file')"
 }
 
-twentyi_tls_available() {
-    [[ -f "$(twentyi_tls_cert_file)" && -f "$(twentyi_tls_key_file)" ]]
+stacklane_tls_available() {
+    [[ -f "$(stacklane_tls_cert_file)" && -f "$(stacklane_tls_key_file)" ]]
 }
 
-twentyi_write_shared_env() {
+stacklane_write_shared_env() {
     local shared_env_file certs_dir
 
-    shared_env_file="$(twentyi_shared_env_file)"
-    certs_dir="$(dirname "$(twentyi_tls_cert_file)")"
+    shared_env_file="$(stacklane_shared_env_file)"
+    certs_dir="$(dirname "$(stacklane_tls_cert_file)")"
     mkdir -p "$(dirname "$shared_env_file")" "$certs_dir"
     : > "$shared_env_file"
 
@@ -1501,13 +1524,13 @@ twentyi_write_shared_env() {
     } >> "$shared_env_file"
 }
 
-twentyi_update_gateway_route() {
+stacklane_update_gateway_route() {
     local preferred_slug="${1:-}"
     local config_file backup_file gateway_container
 
-    twentyi_refresh_registry
-    twentyi_ensure_tls_cert
-    config_file="$(twentyi_shared_gateway_config_file)"
+    stacklane_refresh_registry
+    stacklane_ensure_tls_cert
+    config_file="$(stacklane_shared_gateway_config_file)"
     backup_file="$config_file.bak"
 
     if [[ -f "$config_file" ]]; then
@@ -1516,60 +1539,60 @@ twentyi_update_gateway_route() {
         rm -f "$backup_file"
     fi
 
-    twentyi_write_gateway_config "$preferred_slug"
-    twentyi_write_shared_env
-    twentyi_export_shared_env
+    stacklane_write_gateway_config "$preferred_slug"
+    stacklane_write_shared_env
+    stacklane_export_shared_env
 
     gateway_container="$(docker ps --filter "label=com.docker.compose.project=$SHARED_GATEWAY_COMPOSE_PROJECT_NAME" --filter "label=com.docker.compose.service=gateway" --format '{{.Names}}' | head -1)"
 
     if [[ -n "$gateway_container" ]]; then
-        if ! twentyi_shared_compose up -d --no-deps --force-recreate gateway >/dev/null 2>&1; then
+        if ! stacklane_shared_compose up -d --no-deps --force-recreate gateway >/dev/null 2>&1; then
             if [[ -f "$backup_file" ]]; then
                 mv "$backup_file" "$config_file"
-                twentyi_write_shared_env
-                twentyi_export_shared_env
-                twentyi_shared_compose up -d --no-deps --force-recreate gateway >/dev/null 2>&1 || true
+                stacklane_write_shared_env
+                stacklane_export_shared_env
+                stacklane_shared_compose up -d --no-deps --force-recreate gateway >/dev/null 2>&1 || true
             fi
             printf 'Error: could not recreate shared gateway with updated config\n' >&2
             exit 1
         fi
         rm -f "$backup_file"
     else
-        twentyi_shared_compose up -d
+        stacklane_shared_compose up -d
     fi
 
-    twentyi_wait_for_gateway_ready
+    stacklane_wait_for_gateway_ready
     if [[ -n "$preferred_slug" ]]; then
-        twentyi_wait_for_route_target "${TWENTYI_GATEWAY_PROBE_TARGET:-twentyi-no-route}"
-        twentyi_wait_for_gateway_route "${TWENTYI_GATEWAY_PROBE_HOSTNAME:-localhost}"
+        stacklane_wait_for_route_target "${STACKLANE_GATEWAY_PROBE_TARGET:-stacklane-no-route}"
+        stacklane_wait_for_gateway_route "${STACKLANE_GATEWAY_PROBE_HOSTNAME:-localhost}"
     fi
 }
 
-twentyi_ensure_shared_infra() {
-    twentyi_require_docker
+stacklane_ensure_shared_infra() {
+    stacklane_require_docker
 
     if ! docker network inspect "$SHARED_GATEWAY_NETWORK" >/dev/null 2>&1; then
         docker network create "$SHARED_GATEWAY_NETWORK" >/dev/null
     fi
 
-    twentyi_refresh_registry
-    twentyi_write_gateway_config ""
-    twentyi_write_shared_env
-    twentyi_export_shared_env
-    twentyi_shared_compose up -d
-    twentyi_wait_for_gateway_ready
+    stacklane_refresh_registry
+    stacklane_write_gateway_config ""
+    stacklane_write_shared_env
+    stacklane_export_shared_env
+    stacklane_shared_compose up -d
+    stacklane_wait_for_gateway_ready
 }
 
-twentyi_note_phase_status() {
+stacklane_note_phase_status() {
     printf 'Routing mode: shared gateway on host ports with hostname-aware gateway rules (.test DNS bootstrap still lands in later phases)\n'
     if [[ "${LOCAL_DNS_SUFFIX:-${SITE_SUFFIX:-}}" == "dev" && "$SHARED_GATEWAY_HTTPS_PORT" != "443" ]]; then
         printf 'Local .dev uses HTTPS port %s by default.\n' "$SHARED_GATEWAY_HTTPS_PORT"
-    elif [[ "${TWENTYI_HTTPS_PORT_AUTO_FALLBACK:-0}" -eq 1 ]]; then
+    elif [[ "${STACKLANE_HTTPS_PORT_AUTO_FALLBACK:-0}" -eq 1 ]]; then
         printf 'HTTPS port 443 is busy on this machine; using %s instead.\n' "$SHARED_GATEWAY_HTTPS_PORT"
     fi
 }
 
-twentyi_stacklane_action_flag() {
+stacklane_stacklane_action_flag() {
     case "$1" in
         up)
             printf '%s' '--up'
@@ -1598,7 +1621,7 @@ twentyi_stacklane_action_flag() {
     esac
 }
 
-twentyi_stacklane_usage() {
+stacklane_stacklane_usage() {
     cat <<EOF
 Stacklane
 
@@ -1641,11 +1664,11 @@ Examples:
 
 Migration:
     Legacy wrapper entrypoints are deprecated, forward to Stacklane, and will be removed in a future update.
-  Prefer stacklane $(twentyi_stacklane_action_flag up), stacklane $(twentyi_stacklane_action_flag status), and related action flags in all new docs and shell aliases.
+  Prefer stacklane $(stacklane_stacklane_action_flag up), stacklane $(stacklane_stacklane_action_flag status), and related action flags in all new docs and shell aliases.
 EOF
 }
 
-twentyi_usage() {
+stacklane_usage() {
     cat <<EOF
 Usage: $(basename "$0") [options]
 
@@ -1678,15 +1701,15 @@ Additional commands:
 EOF
 }
 
-twentyi_print_usage() {
-    if [[ "${TWENTYI_ENTRYPOINT_MODE:-legacy}" == "stacklane" ]]; then
-        twentyi_stacklane_usage
+stacklane_print_usage() {
+    if [[ "${STACKLANE_ENTRYPOINT_MODE:-legacy}" == "stacklane" ]]; then
+        stacklane_stacklane_usage
     else
-        twentyi_usage
+        stacklane_usage
     fi
 }
 
-twentyi_parse_initial_args() {
+stacklane_parse_initial_args() {
     local args=("$@")
     local index=0
 
@@ -1701,29 +1724,29 @@ twentyi_parse_initial_args() {
     done
 }
 
-twentyi_parse_args() {
+stacklane_parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --up)
-                TWENTYI_PRIMARY_ACTIONS+=("up")
+                STACKLANE_PRIMARY_ACTIONS+=("up")
                 ;;
             --attach)
-                TWENTYI_PRIMARY_ACTIONS+=("attach")
+                STACKLANE_PRIMARY_ACTIONS+=("attach")
                 ;;
             --down)
-                TWENTYI_PRIMARY_ACTIONS+=("down")
+                STACKLANE_PRIMARY_ACTIONS+=("down")
                 ;;
             --detach)
-                TWENTYI_PRIMARY_ACTIONS+=("detach")
+                STACKLANE_PRIMARY_ACTIONS+=("detach")
                 ;;
             --status)
-                TWENTYI_PRIMARY_ACTIONS+=("status")
+                STACKLANE_PRIMARY_ACTIONS+=("status")
                 ;;
             --logs)
-                TWENTYI_PRIMARY_ACTIONS+=("logs")
+                STACKLANE_PRIMARY_ACTIONS+=("logs")
                 ;;
             --dns-setup)
-                TWENTYI_PRIMARY_ACTIONS+=("dns-setup")
+                STACKLANE_PRIMARY_ACTIONS+=("dns-setup")
                 ;;
             --project-dir)
                 shift
@@ -1774,13 +1797,13 @@ twentyi_parse_args() {
                 PMA_PORT="$1"
                 ;;
             --all)
-                TWENTYI_ALL=1
+                STACKLANE_ALL=1
                 ;;
             --dry-run)
-                TWENTYI_DRY_RUN=1
+                STACKLANE_DRY_RUN=1
                 ;;
             --help|-h)
-                twentyi_print_usage
+                stacklane_print_usage
                 exit 0
                 ;;
             version=*)
@@ -1791,8 +1814,8 @@ twentyi_parse_args() {
                 break
                 ;;
             *)
-                if [[ -z "${TWENTYI_POSITIONAL_1:-}" ]]; then
-                    TWENTYI_POSITIONAL_1="$1"
+                if [[ -z "${STACKLANE_POSITIONAL_1:-}" ]]; then
+                    STACKLANE_POSITIONAL_1="$1"
                 else
                     printf 'Error: unrecognized argument: %s\n' "$1" >&2
                     exit 1
@@ -1803,44 +1826,44 @@ twentyi_parse_args() {
     done
 }
 
-twentyi_validate_stacklane_action_selection() {
-    local action_count="${#TWENTYI_PRIMARY_ACTIONS[@]}"
+stacklane_validate_stacklane_action_selection() {
+    local action_count="${#STACKLANE_PRIMARY_ACTIONS[@]}"
 
     if [[ "$action_count" -eq 0 ]]; then
         printf 'Error: stacklane requires exactly one primary action flag.\n\n' >&2
-        twentyi_stacklane_usage >&2
+        stacklane_stacklane_usage >&2
         exit 1
     fi
 
     if [[ "$action_count" -gt 1 ]]; then
         printf 'Error: primary actions are mutually exclusive:' >&2
         local action
-        for action in "${TWENTYI_PRIMARY_ACTIONS[@]}"; do
-            printf ' %s' "$(twentyi_stacklane_action_flag "$action")" >&2
+        for action in "${STACKLANE_PRIMARY_ACTIONS[@]}"; do
+            printf ' %s' "$(stacklane_stacklane_action_flag "$action")" >&2
         done
         printf '\n\n' >&2
-        twentyi_stacklane_usage >&2
+        stacklane_stacklane_usage >&2
         exit 1
     fi
 
-    TWENTYI_COMMAND="${TWENTYI_PRIMARY_ACTIONS[0]}"
+    STACKLANE_COMMAND="${STACKLANE_PRIMARY_ACTIONS[0]}"
 }
 
-twentyi_init_defaults() {
+stacklane_init_defaults() {
     PROJECT_DIR="$PWD"
-    TWENTYI_ENTRYPOINT_MODE="${TWENTYI_ENTRYPOINT_MODE:-legacy}"
-    TWENTYI_PRIMARY_ACTIONS=()
-    STACK_HOME="$(twentyi_default_stack_home)"
-    TWENTYI_STATE_DIR="${STACK_STATE_DIR:-$STACK_HOME/.20i-state}"
-    TWENTYI_STACK_FILE="$STACK_HOME/docker-compose.yml"
-    TWENTYI_SHARED_STACK_FILE="$STACK_HOME/docker-compose.shared.yml"
-    TWENTYI_DRY_RUN=0
-    TWENTYI_ALL=0
-    SHARED_GATEWAY_NETWORK="${SHARED_GATEWAY_NETWORK:-twentyi-shared}"
+    STACKLANE_ENTRYPOINT_MODE="${STACKLANE_ENTRYPOINT_MODE:-legacy}"
+    STACKLANE_PRIMARY_ACTIONS=()
+    STACK_HOME="$(stacklane_default_stack_home)"
+    STACKLANE_STATE_DIR="${STACK_STATE_DIR:-$(stacklane_default_state_dir)}"
+    STACKLANE_STACK_FILE="$STACK_HOME/docker-compose.yml"
+    STACKLANE_SHARED_STACK_FILE="$STACK_HOME/docker-compose.shared.yml"
+    STACKLANE_DRY_RUN=0
+    STACKLANE_ALL=0
+    SHARED_GATEWAY_NETWORK="${SHARED_GATEWAY_NETWORK:-stacklane-shared}"
     SHARED_GATEWAY_HTTP_PORT="${SHARED_GATEWAY_HTTP_PORT:-80}"
     SHARED_GATEWAY_HTTPS_PORT="${SHARED_GATEWAY_HTTPS_PORT:-443}"
-    SHARED_GATEWAY_COMPOSE_PROJECT_NAME="${SHARED_GATEWAY_COMPOSE_PROJECT_NAME:-20i-shared}"
-    SHARED_GATEWAY_CONFIG_FILE="$(twentyi_shared_gateway_config_file)"
+    SHARED_GATEWAY_COMPOSE_PROJECT_NAME="${SHARED_GATEWAY_COMPOSE_PROJECT_NAME:-stacklane-shared}"
+    SHARED_GATEWAY_CONFIG_FILE="$(stacklane_shared_gateway_config_file)"
     DOCROOT_RELATIVE=""
     CONTAINER_SITE_ROOT=""
     CONTAINER_DOCROOT=""
@@ -1853,46 +1876,46 @@ twentyi_init_defaults() {
     LOCAL_DNS_PROVIDER="${LOCAL_DNS_PROVIDER:-dnsmasq}"
     LOCAL_DNS_IP="${LOCAL_DNS_IP:-127.0.0.1}"
     LOCAL_DNS_PORT="${LOCAL_DNS_PORT:-53535}"
-    TWENTYI_HTTPS_PORT_AUTO_FALLBACK=0
-    # LOCAL_DNS_SUFFIX is NOT defaulted here; it derives from SITE_SUFFIX in twentyi_finalize_context
-    # so that .20i-local's SITE_SUFFIX=dev flows through correctly.
+    STACKLANE_HTTPS_PORT_AUTO_FALLBACK=0
+    # LOCAL_DNS_SUFFIX is NOT defaulted here; it derives from SITE_SUFFIX in stacklane_finalize_context
+    # so that .stacklane-local's SITE_SUFFIX=dev flows through correctly.
 }
 
-twentyi_load_stack_and_project_config() {
-    PROJECT_DIR="$(twentyi_abs_dir "$PROJECT_DIR")"
-    STACK_HOME="$(twentyi_abs_dir "$STACK_HOME")"
-    TWENTYI_STATE_DIR="$(twentyi_abs_path_from_base "$STACK_HOME" "$TWENTYI_STATE_DIR")"
-    TWENTYI_STACK_FILE="$STACK_HOME/docker-compose.yml"
-    TWENTYI_SHARED_STACK_FILE="$STACK_HOME/docker-compose.shared.yml"
+stacklane_load_stack_and_project_config() {
+    PROJECT_DIR="$(stacklane_abs_dir "$PROJECT_DIR")"
+    STACK_HOME="$(stacklane_abs_dir "$STACK_HOME")"
+    STACKLANE_STATE_DIR="$(stacklane_abs_path_from_base "$STACK_HOME" "$STACKLANE_STATE_DIR")"
+    STACKLANE_STACK_FILE="$STACK_HOME/docker-compose.yml"
+    STACKLANE_SHARED_STACK_FILE="$STACK_HOME/docker-compose.shared.yml"
 
-    if [[ ! -f "$TWENTYI_STACK_FILE" ]]; then
+    if [[ ! -f "$STACKLANE_STACK_FILE" ]]; then
         printf 'Error: docker-compose.yml not found in %s\n' "$STACK_HOME" >&2
         exit 1
     fi
 
-    if [[ ! -f "$TWENTYI_SHARED_STACK_FILE" ]]; then
+    if [[ ! -f "$STACKLANE_SHARED_STACK_FILE" ]]; then
         printf 'Error: docker-compose.shared.yml not found in %s\n' "$STACK_HOME" >&2
         exit 1
     fi
 
-    mkdir -p "$TWENTYI_STATE_DIR/projects"
+    mkdir -p "$STACKLANE_STATE_DIR/projects"
 
-    twentyi_load_env_file "$STACK_HOME/.env" preserve
-    twentyi_load_env_file "$PROJECT_DIR/.20i-local" override
+    stacklane_load_env_file "$STACK_HOME/.env" preserve
+    stacklane_load_env_file "$(stacklane_project_local_env_file)" override
 }
 
-twentyi_finalize_context() {
-    PROJECT_DIR="$(twentyi_abs_dir "$PROJECT_DIR")"
-    STACK_HOME="$(twentyi_abs_dir "$STACK_HOME")"
-    TWENTYI_STATE_DIR="$(twentyi_abs_path_from_base "$STACK_HOME" "$TWENTYI_STATE_DIR")"
-    TWENTYI_STACK_FILE="$STACK_HOME/docker-compose.yml"
-    TWENTYI_SHARED_STACK_FILE="$STACK_HOME/docker-compose.shared.yml"
-    SHARED_GATEWAY_CONFIG_FILE="$(twentyi_shared_gateway_config_file)"
+stacklane_finalize_context() {
+    PROJECT_DIR="$(stacklane_abs_dir "$PROJECT_DIR")"
+    STACK_HOME="$(stacklane_abs_dir "$STACK_HOME")"
+    STACKLANE_STATE_DIR="$(stacklane_abs_path_from_base "$STACK_HOME" "$STACKLANE_STATE_DIR")"
+    STACKLANE_STACK_FILE="$STACK_HOME/docker-compose.yml"
+    STACKLANE_SHARED_STACK_FILE="$STACK_HOME/docker-compose.shared.yml"
+    SHARED_GATEWAY_CONFIG_FILE="$(stacklane_shared_gateway_config_file)"
 
     PROJECT_NAME="${SITE_NAME:-$(basename "$PROJECT_DIR")}"
-    PROJECT_SLUG="$(twentyi_slugify "$PROJECT_NAME")"
-    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-20i-$PROJECT_SLUG}"
-    WEB_NETWORK_ALIAS="${WEB_NETWORK_ALIAS:-twentyi-$PROJECT_SLUG-web}"
+    PROJECT_SLUG="$(stacklane_slugify "$PROJECT_NAME")"
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-stacklane-$PROJECT_SLUG}"
+    WEB_NETWORK_ALIAS="${WEB_NETWORK_ALIAS:-stacklane-$PROJECT_SLUG-web}"
     CONTAINER_SITE_ROOT="/home/sites/$PROJECT_SLUG"
 
     if [[ "$MYSQL_DATABASE" == "devdb" ]]; then
@@ -1902,149 +1925,149 @@ twentyi_finalize_context() {
         MYSQL_USER="$PROJECT_SLUG"
     fi
 
-    twentyi_resolve_docroot
+    stacklane_resolve_docroot
     if [[ -n "$DOCROOT_RELATIVE" ]]; then
         CONTAINER_DOCROOT="$CONTAINER_SITE_ROOT/$DOCROOT_RELATIVE"
     else
         CONTAINER_DOCROOT="$CONTAINER_SITE_ROOT"
     fi
-    twentyi_resolve_hostname
+    stacklane_resolve_hostname
     LOCAL_DNS_SUFFIX="${LOCAL_DNS_SUFFIX:-$SITE_SUFFIX}"
-    twentyi_resolve_shared_gateway_ports
-    twentyi_resolve_ports
+    stacklane_resolve_shared_gateway_ports
+    stacklane_resolve_ports
 
-    if [[ "$TWENTYI_COMMAND" == "up" || "$TWENTYI_COMMAND" == "attach" ]]; then
-        twentyi_validate_requested_ports
+    if [[ "$STACKLANE_COMMAND" == "up" || "$STACKLANE_COMMAND" == "attach" ]]; then
+        stacklane_validate_requested_ports
     fi
 
-    twentyi_validate_collision
+    stacklane_validate_collision
 }
 
-twentyi_up_like() {
+stacklane_up_like() {
     ATTACHMENT_STATE="attached"
-    twentyi_export_runtime_env
+    stacklane_export_runtime_env
 
-    printf 'Resolved runtime configuration for %s\n' "$TWENTYI_COMMAND"
-    twentyi_print_runtime_summary
-    twentyi_note_phase_status
+    printf 'Resolved runtime configuration for %s\n' "$STACKLANE_COMMAND"
+    stacklane_print_runtime_summary
+    stacklane_note_phase_status
 
-    if [[ "$TWENTYI_DRY_RUN" -eq 1 ]]; then
+    if [[ "$STACKLANE_DRY_RUN" -eq 1 ]]; then
         printf 'Dry run: docker network create %s (if missing)\n' "$SHARED_GATEWAY_NETWORK"
-        printf 'Dry run: docker compose --env-file %s -f %s -p %s up -d\n' "$(twentyi_shared_env_file)" "$TWENTYI_SHARED_STACK_FILE" "$SHARED_GATEWAY_COMPOSE_PROJECT_NAME"
-        printf 'Dry run: docker compose -f %s -p %s up -d\n' "$TWENTYI_STACK_FILE" "$COMPOSE_PROJECT_NAME"
+        printf 'Dry run: docker compose --env-file %s -f %s -p %s up -d\n' "$(stacklane_shared_env_file)" "$STACKLANE_SHARED_STACK_FILE" "$SHARED_GATEWAY_COMPOSE_PROJECT_NAME"
+        printf 'Dry run: docker compose -f %s -p %s up -d\n' "$STACKLANE_STACK_FILE" "$COMPOSE_PROJECT_NAME"
         return 0
     fi
 
-    twentyi_ensure_shared_infra
-    twentyi_compose up -d
-    twentyi_validate_runtime_registration
-    twentyi_update_gateway_route "$PROJECT_SLUG"
+    stacklane_ensure_shared_infra
+    stacklane_compose up -d
+    stacklane_validate_runtime_registration
+    stacklane_update_gateway_route "$PROJECT_SLUG"
 
     printf 'Attached: %s\n' "$HOSTNAME"
-    printf 'Hostname route URL: %s\n' "$(twentyi_hostname_route_url)"
-    printf 'Gateway probe URL: %s\n' "$(twentyi_gateway_probe_url)"
-    twentyi_warn_if_dns_not_ready
+    printf 'Hostname route URL: %s\n' "$(stacklane_hostname_route_url)"
+    printf 'Gateway probe URL: %s\n' "$(stacklane_gateway_probe_url)"
+    stacklane_warn_if_dns_not_ready
 }
 
-twentyi_down_like() {
+stacklane_down_like() {
     local state_file
 
-    state_file="$(twentyi_project_state_file)"
+    state_file="$(stacklane_project_state_file)"
     if [[ -f "$state_file" ]]; then
-        twentyi_unset_project_state_vars
-        twentyi_load_state_file "$state_file"
+        stacklane_unset_project_state_vars
+        stacklane_load_state_file "$state_file"
     fi
 
-    if [[ "$TWENTYI_DRY_RUN" -eq 1 ]]; then
-        printf 'Dry run: docker compose -f %s -p %s down\n' "$TWENTYI_STACK_FILE" "$COMPOSE_PROJECT_NAME"
+    if [[ "$STACKLANE_DRY_RUN" -eq 1 ]]; then
+        printf 'Dry run: docker compose -f %s -p %s down\n' "$STACKLANE_STACK_FILE" "$COMPOSE_PROJECT_NAME"
         return 0
     fi
 
-    twentyi_export_runtime_env
-    twentyi_require_docker
-    twentyi_compose down
-    twentyi_reset_runtime_identity
+    stacklane_export_runtime_env
+    stacklane_require_docker
+    stacklane_compose down
+    stacklane_reset_runtime_identity
 
-    if [[ "$TWENTYI_COMMAND" == "detach" ]]; then
-        twentyi_remove_state
-        twentyi_update_gateway_route
+    if [[ "$STACKLANE_COMMAND" == "detach" ]]; then
+        stacklane_remove_state
+        stacklane_update_gateway_route
         printf 'Detached: %s\n' "$PROJECT_NAME"
     else
         ATTACHMENT_STATE="down"
-        twentyi_write_state
-        twentyi_refresh_registry
-        twentyi_update_gateway_route
+        stacklane_write_state
+        stacklane_refresh_registry
+        stacklane_update_gateway_route
         printf 'Stopped: %s\n' "$PROJECT_NAME"
     fi
 }
 
-twentyi_down_all() {
+stacklane_down_all() {
     local state_file
 
-    if [[ "$TWENTYI_DRY_RUN" -eq 1 ]]; then
-        printf 'Dry run: stop all attached projects and remove %s\n' "$TWENTYI_STATE_DIR"
+    if [[ "$STACKLANE_DRY_RUN" -eq 1 ]]; then
+        printf 'Dry run: stop all attached projects and remove %s\n' "$STACKLANE_STATE_DIR"
         return 0
     fi
 
-    twentyi_require_docker
+    stacklane_require_docker
 
-    for state_file in "$TWENTYI_STATE_DIR"/projects/*.env; do
+    for state_file in "$STACKLANE_STATE_DIR"/projects/*.env; do
         [[ -e "$state_file" ]] || continue
-        twentyi_unset_project_state_vars
-        twentyi_load_state_file "$state_file"
-        twentyi_export_runtime_env
-        twentyi_compose down || true
+        stacklane_unset_project_state_vars
+        stacklane_load_state_file "$state_file"
+        stacklane_export_runtime_env
+        stacklane_compose down || true
     done
 
-    if [[ -f "$(twentyi_shared_env_file)" ]]; then
-        twentyi_export_shared_env
-        twentyi_shared_compose down || true
+    if [[ -f "$(stacklane_shared_env_file)" ]]; then
+        stacklane_export_shared_env
+        stacklane_shared_compose down || true
     fi
 
     docker network rm "$SHARED_GATEWAY_NETWORK" >/dev/null 2>&1 || true
-    rm -rf "$TWENTYI_STATE_DIR"
+    rm -rf "$STACKLANE_STATE_DIR"
     printf 'Global teardown complete\n'
 }
 
-twentyi_status() {
+stacklane_status() {
     local state_file
     local found=0
 
-    twentyi_refresh_registry
+    stacklane_refresh_registry
 
     printf 'Stacklane status\n'
     printf 'Stack home: %s\n' "$STACK_HOME"
-    printf 'State dir: %s\n' "$TWENTYI_STATE_DIR"
-    printf 'Registry file: %s\n' "$(twentyi_registry_file)"
-    printf 'Shared gateway: %s\n' "$(twentyi_shared_gateway_status)"
-    printf 'Local DNS: %s\n' "$(twentyi_dns_status_message)"
+    printf 'State dir: %s\n' "$STACKLANE_STATE_DIR"
+    printf 'Registry file: %s\n' "$(stacklane_registry_file)"
+    printf 'Shared gateway: %s\n' "$(stacklane_shared_gateway_status)"
+    printf 'Local DNS: %s\n' "$(stacklane_dns_status_message)"
     printf 'Shared network: %s\n' "$SHARED_GATEWAY_NETWORK"
-    twentyi_note_phase_status
+    stacklane_note_phase_status
     printf '\n'
 
     if [[ -n "${PROJECT_SELECTOR:-}" ]]; then
-        state_file="$(twentyi_state_file_for_selector "$PROJECT_SELECTOR" 2>/dev/null || true)"
+        state_file="$(stacklane_state_file_for_selector "$PROJECT_SELECTOR" 2>/dev/null || true)"
         if [[ -z "$state_file" ]]; then
             printf 'No project matched selector: %s\n' "$PROJECT_SELECTOR"
             return 1
         fi
         set -- "$state_file"
     else
-        set -- "$TWENTYI_STATE_DIR"/projects/*.env
+        set -- "$STACKLANE_STATE_DIR"/projects/*.env
     fi
 
     for state_file in "$@"; do
         [[ -e "$state_file" ]] || continue
         found=1
-        twentyi_unset_project_state_vars
-        twentyi_load_state_file "$state_file"
+        stacklane_unset_project_state_vars
+        stacklane_load_state_file "$state_file"
 
         printf '%s\n' "[$PROJECT_NAME]"
         printf '  state: %s\n' "$ATTACHMENT_STATE"
         printf '  compose project: %s\n' "$COMPOSE_PROJECT_NAME"
         printf '  hostname: %s\n' "$HOSTNAME"
-        printf '  route url: %s\n' "$(twentyi_hostname_route_url)"
-        printf '  gateway probe: %s\n' "$(twentyi_gateway_probe_url)"
+        printf '  route url: %s\n' "$(stacklane_hostname_route_url)"
+        printf '  gateway probe: %s\n' "$(stacklane_gateway_probe_url)"
         printf '  gateway alias: %s\n' "$WEB_NETWORK_ALIAS"
         printf '  runtime network: %s\n' "${COMPOSE_PROJECT_NAME}-runtime"
         printf '  db volume: %s\n' "${COMPOSE_PROJECT_NAME}-db-data"
@@ -2052,8 +2075,8 @@ twentyi_status() {
         printf '  container docroot: %s\n' "$CONTAINER_DOCROOT"
         printf '  project dir: %s\n' "$PROJECT_DIR"
         printf '  containers: %s\n' "${RUNTIME_CONTAINER_SUMMARY:-none recorded}"
-        printf '  drift: %s\n' "$(twentyi_registry_drift_status)"
-        printf '  docker: %s\n' "$(twentyi_docker_status "$COMPOSE_PROJECT_NAME")"
+        printf '  drift: %s\n' "$(stacklane_registry_drift_status)"
+        printf '  docker: %s\n' "$(stacklane_docker_status "$COMPOSE_PROJECT_NAME")"
         printf '\n'
     done
 
@@ -2062,119 +2085,119 @@ twentyi_status() {
     fi
 }
 
-twentyi_logs() {
-    local service_name="${TWENTYI_POSITIONAL_1:-}"
+stacklane_logs() {
+    local service_name="${STACKLANE_POSITIONAL_1:-}"
     local state_file
 
     if [[ -n "${PROJECT_SELECTOR:-}" ]]; then
-        state_file="$(twentyi_state_file_for_selector "$PROJECT_SELECTOR" 2>/dev/null || true)"
+        state_file="$(stacklane_state_file_for_selector "$PROJECT_SELECTOR" 2>/dev/null || true)"
         if [[ -z "$state_file" ]]; then
             printf 'Error: no project matched selector %s\n' "$PROJECT_SELECTOR" >&2
             exit 1
         fi
     else
-        state_file="$(twentyi_project_state_file)"
+        state_file="$(stacklane_project_state_file)"
     fi
 
     if [[ -f "$state_file" ]]; then
-        twentyi_unset_project_state_vars
-        twentyi_load_state_file "$state_file"
-        twentyi_export_runtime_env
+        stacklane_unset_project_state_vars
+        stacklane_load_state_file "$state_file"
+        stacklane_export_runtime_env
     fi
 
-    twentyi_require_docker
+    stacklane_require_docker
 
     if [[ -n "$service_name" ]]; then
-        twentyi_compose logs -f "$service_name"
+        stacklane_compose logs -f "$service_name"
     else
-        twentyi_compose logs -f
+        stacklane_compose logs -f
     fi
 }
 
-twentyi_legacy_forward() {
+stacklane_legacy_forward() {
     local runtime_action="$1"
     shift
 
     local preferred_flag legacy_command
-    preferred_flag="$(twentyi_stacklane_action_flag "$runtime_action")"
+    preferred_flag="$(stacklane_stacklane_action_flag "$runtime_action")"
     legacy_command="$(basename "$0")"
 
     printf 'Notice: %s is deprecated and will be removed in a future update. Use stacklane %s instead.\n' "$legacy_command" "$preferred_flag" >&2
 
-    TWENTYI_ENTRYPOINT_MODE="stacklane"
+    STACKLANE_ENTRYPOINT_MODE="stacklane"
     stacklane_main "$preferred_flag" "$@"
 }
 
 stacklane_main() {
-    TWENTYI_ENTRYPOINT_MODE="stacklane"
+    STACKLANE_ENTRYPOINT_MODE="stacklane"
 
-    twentyi_init_defaults
-    twentyi_parse_initial_args "$@"
-    twentyi_load_stack_and_project_config
-    twentyi_parse_args "$@"
-    twentyi_validate_stacklane_action_selection
-    twentyi_finalize_context
+    stacklane_init_defaults
+    stacklane_parse_initial_args "$@"
+    stacklane_load_stack_and_project_config
+    stacklane_parse_args "$@"
+    stacklane_validate_stacklane_action_selection
+    stacklane_finalize_context
 
-    case "$TWENTYI_COMMAND" in
+    case "$STACKLANE_COMMAND" in
         up|attach)
-            twentyi_up_like
+            stacklane_up_like
             ;;
         down|detach)
-            if [[ "$TWENTYI_ALL" -eq 1 ]]; then
-                twentyi_down_all
+            if [[ "$STACKLANE_ALL" -eq 1 ]]; then
+                stacklane_down_all
             else
-                twentyi_down_like
+                stacklane_down_like
             fi
             ;;
         status)
-            twentyi_status
+            stacklane_status
             ;;
         dns-setup)
-            twentyi_dns_setup
+            stacklane_dns_setup
             ;;
         logs)
-            twentyi_logs
+            stacklane_logs
             ;;
         *)
-            printf 'Error: unsupported Stacklane action %s\n' "$TWENTYI_COMMAND" >&2
+            printf 'Error: unsupported Stacklane action %s\n' "$STACKLANE_COMMAND" >&2
             exit 1
             ;;
     esac
 }
 
-twentyi_main() {
-    TWENTYI_ENTRYPOINT_MODE="legacy"
-    TWENTYI_COMMAND="$1"
+stacklane_main() {
+    STACKLANE_ENTRYPOINT_MODE="legacy"
+    STACKLANE_COMMAND="$1"
     shift
 
-    twentyi_init_defaults
-    twentyi_parse_initial_args "$@"
-    twentyi_load_stack_and_project_config
-    twentyi_parse_args "$@"
-    twentyi_finalize_context
+    stacklane_init_defaults
+    stacklane_parse_initial_args "$@"
+    stacklane_load_stack_and_project_config
+    stacklane_parse_args "$@"
+    stacklane_finalize_context
 
-    case "$TWENTYI_COMMAND" in
+    case "$STACKLANE_COMMAND" in
         up|attach)
-            twentyi_up_like
+            stacklane_up_like
             ;;
         down|detach)
-            if [[ "$TWENTYI_ALL" -eq 1 ]]; then
-                twentyi_down_all
+            if [[ "$STACKLANE_ALL" -eq 1 ]]; then
+                stacklane_down_all
             else
-                twentyi_down_like
+                stacklane_down_like
             fi
             ;;
         status)
-            twentyi_status
+            stacklane_status
             ;;
         dns-setup)
-            twentyi_dns_setup
+            stacklane_dns_setup
             ;;
         logs)
-            twentyi_logs
+            stacklane_logs
             ;;
         *)
-            printf 'Error: unsupported command %s\n' "$TWENTYI_COMMAND" >&2
+            printf 'Error: unsupported command %s\n' "$STACKLANE_COMMAND" >&2
             exit 1
             ;;
     esac
