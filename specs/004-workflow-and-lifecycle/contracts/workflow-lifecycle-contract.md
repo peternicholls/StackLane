@@ -58,7 +58,20 @@ Project `.env` is not a generic Stacklane config surface.
 ### Shared resources
 
 - Shared-gateway compose project and shared network stay `stacklane-shared`.
+- The gateway service network alias on the shared network stays `stacklane-gateway`.
 - Shared resources must remain distinguishable from project-scoped resources in both docs and status output.
+
+### Bootstrap source restriction
+
+- `STACKLANE_POST_UP_COMMAND` is honored only when set in `.stacklane-local`.
+- Setting `STACKLANE_POST_UP_COMMAND` in shell environment, `.env.stacklane`, or project `.env` is silently ignored.
+- This is enforced in the config loader, not in the lifecycle orchestrator.
+
+### Bootstrap timeout and cancellation
+
+- There is no separate bootstrap-execution timeout in spec 004. `STACKLANE_WAIT_TIMEOUT` covers Stacklane-owned readiness only.
+- Operator-initiated cancellation (`Ctrl-C`) during bootstrap aborts the hook and triggers project rollback under the same `post-up-hook` step name.
+- Background or non-foreground operation of `stacklane up` is out of scope for spec 004.
 
 ## Validation Contract
 

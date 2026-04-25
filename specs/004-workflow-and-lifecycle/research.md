@@ -48,7 +48,26 @@
   - Rename only project-scoped resources and leave shared names implicit. Rejected because it would leave the contract underspecified.
   - Rename every shared and project-scoped resource mechanically. Rejected because the shared boundary is meaningful and should remain explicit.
 
-## Decision 7: Keep Real-Daemon Validation As A Required Deliverable
+## Decision 7: Bootstrap Cancellation Inherits Foreground Process
+
+- Decision: Bootstrap execution has no separate timeout setting in spec 004. It is bounded by the operator's foreground `stacklane up` process and by `Ctrl-C` (context cancel).
+- Rationale: Bootstrap commands range from sub-second migrations to multi-minute setup scripts. A baked-in timeout would either be too short (breaking real apps) or too long (giving operators no useful guarantee). The operator already controls the foreground; preserving that control is simpler and more honest than guessing a number.
+- Behavior on cancel: the orchestrator aborts the in-flight docker exec, runs the standard rollback path, and reports the failure under the `post-up-hook` step name so operator messaging stays consistent with other bootstrap failures.
+- Alternatives considered:
+  - Add a `STACKLANE_POST_UP_TIMEOUT` setting now. Rejected because it expands the bootstrap config surface without a known operator need, and the foreground/`Ctrl-C` model already provides a stop signal.
+  - Reuse `STACKLANE_WAIT_TIMEOUT` for bootstrap. Rejected because that setting names readiness, not bootstrap, and overloading it would silently change spec 003 behavior.
+  - Run bootstrap detached. Rejected because it would obscure failure classification and break the rollback contract.
+
+## Decision 8: Restrict Bootstrap Source In The Config Loader
+
+- Decision: Enforce the `.stacklane-local`-only restriction for `STACKLANE_POST_UP_COMMAND` inside `core/config/loader.go` rather than in the lifecycle orchestrator.
+- Rationale: The config loader already owns precedence and source classification for every other setting. Putting the restriction in the loader keeps the orchestrator focused on lifecycle steps and makes the negative-path tests deterministic and unit-testable.
+- Implementation note: requires removing `STACKLANE_POST_UP_COMMAND` from the loader's `trackedEnvKeys` slice, excluding the key from the `loadStackEnv` merge into the precedence map, and resolving `cfg.PostUpCommand` from the `.stacklane-local` map only.
+- Alternatives considered:
+  - Filter at the orchestrator. Rejected because it would leave the precedence map containing a value the orchestrator then has to re-source, duplicating loader logic.
+  - Filter at the CLI layer. Rejected because the loader is the canonical contract surface for precedence and the CLI should not own that knowledge.
+
+## Decision 9: Keep Real-Daemon Validation As A Required Deliverable
 
 - Decision: Require one representative app workflow and one multi-project scenario as part of completion criteria.
 - Rationale: Spec 003 already proved that mocked tests alone were not enough to flush out workflow gaps. This feature is specifically about operator workflow and lifecycle behavior, so it must be checked against real daemon behavior.

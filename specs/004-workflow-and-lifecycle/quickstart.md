@@ -27,22 +27,23 @@ Validate the 004 lifecycle contract end to end: project-local bootstrap after re
 4. Confirm DNS routing resolves the project hostname to the local stack as documented.
 5. Confirm the reported hostname, routes, runtime details, and Docker identities match the running project.
 6. Confirm runtime env injection and database provisioning alignment by checking the app or container environment for the expected `DB_*` / `MYSQL_*` values used by the representative app.
-7. Inspect Docker resources and confirm project-scoped runtime names use the `stln-` prefix while shared infrastructure remains `stacklane-shared`.
+7. Inspect Docker resources and confirm project-scoped runtime names use the `stln-` prefix while shared infrastructure remains `stacklane-shared` and the gateway service alias remains `stacklane-gateway`.
 8. Open the project route and confirm the app reaches the expected post-bootstrap state.
 
 ## Bootstrap Failure Validation
 
-1. Change `STACKLANE_POST_UP_COMMAND` to a command that fails deterministically.
+1. Change `STACKLANE_POST_UP_COMMAND` (in `.stacklane-local` only — setting it via shell env, `.env.stacklane`, or project `.env` is silently ignored) to a command that fails deterministically.
 2. Run `stacklane up` again.
-3. Confirm Stacklane reports a named bootstrap lifecycle failure.
+3. Confirm Stacklane reports a named bootstrap lifecycle failure under the `post-up-hook` step.
 4. Run `stacklane status`.
-5. Confirm the project was rolled back and no phantom running state remains.
+5. Confirm the project was rolled back, no record is left as `attached`, and no phantom running state remains.
 6. Confirm unrelated attached projects, if any, retain their routes, recorded state, and reported attachment unchanged.
-7. Fix the project-local bootstrap command or underlying application issue, then rerun `stacklane up`; if a forced clean stop is needed first, run `stacklane down` before retrying.
+7. Optionally repeat the test using `Ctrl-C` mid-bootstrap to confirm cancellation also rolls the project back under the same step name.
+8. Fix the project-local bootstrap command or underlying application issue, then rerun `stacklane up`; if a forced clean stop is needed first, run `stacklane down` before retrying.
 
 ## Multi-Project Validation
 
-1. Start the first project with `stacklane up`.
+1. Start the first project with `stacklane up`. (`up` registers and attaches the first project; the explicit `attach` step in step 2 is what proves multi-project routing.)
 2. From the second project, run `stacklane attach` explicitly.
 3. Confirm both routes work through the shared gateway.
 4. Confirm shared-gateway readiness is healthy while both projects are attached.

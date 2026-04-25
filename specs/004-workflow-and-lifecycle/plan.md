@@ -28,7 +28,7 @@ Implement the spec by tightening four concrete surfaces rather than widening the
 - [x] Ease-of-use impact is documented. The plan preserves the shortest operator path (`stacklane up`) and removes undocumented bootstrap follow-up work plus ambiguous stack-owned naming.
 - [x] Reliability expectations are explicit. Canonical names, precedence order, required config scope, rollback semantics, and failure classification are all fixed in the spec with no compatibility window.
 - [x] Robustness boundaries are defined. Bootstrap execution, rollback, gateway routing, state persistence, and per-project isolation stay project-scoped and must not affect unrelated attached runtimes.
-- [x] Documentation surfaces requiring same-change updates are identified: `README.md`, `docs/runtime-contract.md`, `.env.example`, `.env.stacklane.example`, and any operator guidance that still references `.stackenv` or `stacklane-` runtime names.
+- [x] Documentation surfaces requiring same-change updates are identified: `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md`, `.env.example`, `.env.stacklane.example`, and any operator guidance or in-code docstring that still references `.stackenv` or `stacklane-<slug>` runtime names.
 - [x] Validation covers startup, inspection/status, teardown, and a relevant failure path. Manual real-daemon validation remains required for representative projects because that workflow is not yet formalized in CI.
 
 **Post-Design Re-Check**: Pass. The design keeps one lifecycle phase, no compatibility mode, explicit naming ownership, and real-daemon validation requirements without violating the constitution.
@@ -40,8 +40,8 @@ Implement the spec by tightening four concrete surfaces rather than widening the
 - Keep one bootstrap phase only.
 - Run it after Stacklane-owned readiness succeeds.
 - Run it inside the `apache` service container.
-- Source it only from `.stacklane-local`.
-- Roll the project back if bootstrap fails.
+- Source it only from `.stacklane-local`. Enforce that restriction in the config loader (not the orchestrator) by removing `STACKLANE_POST_UP_COMMAND` from `trackedEnvKeys` and excluding it from the stack-defaults merge.
+- Roll the project back if bootstrap fails, including on operator `Ctrl-C` cancellation. Bootstrap has no separate timeout setting; it inherits the foreground process.
 
 Rationale: this locks the already-implemented behavior in `core/lifecycle/orchestrator.go` instead of widening scope into additional phases or optional degraded states.
 
@@ -52,8 +52,9 @@ Alternatives considered:
 
 ### Naming Contract
 
-- Use `.env.stacklane` as the only stack-owned defaults file.
-- Use `stln-` as the project-scoped runtime prefix.
+- Use `.env.stacklane` as the only stack-owned defaults file. Remove both legacy paths: `<stackHome>/.stackenv` and the `<stackHome>/.env` fallback.
+- Use `stln-` as the project-scoped runtime prefix. Enumerated defaults to change: `ComposeProjectName` (`stln-<slug>`) and `WebNetworkAlias` (`stln-<slug>-web`); `RuntimeNetwork` and `DatabaseVolume` derive from `ComposeProjectName`.
+- Keep shared resources on the `stacklane-` prefix: `stacklane-shared` for the shared compose project and shared network, `stacklane-gateway` for the gateway service network alias.
 - Keep project `.env` application-owned.
 
 Rationale: the stack-owned file should be visually obvious and editor-friendly, while project-scoped Docker names should leave more room to identify the attached project in operator views.
@@ -136,22 +137,24 @@ docker-compose.yml
 
 ### Phase 2 - Implement Runtime Naming And Config Ownership
 
-1. Rename the stack-wide defaults surface from `.stackenv` to `.env.stacklane` in the config loader, docs, and examples.
-2. Remove old-name handling rather than keeping compatibility behavior in the common path.
-3. Change project-scoped runtime naming defaults from `stacklane-<slug>` to `stln-<slug>` where those defaults are derived.
-4. Keep the shared-gateway compose project and shared network explicit as `stacklane-shared` while limiting `stln-` to project-scoped runtime resources.
+1. Rename the stack-wide defaults surface from `.stackenv` to `.env.stacklane` in the config loader, docs, and examples. Update the loader package docstring and `loadStackEnv` comment so the in-code description matches the spec.
+2. Remove old-name handling rather than keeping compatibility behavior in the common path. Specifically: (a) drop the `<stackHome>/.stackenv` reader, (b) drop the `<stackHome>/.env` fallback, (c) add a regression test asserting neither is loaded.
+3. Change project-scoped runtime naming defaults from `stacklane-<slug>` to `stln-<slug>` where those defaults are derived (`ComposeProjectName`, `WebNetworkAlias`).
+4. Keep the shared-gateway compose project and shared network explicit as `stacklane-shared`, and keep the gateway service network alias as `stacklane-gateway`, while limiting `stln-` to project-scoped runtime resources.
+5. Restrict `STACKLANE_POST_UP_COMMAND` to `.stacklane-local` only by removing it from `trackedEnvKeys` and excluding it from the stack-defaults merge in `loader.go`.
+6. Delete `.stackenv.example` and add `.env.stacklane.example`.
 
 ### Phase 3 - Tighten Lifecycle Diagnostics And Boundaries
 
-1. Keep the single post-up hook contract explicit in the lifecycle path.
+1. Keep the single post-up hook contract explicit in the lifecycle path, including operator-cancellation behavior (`Ctrl-C` aborts the hook and triggers rollback under the same step name).
 2. Improve operator-visible diagnostics so bootstrap failures remain distinct from gateway, DNS, and container health failures.
-3. Ensure rollback leaves status and recorded state coherent after bootstrap failure.
-4. Preserve project isolation across rollback, route generation, and state persistence.
+3. Ensure rollback leaves status and recorded state coherent after bootstrap failure: no record left as `attached`, no gateway route added.
+4. Preserve project isolation across rollback, route generation, and state persistence, including the post-readiness/pre-state-persist failure window.
 
 ### Phase 4 - Align Documentation And Validation
 
-1. Update `README.md` and `docs/runtime-contract.md` to describe the final naming and lifecycle contract.
-2. Update example env files and any operator guidance that still references the old stack-owned file name.
+1. Update `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, and `CONTRIBUTING.md` to describe the final naming and lifecycle contract.
+2. Update example env files and any operator guidance that still references the old stack-owned file name. Sweep code comments, docstrings, and CLI help text for surviving `.stackenv` / `stacklane-<slug>` mentions.
 3. Validate the documented workflow against one representative bootstrap-sensitive app and one multi-project scenario.
 4. Record any remaining manual-only validation gap explicitly instead of implying automation exists.
 
@@ -161,10 +164,15 @@ docker-compose.yml
 
 - Run focused tests for `core/config`, `core/lifecycle`, and any touched naming or gateway slices.
 - Add or update tests that cover:
-  - `.env.stacklane` loading as the canonical stack-wide defaults surface
+  - `.env.stacklane` loading as the canonical stack-wide defaults surface, including `STACK_HOME` override
+  - removal of `<stackHome>/.stackenv` and `<stackHome>/.env` as stack-defaults sources (negative regression test)
   - project `.env` remaining application-owned fallback only
-  - `stln-<slug>` project-scoped runtime naming defaults
-  - bootstrap failure classification and rollback behavior
+  - `stln-<slug>` and `stln-<slug>-web` project-scoped runtime naming defaults
+  - shared-resource naming staying `stacklane-shared` / `stacklane-gateway`
+  - `STACKLANE_POST_UP_COMMAND` source restriction (negative tests for shell env, `.env.stacklane`, project `.env`)
+  - bootstrap failure classification, operator-cancellation rollback, and post-rollback state coherence
+  - rollback isolation between concurrently attached projects
+  - `Orchestrator.Attach` against the new naming
 
 ### Manual Real-Daemon Validation
 
@@ -186,9 +194,11 @@ docker-compose.yml
 
 | Risk | Why It Matters | Mitigation |
 |---|---|---|
-| Shared and project-scoped naming drift apart | Operators will not know which Docker resources belong to which contract | Keep `stacklane-shared` explicit for shared infrastructure and limit `stln-` to project-scoped runtime resources |
+| Shared and project-scoped naming drift apart | Operators will not know which Docker resources belong to which contract | Keep `stacklane-shared` and `stacklane-gateway` explicit for shared infrastructure and limit `stln-` to project-scoped runtime resources |
 | `.env.stacklane` rename leaks into application-owned `.env` behavior | Stacklane would blur the ownership boundary the spec is trying to enforce | Keep stack defaults loading and app `.env` fallback tests separate in `core/config` |
-| Rollback leaves stale recorded state or gateway routes | Failure handling becomes harder to trust than the bootstrap hook it added | Validate rollback through `stacklane status`, state-store assertions, and gateway route checks |
+| `STACKLANE_POST_UP_COMMAND` leaks through shell env or stack defaults | The bootstrap source restriction would be a doc-only claim | Enforce the restriction in the config loader (`trackedEnvKeys`, stack-defaults merge) and assert it with three negative-path tests |
+| Rollback leaves stale recorded state or gateway routes | Failure handling becomes harder to trust than the bootstrap hook it added | Validate rollback through `stacklane status`, state-store assertions, and gateway route checks; assert no `attached` record after rollback |
+| Bootstrap timeout is implicit and operator-controlled | Operators may expect a baked-in timeout | Document the foreground/`Ctrl-C` model explicitly in the contract and quickstart |
 | Real-project validation remains informal | The feature would look complete on paper but remain unproven in practice | Treat the quickstart validation workflow as a required deliverable, not an optional note |
 
 ## Complexity Tracking

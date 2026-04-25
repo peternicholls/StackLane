@@ -4,13 +4,14 @@
 
 - Purpose: Represents the project-scoped declaration of whether Stacklane runs a post-up bootstrap command and how that command participates in lifecycle success or failure.
 - Fields:
-  - `source`: fixed to `.stacklane-local`
+  - `source`: fixed to `.stacklane-local` (silently ignored if set via shell env, `.env.stacklane`, or project `.env`)
   - `command`: string value from `STACKLANE_POST_UP_COMMAND`
   - `phase`: fixed to `post-up`
   - `execution_target`: fixed to the `apache` service container
-  - `working_directory`: project site root inside the container
+  - `working_directory`: container default (image WORKDIR). Spec 004 does not set this explicitly. If a future task requires a deterministic site-root working directory, it must be set on the docker exec invocation in the orchestrator and asserted by tests.
   - `failure_mode`: fixed to rollback
-  - `failure_step_name`: lifecycle step label used in operator-visible errors
+  - `failure_step_name`: lifecycle step label `post-up-hook` used in operator-visible errors
+  - `cancellation_behavior`: operator `Ctrl-C` during bootstrap aborts the hook and triggers rollback under the same step name
 - Relationships:
   - Belongs to one project runtime.
   - Depends on Stacklane-owned readiness succeeding first.
@@ -40,16 +41,20 @@
 - Purpose: Represents the names Stacklane derives for project-scoped runtime resources.
 - Fields:
   - `project_prefix`: `stln-`
-  - `compose_project_name`: `stln-<slug>` by default
-  - `runtime_network`: `<compose-project>-runtime`
-  - `database_volume`: `<compose-project>-db-data`
-  - `web_network_alias`: derived from the compose project name and service role
+  - `compose_project_name`: `stln-<slug>` by default (config field `ComposeProjectName`)
+  - `web_network_alias`: `stln-<slug>-web` by default (config field `WebNetworkAlias`)
+  - `runtime_network`: `<compose-project>-runtime` (derived; config field `RuntimeNetwork`)
+  - `database_volume`: `<compose-project>-db-data` (derived; config field `DatabaseVolume`)
+- Shared-resource fields (separate naming rule, not project-scoped):
+  - `shared_compose_project`: `stacklane-shared`
+  - `shared_network`: `stacklane-shared`
+  - `gateway_service_alias`: `stacklane-gateway`
 - Relationships:
   - Derived from the project slug and config loader defaults.
   - Used by compose invocations, gateway upstream routing, Docker label lookup, and operator-facing status output.
 - Validation rules:
-  - Project-scoped runtime names must use the shortened prefix consistently.
-  - Shared resources require their own explicit naming rule and must not be conflated with project-scoped naming.
+  - Every project-scoped default field listed above must use the `stln-` prefix consistently.
+  - Shared-resource fields must keep the `stacklane-` prefix and must not be conflated with project-scoped naming.
 
 ## Validation Scenario
 
@@ -73,7 +78,7 @@
 
 - Purpose: Represents the operator-facing boundary between Stacklane infrastructure failures and application-owned failures.
 - Fields:
-  - `class`: gateway, DNS, readiness, bootstrap, application-follow-up
+  - `class`: gateway, DNS, readiness, bootstrap (Stacklane lifecycle classes); `application-follow-up` is a documentation-only label used in operator guidance and is never emitted by Stacklane lifecycle code
   - `owner`: Stacklane or application
   - `recovery_path`: rerun, inspect logs, fix app, or reroute through documented workflow
   - `status_effect`: whether runtime remains up or is rolled back

@@ -70,7 +70,7 @@ An operator using several local sites wants the attach, up, status, and down wor
 
 ### Configuration & Precedence
 
-- New or changed configuration inputs: `.env.stacklane` becomes the canonical stack-owned defaults file; `.stacklane-local` remains the canonical project-local Stacklane config; `STACKLANE_POST_UP_COMMAND` remains the bootstrap setting but is valid only from `.stacklane-local` in this feature scope.
+- New or changed configuration inputs: `.env.stacklane` becomes the canonical stack-owned defaults file; `.stacklane-local` remains the canonical project-local Stacklane config; `STACKLANE_POST_UP_COMMAND` remains the bootstrap setting but is valid only from `.stacklane-local` in this feature scope, and is ignored if set via shell environment, `.env.stacklane`, or project `.env`.
 - Precedence order: CLI flags override `.stacklane-local`, which overrides shell environment, which overrides `.env.stacklane`, which overrides built-in defaults. Project `.env` remains application-owned and is not a generic Stacklane config surface, aside from documented runtime fallbacks that already exist.
 
 ### State, Isolation & Recovery
@@ -101,6 +101,20 @@ An operator using several local sites wants the attach, up, status, and down wor
 - **FR-012**: Stacklane MUST shorten the documented prefix for project-scoped runtime-owned Docker resources from `stacklane-` to `stln-`.
 - **FR-013**: Stacklane MUST document which runtime-owned resource names adopt the `stln-` prefix.
 - **FR-014**: Stacklane MUST update operator-facing documentation so the canonical naming and lifecycle contract are consistent across runtime guidance and validation guidance.
+- **FR-015**: Stacklane MUST honor operator-initiated cancellation (`Ctrl-C` / context cancel) during the bootstrap phase by aborting the bootstrap command and triggering project rollback under the same `post-up-hook` step name.
+- **FR-016**: Stacklane MUST resolve `STACKLANE_POST_UP_COMMAND` only from `.stacklane-local`. Setting the variable via shell environment, `.env.stacklane`, or project `.env` MUST NOT cause it to be honored.
+
+### Out Of Scope
+
+The following are explicitly out of scope for spec 004 and MUST NOT be added to this feature without a follow-up spec:
+
+- Additional lifecycle phases beyond the single `post-up` bootstrap (e.g. pre-up, post-attach, post-down).
+- Framework-specific bootstrap helpers (Laravel/Symfony/etc. presets baked into the runtime).
+- Application migration, seeding, or schema repair beyond what the operator's own bootstrap command performs.
+- Bootstrap-execution timeout configuration beyond the existing `STACKLANE_WAIT_TIMEOUT` (which covers readiness, not bootstrap). Bootstrap inherits the operator's foreground process and is bounded by `Ctrl-C` only.
+- Release/distribution pipeline work and CI automation of the manual real-daemon validation workflow.
+- TUI / GUI surface changes.
+- Backward-compatibility shims for `.stackenv` or `stacklane-<slug>` runtime names.
 
 ### Key Entities *(include if feature involves data)*
 
