@@ -15,21 +15,24 @@ This document locks the Stacklane command semantics and state model.
 ### `stacklane up`
 
 - Works from a project root.
-- Resolves config from `.env`, `.stacklane-local`, environment variables, and CLI flags.
+- Resolves Stacklane config from project-root `.env.stacklane`, shell environment, stack-wide `.env.stacklane`, and CLI flags while leaving project `.env` application-owned.
+- Requires `STACKLANE_STACK` to resolve to a supported stack kind. Today that means `20i`.
+- If project-root `.env.stacklane` is missing, assumes defaults for the current run and writes a starter project file for later edits.
 - Derives a project slug from the folder name by default.
 - Plans a hostname of `<slug>.test` unless overridden.
-- Ensures the shared gateway and shared Docker network exist.
+- Ensures shared routing is available, reuses it when already healthy, and repairs it when missing.
 - Starts the current Docker compose project.
 - Captures the live runtime container identity.
 - Writes a project state file, refreshes the stack registry, and marks the project as `attached`.
-- Refreshes the shared gateway's hostname-aware route set from the registry.
+- Refreshes the shared hostname-aware route set from the registry.
 
 ### `stacklane attach`
 
 - Uses the same runtime resolution as `stacklane up`.
+- If project-root `.env.stacklane` is missing, assumes defaults for the current run and writes a starter project file for later edits.
 - Is the explicit command for bringing an additional repo into the managed set.
-- Bootstraps the shared layer if it is not already running.
-- Starts a second isolated per-project runtime and refreshes the hostname-aware shared gateway rules.
+- Bootstraps the shared routing layer if it is not already running.
+- Starts a second isolated per-project runtime and refreshes the hostname-aware shared routing rules.
 
 ### `stacklane down`
 
@@ -48,7 +51,7 @@ This document locks the Stacklane command semantics and state model.
 
 - Reports tracked projects from the state directory.
 - Supports `--project <selector>` where selector may be a project slug, project name, hostname, or repo path.
-- Shows shared gateway health, local DNS health, planned hostname, hostname route URL, localhost probe URL, document root, container docroot, project path, registry file path, recorded live container identity, registry drift, and Docker status.
+- Shows shared routing health, local DNS health, planned hostname, hostname route URL, localhost probe URL, document root, container docroot, project path, registry file path, recorded live container identity, registry drift, and Docker status.
 
 ### `stacklane logs`
 
@@ -70,10 +73,22 @@ Root-level `20i-*` wrappers are not part of the active runtime. Use `stacklane <
 ## Config Precedence
 
 1. CLI flags
-2. `.stacklane-local`
+2. Project `.env.stacklane`
 3. Shell environment
-4. Stack `.env`
+4. Stack `.env.stacklane`
 5. Built-in defaults
+
+Location defines ownership for the shared filename:
+
+- `<project>/.env.stacklane` is the user-editable project override surface.
+- `<stack-home>/.env.stacklane` is the stack-owned shared baseline.
+- `<stack-home>/.stacklane-state/envfiles/*.env` is machine-generated runtime material and must not be edited.
+
+Shared gateway settings are runtime-owned and no longer part of the supported env contract.
+
+`STACKLANE_STACK` is the explicit stack-kind selector in the env contract. The current runtime supports `20i` only; future values such as `laravel` or `node` must not be accepted until their stack implementations exist.
+
+Selecting a different installed Stacklane copy remains outside the project file for now. Use `STACK_HOME` or `--stack-home` until a dedicated project install/setup flow exists.
 
 ## Hostname Derivation
 
@@ -113,9 +128,10 @@ The lifecycle layer rolls back partial progress before returning. A failed `stac
 ## Runtime Identity Mapping
 
 - Project slug defaults to the repo folder name, unless `SITE_NAME` overrides it.
-- Compose project defaults to `stacklane-<slug>`.
+- Compose project defaults to `stln-<slug>`.
 - Runtime network is `<compose-project>-runtime`.
 - Database volume is `<compose-project>-db-data`.
+- Web alias on the shared network is `<compose-project>-web`.
 - Planned hostname defaults to `<slug>.test` unless overridden.
 - State records keep the repo path, slug, compose project, hostname, and docroot together so live Docker resources can be mapped back to the originating repo.
 
@@ -130,9 +146,10 @@ The lifecycle layer rolls back partial progress before returning. A failed `stac
 
 ## Shared Infrastructure
 
-- Shared gateway compose file: `docker-compose.shared.yml`
-- Shared network: `stacklane-shared` by default
-- Shared gateway host ports: `80/443` by default, overrideable via `SHARED_GATEWAY_HTTP_PORT` and `SHARED_GATEWAY_HTTPS_PORT`
+- Shared routing compose file: `docker-compose.shared.yml`
+- Active 20i project compose file: `docker-compose.20i.yml`
+- Stacklane keeps one shared routing layer available across attached projects and repairs it when the layer is missing or unhealthy.
+- Shared gateway host ports: `80/443` by default; `.dev` runtime resolution moves HTTPS to `8443` when needed
 - Per-project web containers no longer publish host ports directly for normal site access
 - phpMyAdmin runs only when the `debug` compose profile is enabled (`stacklane up --profile debug`); it still publishes its own host port when active
 - MariaDB remains per project and resolves database name, user, password, and root password from the project-specific runtime config
@@ -140,6 +157,8 @@ The lifecycle layer rolls back partial progress before returning. A failed `stac
 - Gateway config is generated from the in-memory registry as one server block per attached hostname (rendered by `infra/gateway` via `text/template`; output is golden-tested)
 - Invalid registry rows are skipped during route generation so one bad registration does not invalidate the full gateway config
 - When a hostname is registered but its runtime is unavailable, the gateway returns a clear `503` response for that hostname
+
+Exact shared resource names remain part of the lower-level workflow contract and troubleshooting material; ordinary operator workflows should treat the shared routing layer as Stacklane-managed.
 
 ## Local DNS
 

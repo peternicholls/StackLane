@@ -57,7 +57,7 @@ func AbsPathFromBase(baseDir, path string) string {
 }
 
 // ResolveDocRoot reproduces stacklane_resolve_docroot precedence:
-//  1. explicit docRoot (CLI / .stacklane-local / env)
+//  1. explicit docRoot (CLI / project .env.stacklane / env)
 //  2. codeDir (alias)
 //  3. <projectDir>/public_html when present
 //  4. projectDir itself

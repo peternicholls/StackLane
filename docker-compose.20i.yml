@@ -98,7 +98,7 @@ networks:
   default:
     name: ${PROJECT_RUNTIME_NETWORK:?err}
   shared-gateway:
-    name: ${SHARED_GATEWAY_NETWORK:-stacklane-shared}
+    name: ${SHARED_GATEWAY_NETWORK:-stln-shared}
     external: true
 
 volumes:

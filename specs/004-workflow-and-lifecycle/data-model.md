@@ -1,0 +1,90 @@
+# Data Model: Workflow And Lifecycle Hardening
+
+## Bootstrap Contract
+
+- Purpose: Represents the project-scoped declaration of whether Stacklane runs a post-up bootstrap command and how that command participates in lifecycle success or failure.
+- Fields:
+  - `source`: fixed to project-root `.env.stacklane` (silently ignored if set via shell env, stack-home `.env.stacklane`, or project `.env`)
+  - `command`: string value from `STACKLANE_POST_UP_COMMAND`
+  - `phase`: fixed to `post-up`
+  - `execution_target`: fixed to the `apache` service container
+  - `working_directory`: fixed to the container site root (`/home/sites/<project-slug>`) via the orchestrator's docker exec invocation
+  - `failure_mode`: fixed to rollback
+  - `failure_step_name`: lifecycle step label `post-up-hook` used in operator-visible errors
+  - `cancellation_behavior`: operator `Ctrl-C` during bootstrap aborts the hook and triggers rollback under the same step name
+- Relationships:
+  - Belongs to one project runtime.
+  - Depends on Stacklane-owned readiness succeeding first.
+  - Produces either a successful post-bootstrap runtime or a rollback outcome.
+- Validation rules:
+  - The contract must not be sourced from stack-wide config.
+  - Absence of a bootstrap command must not trigger implicit framework-specific behavior.
+  - Failure must be classified separately from gateway, DNS, and container-health failures.
+
+## Stack Defaults Contract
+
+- Purpose: Represents stack-owned defaults that apply across projects without taking ownership of project application config.
+- Fields:
+  - `file_name`: `.env.stacklane`
+  - `scope`: location-defined: stack-home defaults or project-local overrides
+  - `precedence_rank`: below shell environment, above built-in defaults
+  - `allowed_keys`: stack runtime defaults such as shared gateway, DNS, and runtime defaults
+- Relationships:
+  - Feeds the config loader.
+  - Must remain distinct from project `.env` and from machine-generated envfiles under `.stacklane-state/envfiles/`.
+- Validation rules:
+  - The file must be the only stack-owned defaults file in the supported contract.
+  - It must not be documented as application config.
+
+## Runtime Naming Contract
+
+- Purpose: Represents the names Stacklane derives for project-scoped runtime resources.
+- Fields:
+  - `project_prefix`: `stln-`
+  - `compose_project_name`: `stln-<slug>` by default (config field `ComposeProjectName`)
+  - `web_network_alias`: `stln-<slug>-web` by default (config field `WebNetworkAlias`)
+  - `runtime_network`: `<compose-project>-runtime` (derived; config field `RuntimeNetwork`)
+  - `database_volume`: `<compose-project>-db-data` (derived; config field `DatabaseVolume`)
+- Shared-resource fields (separate naming rule, not project-scoped):
+  - `shared_compose_project`: `stln-shared`
+  - `shared_network`: `stln-shared`
+  - `gateway_service_alias`: `stln-gateway`
+- Relationships:
+  - Derived from the project slug and config loader defaults.
+  - Used by compose invocations, gateway upstream routing, Docker label lookup, and operator-facing status output.
+- Validation rules:
+  - Every project-scoped default field listed above must use the `stln-` prefix consistently.
+  - Shared-resource fields must stay aligned with the same `stln-` prefix family and must remain distinguishable from per-project names by their fixed `shared` / `gateway` suffixes.
+
+## Validation Scenario
+
+- Purpose: Represents a documented real-world workflow used to prove lifecycle behavior.
+- Fields:
+  - `scenario_type`: `single-project` or `multi-project`
+  - `projects_under_test`: list of representative repos or fixtures
+  - `commands`: ordered lifecycle commands under test
+  - `checks`: DNS, gateway, runtime env, database, bootstrap, status, teardown, rollback
+  - `expected_outcomes`: observable operator-visible results for each check
+  - `evidence`: test notes, command output summary, or recorded validation artifact
+- Relationships:
+  - Exercises the bootstrap contract and runtime naming contract together.
+  - Feeds quickstart validation and plan completion criteria.
+- Validation rules:
+  - At least one scenario must cover bootstrap success.
+  - At least one scenario must cover bootstrap failure and rollback.
+  - At least one scenario must cover attached multi-project routing.
+
+## Failure Classification
+
+- Purpose: Represents the operator-facing boundary between Stacklane infrastructure failures and application-owned failures.
+- Fields:
+  - `class`: gateway, DNS, readiness, bootstrap (Stacklane lifecycle classes); `application-follow-up` is a documentation-only label used in operator guidance and is never emitted by Stacklane lifecycle code
+  - `owner`: Stacklane or application
+  - `recovery_path`: rerun, inspect logs, fix app, or reroute through documented workflow
+  - `status_effect`: whether runtime remains up or is rolled back
+- Relationships:
+  - Attached to lifecycle step errors and validation notes.
+  - Determines how docs and status output explain what failed.
+- Validation rules:
+  - Bootstrap failure must be a Stacklane lifecycle class with rollback.
+  - Application route defects after readiness must not be misreported as gateway or DNS failures.

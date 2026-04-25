@@ -19,7 +19,7 @@ func TestStore_SaveLoadRoundTrip(t *testing.T) {
 			Name:               "demo",
 			Dir:                "/tmp/demo",
 			Hostname:           "demo.test",
-			ComposeProjectName: "stacklane-demo",
+			ComposeProjectName: "stln-demo",
 			MySQL:              config.MySQL{Port: 33060, PMAPort: 8082},
 		},
 		AttachmentState: StateAttached,
@@ -49,7 +49,7 @@ func TestStore_RegistryProjection(t *testing.T) {
 		rec := Record{
 			Project: config.ProjectConfig{
 				Slug: slug, Name: slug, Hostname: slug + ".test",
-				ComposeProjectName: "stacklane-" + slug,
+				ComposeProjectName: "stln-" + slug,
 			},
 			AttachmentState: StateAttached,
 		}

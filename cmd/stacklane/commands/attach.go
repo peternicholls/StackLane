@@ -15,6 +15,9 @@ func NewAttach(flags *SharedFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := ensureProjectEnvFile(cfg, flags); err != nil {
+				return err
+			}
 			orch, err := buildOrchestrator(cfg)
 			if err != nil {
 				return err

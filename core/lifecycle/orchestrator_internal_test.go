@@ -65,12 +65,12 @@ func TestWriteEnvFileIncludesAppDBSettings(t *testing.T) {
 		DocRoot:            "/tmp/demo/public_html",
 		ContainerSiteRoot:  "/home/sites/demo",
 		ContainerDocRoot:   "/home/sites/demo/public_html",
-		ComposeProjectName: "stacklane-demo",
+		ComposeProjectName: "stln-demo",
 		PHPVersion:         "8.5",
 		StateDir:           stateDir,
-		RuntimeNetwork:     "stacklane-demo-runtime",
-		DatabaseVolume:     "stacklane-demo-db-data",
-		WebNetworkAlias:    "stacklane-demo-web",
+		RuntimeNetwork:     "stln-demo-runtime",
+		DatabaseVolume:     "stln-demo-db-data",
+		WebNetworkAlias:    "stln-demo-web",
 		MySQL: config.MySQL{
 			Version:      "10.6",
 			Database:     "appdb",
@@ -80,7 +80,7 @@ func TestWriteEnvFileIncludesAppDBSettings(t *testing.T) {
 			Port:         3307,
 			PMAPort:      8082,
 		},
-		SharedGateway: config.SharedGateway{Network: "stacklane-shared"},
+		SharedGateway: config.SharedGateway{Network: "stln-shared"},
 	}
 
 	path, err := writeEnvFile(cfg)

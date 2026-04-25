@@ -10,12 +10,12 @@ reference for "where should code X live?" questions.
 | Module | Lives in | Owns |
 |---|---|---|
 | CLI surface | `cmd/stacklane`, `cmd/stacklane/commands` | Cobra root + every subcommand. The CLI may only call `core/lifecycle`, `core/state`, `core/config`, `observability/*`, and `platform/dns`. It must NOT touch Docker or compose directly. |
-| Configuration precedence | `core/config` | `Loader.Load` resolves CLI flags → `.stacklane-local` → shell env → stack `.env` → defaults. Tests own the precedence chain. |
+| Configuration precedence | `core/config` | `Loader.Load` resolves CLI flags → project `.env.stacklane` → shell env → stack `.env.stacklane` → defaults. Tests own the precedence chain and the location-based ownership split. |
 | Project identity | `core/project` | Pure helpers for slug/hostname/docroot. No I/O beyond stat. |
 | State persistence | `core/state` | JSON-per-project store, atomic writes, registry projection. |
 | Lifecycle orchestration | `core/lifecycle` | Sequences the 11 steps of `up`, plus down/attach/detach. Wraps every operator-visible failure in `StepError`. |
 | Docker SDK | `infra/docker` | Engine SDK only: networks, container queries, healthcheck waiting, log streams. NOT `docker compose`. |
-| Compose subprocess | `infra/compose` | The single owner of `docker compose ...` invocation. |
+| Compose subprocess | `infra/compose` | The single owner of `docker compose ...` invocation against the resolved stack compose file (currently `docker-compose.20i.yml`). |
 | Gateway template | `infra/gateway` | text/template-rendered nginx config + atomic write + add/remove route helpers. Golden-tested. |
 | Port allocation | `platform/ports` | flock-protected allocator with bind-check + registry awareness. |
 | DNS bootstrap | `platform/dns` | macOS Homebrew + dnsmasq + `/etc/resolver` flow. Linux build returns the unsupported-platform code. |

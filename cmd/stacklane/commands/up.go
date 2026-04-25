@@ -23,6 +23,9 @@ func NewUp(flags *SharedFlags) *cobra.Command {
 				fmt.Fprintf(os.Stdout, "DRY RUN: would up project %s (%s) at %s\n", cfg.Slug, cfg.Hostname, cfg.Dir)
 				return nil
 			}
+			if err := ensureProjectEnvFile(cfg, flags); err != nil {
+				return err
+			}
 			orch, err := buildOrchestrator(cfg)
 			if err != nil {
 				return err
