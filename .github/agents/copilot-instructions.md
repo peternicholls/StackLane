@@ -1,8 +1,10 @@
 # Stacklane Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-01
+Auto-generated from all feature plans. Last updated: 2026-04-25
 
 ## Active Technologies
+- Go 1.26.2 + `github.com/spf13/cobra`, Docker Engine SDK `github.com/docker/docker`, Go standard library packages for files/templates/JSON, existing compose subprocess wrapper under `infra/compose` (004-workflow-and-lifecycle)
+- local files under `.stacklane-state`, stack-owned env defaults file, generated gateway config, Docker runtime state (004-workflow-and-lifecycle)
 
 - Bash on macOS with POSIX shell workflow, Docker Compose YAML + Docker Desktop, Docker Compose, Homebrew `dnsmasq`, Bash helper library in `lib/stacklane-common.sh`
 
@@ -31,11 +33,10 @@ previous-version-archive/
 Bash on macOS with POSIX shell workflow, Docker Compose YAML: Follow standard conventions
 
 ## Recent Changes
+- 004-workflow-and-lifecycle: Added Go 1.26.2 + `github.com/spf13/cobra`, Docker Engine SDK `github.com/docker/docker`, Go standard library packages for files/templates/JSON, existing compose subprocess wrapper under `infra/compose`
 
 - 002-project-rebrand: Rebranded CLI to Stacklane; `stacklane` is now the canonical entrypoint; `20i-*` scripts are deprecated wrappers; shared helper moved to `lib/stacklane-common.sh`
 
 <!-- MANUAL ADDITIONS START -->
 - Legacy compatibility is no longer a project constraint. Agents should prefer the current Stacklane naming, state layout, and command surface even when that breaks `20i-*` wrappers, `.20i-*` files, migration fallbacks, or older workflow assumptions.
-- Do not preserve backward compatibility, migration shims, or legacy behavior by default. Only keep or add compatibility paths when the user explicitly asks for them.
-- When choosing between simplifying the codebase and retaining legacy workflows, choose simplification and update docs/specs/instructions to reflect the break.
 <!-- MANUAL ADDITIONS END -->

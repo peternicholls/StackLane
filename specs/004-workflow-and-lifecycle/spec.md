@@ -1,95 +1,126 @@
 # Feature Specification: Workflow And Lifecycle Hardening
 
-**Feature Branch**: `004-workflow-and-lifecycle`
-**Created**: 2026-04-24
-**Status**: Draft
-**Input**: Close sprint 003 with a handoff that captures the workflow and lifecycle gaps discovered during live validation, and carry those into a focused follow-up spec.
+**Feature Branch**: `004-workflow-and-lifecycle`  
+**Created**: 2026-04-24  
+**Status**: Draft  
+**Input**: User description: "Close sprint 003 with a handoff that captures the workflow and lifecycle gaps discovered during live validation, carry those into a focused follow-up spec, rename `.stackenv` to `.env.stacklane`, and shorten runtime-owned Docker resource prefixes from `stacklane-` to `stln-`."
 
-## Summary
+## User Scenarios & Testing *(mandatory)*
 
-Spec 003 got the Go runtime into a usable state and cleared the main startup blockers for real projects. During live validation, the next layer of work became clear: Stacklane now needs a tighter operator workflow around bootstrap, lifecycle recovery, and real-project verification.
+### User Story 1 - Bootstrap A Project Predictably (Priority: P1)
 
-This follow-up spec is intentionally narrower than the rewrite itself. It is not another architecture rewrite. It is the operator workflow and lifecycle hardening pass that turns the current runtime into a more repeatable daily tool.
+An operator starts a real application with `stacklane up` and expects Stacklane to either finish the documented bootstrap work or fail in a named, recoverable way. The operator should not have to remember undocumented follow-up commands after containers become healthy.
 
-## Problem Statement
+**Why this priority**: This is the highest-value workflow gap left after spec 003. If startup still depends on ad hoc manual migration or setup steps, the runtime is not yet predictable enough for daily use.
 
-The current runtime now starts projects, provisions per-project databases correctly, routes multiple attached sites through the shared gateway, and distinguishes stack-wide config from app-owned project config. However, the operator workflow still has gaps:
+**Independent Test**: Configure a project-local bootstrap command, run `stacklane up` from a stopped state, and confirm Stacklane either completes the bootstrap path successfully or reports a bootstrap-specific failure and rolls the project runtime back.
 
-- project bootstrap remains partly manual unless `STACKLANE_POST_UP_COMMAND` is configured
-- bootstrap behavior is not yet a fully documented, design-locked contract
-- real-daemon lifecycle validation still lives partly in ad hoc manual checks rather than a formal verification path
-- some app-facing follow-up work, such as seeding and post-migration setup, is still outside the current lifecycle contract
-- app failures discovered during Stacklane validation need a clear boundary so Stacklane infrastructure issues and project code issues are not conflated
+**Acceptance Scenarios**:
 
-## Goals
+1. **Given** a project defines a bootstrap command in `.stacklane-local`, **When** the operator runs `stacklane up`, **Then** Stacklane runs that command after Stacklane-owned readiness succeeds and surfaces the result as part of the lifecycle outcome.
+2. **Given** a project defines a bootstrap command that fails, **When** the operator runs `stacklane up`, **Then** Stacklane reports a named bootstrap failure, rolls the project runtime back, and provides a documented recovery path.
+3. **Given** a project does not define a bootstrap command, **When** the operator runs `stacklane up`, **Then** Stacklane completes the normal runtime lifecycle without inventing an implicit framework-specific bootstrap step.
 
-- Define the intended operator workflow after `stacklane up`, especially for bootstrap-sensitive applications.
-- Turn the new post-up bootstrap hook into a documented lifecycle contract with explicit failure behavior.
-- Define how Stacklane should support common app bootstrap actions such as migrations, seeds, and setup commands without baking framework-specific assumptions into core runtime code.
-- Formalize the live validation workflow for multi-project attach/up/status/down checks against real applications.
-- Capture the remaining lifecycle and workflow gaps as scoped follow-up work instead of continuing to extend spec 003 informally.
+---
 
-## Non-Goals
+### User Story 2 - Distinguish Stacklane Failures From App Failures (Priority: P1)
 
-- Re-open the Go rewrite architecture decision.
-- Re-introduce legacy `20i-*` compatibility behavior.
-- Fix application-specific schema or seeding bugs inside sibling projects unless explicitly requested as separate work.
-- Introduce a new UI or TUI workflow.
-- Solve release/distribution pipeline work unless it directly blocks the workflow/lifecycle contract.
+An operator validating a project needs to know whether a failure belongs to Stacklane infrastructure or to the application running inside it. Stacklane should own its gateway, routing, runtime env injection, and lifecycle reporting without pretending that every application-level error is a Stacklane defect.
 
-## Candidate User Stories
+**Why this priority**: Lifecycle hardening is not only about starting containers. It is also about making failure boundaries legible, so validation work does not collapse into unbounded app repair.
 
-### User Story 1 - Bootstrap A Real App Predictably
+**Independent Test**: Run one project that has healthy Stacklane infrastructure but an application-level bootstrap or migration problem, then confirm the runtime reports Stacklane readiness separately from the application defect and preserves the documented ownership boundary.
 
-An operator wants `stacklane up` to bring a real application to a usable state without requiring undocumented manual follow-up commands.
+**Acceptance Scenarios**:
 
-Success means:
+1. **Given** Stacklane-owned health checks succeed but an application bootstrap command fails, **When** the operator inspects the lifecycle result, **Then** the failure is reported as a bootstrap lifecycle failure rather than as a gateway, DNS, or generic health error.
+2. **Given** a project route responds with an application-specific error after Stacklane readiness has passed, **When** the operator validates the project, **Then** the documented workflow distinguishes Stacklane runtime success from application-level follow-up work.
+3. **Given** the operator runs `stacklane status` after a failed bootstrap attempt, **When** Stacklane has already rolled the project back, **Then** the reported state reflects the rollback outcome rather than leaving phantom running state behind.
 
-- the operator can declare an app bootstrap command deliberately
-- Stacklane runs it in a predictable place and phase
-- failures are surfaced as lifecycle errors, not silent app breakage
-- the contract is documented clearly enough to reuse across projects
+---
 
-### User Story 2 - Separate Stacklane Failures From App Failures
+### User Story 3 - Validate Multi-Project Workflow Against Real Projects (Priority: P2)
 
-An operator validating a project wants to know whether a failure belongs to Stacklane infrastructure or the application itself.
+An operator using several local sites wants the attach, up, status, and down workflow to be validated against realistic projects, with naming and configuration surfaces that are easy to scan in the repository and in Docker listings.
 
-Success means:
+**Why this priority**: Real-project validation and naming clarity are the parts that make the runtime sustainable in daily use, but they depend on the bootstrap contract and failure model being explicit first.
 
-- Stacklane validates its own readiness independently of app routes
-- bootstrap hook failures are reported as hook failures, not gateway or health noise
-- known app-level failures can be recorded without muddying Stacklane runtime status
+**Independent Test**: Validate one representative application and one multi-project scenario, explicitly exercising `attach`, DNS routing, shared-gateway readiness, runtime env injection, database provisioning alignment, bootstrap behavior, rollback isolation, teardown, stack-owned config discovery via `.env.stacklane`, and runtime-owned Docker naming under the `stln-` prefix.
 
-### User Story 3 - Validate Multi-Project Workflow Against Real Projects
+**Acceptance Scenarios**:
 
-An operator running several local sites wants attach/up/status/down behavior to be verified against realistic project shapes rather than only mocked tests.
+1. **Given** one representative real application and one multi-project local scenario, **When** the operator follows the documented validation workflow, **Then** the workflow covers attach, up, status, and down along with DNS, gateway, runtime env, database, and bootstrap checks.
+2. **Given** stack-wide defaults are required, **When** the operator looks for the Stacklane-owned env file, **Then** the documentation and workflow consistently point to `.env.stacklane` rather than an ambiguous or editor-hostile alternative.
+3. **Given** the operator inspects runtime-owned Docker resources during validation, **When** they compare multiple attached projects, **Then** the documented naming scheme uses the shorter `stln-` prefix for project-scoped Stacklane resources.
 
-Success means:
+### Edge Cases
 
-- the workflow is validated against at least one representative app and one multi-site scenario
-- DNS, gateway, runtime env, and DB provisioning checks are part of the workflow checklist
-- manual validation steps that remain are captured explicitly
+- A project has no bootstrap command configured but still requires application-owned setup that Stacklane does not own.
+- A bootstrap command succeeds, but the application remains broken for reasons outside Stacklane infrastructure.
+- A bootstrap failure occurs after containers become healthy but before the project is registered as a stable attached runtime.
+- Multiple projects are attached, and one project fails bootstrap; rollback must not affect other attached runtimes.
 
-## Open Questions
+## Operational Impact *(mandatory)*
 
-- Should `STACKLANE_POST_UP_COMMAND` stay as a single hook, or should Stacklane define multiple phases such as post-up and post-attach?
-- Which config scopes should be allowed to define bootstrap behavior: only `.stacklane-local`, or also stack-wide `.stackenv` and shell env?
-- Should bootstrap failure always roll back the project runtime, or should Stacklane support a degraded but inspectable state?
-- Should Stacklane add first-class guidance for common Laravel patterns such as `migrate`, `db:seed`, or `composer run setup`, while keeping the runtime framework-agnostic?
-- What minimum real-daemon validation should be required before lifecycle changes are considered complete?
+### Ease Of Use & Workflow Impact
 
-## Initial Backlog Candidates
+- Affected commands, wrappers, or entry points: `stacklane up`, `stacklane status`, `stacklane down`, and the real-project validation workflow that exercises attach/up/status/down behavior.
+- Backward compatibility or migration expectation: none. `stacklane <subcommand>`, `.stacklane-local`, `.env.stacklane`, and `stln-` are the supported contract after this feature lands.
+- Operator friction removed or introduced: the feature removes undocumented post-start commands, makes bootstrap failure handling explicit, makes stack-owned config easier to identify in editors and repos, and shortens runtime-owned Docker names so attached projects are easier to distinguish.
 
-- Document the bootstrap hook contract, precedence, rollback semantics, and examples.
-- Add real-daemon lifecycle validation coverage for representative projects.
-- Decide whether seed/setup commands belong in the same hook or a separate documented workflow.
-- Add better operator diagnostics around post-up hook execution and output.
-- Capture a boundary policy for app-level defects discovered during Stacklane validation.
-- Reconcile spec 003 deferred lifecycle validation tasks with the narrower workflow/lifecycle scope here.
+### Configuration & Precedence
 
-## Success Criteria
+- New or changed configuration inputs: `.env.stacklane` becomes the canonical stack-owned defaults file; `.stacklane-local` remains the canonical project-local Stacklane config; `STACKLANE_POST_UP_COMMAND` remains the bootstrap setting but is valid only from `.stacklane-local` in this feature scope.
+- Precedence order: CLI flags override `.stacklane-local`, which overrides shell environment, which overrides `.env.stacklane`, which overrides built-in defaults. Project `.env` remains application-owned and is not a generic Stacklane config surface, aside from documented runtime fallbacks that already exist.
 
-- The operator workflow after `stacklane up` is explicit and documented.
-- A project can declare bootstrap behavior without ambiguity about config source or failure handling.
-- At least one representative real-app workflow is reproducible without ad hoc manual steps.
-- Remaining app-specific issues are clearly separated from Stacklane runtime issues in docs and handoff artifacts.
+### State, Isolation & Recovery
+
+- Affected runtime state: per-project containers, networks, volumes, recorded project state, generated gateway state, stack-wide defaults, and runtime-owned Docker identifiers that expose Stacklane project ownership.
+- Isolation risk and mitigation: bootstrap execution and rollback must remain project-scoped. A failed bootstrap for one project must not mutate the state, naming, routes, or recorded attachment of another project.
+- Reliability and recovery path: when bootstrap fails after readiness, Stacklane rolls the project runtime back, records the lifecycle as a bootstrap failure, and leaves `stacklane down` and the documented rerun path as the recovery mechanism.
+
+### Documentation Surfaces
+
+- Docs and interfaces requiring updates: `README.md`, `docs/runtime-contract.md`, any operator guidance that currently references `.stackenv`, any docs that describe runtime-owned Docker names, and the handoff or validation artifacts that explain failure classification and real-project verification.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: Stacklane MUST define a single documented bootstrap phase that runs inside the `apache` service container after Stacklane-owned readiness succeeds during `stacklane up`.
+- **FR-002**: Stacklane MUST source bootstrap behavior only from `.stacklane-local` for this feature scope.
+- **FR-003**: Stacklane MUST treat bootstrap execution as explicit operator-declared behavior and MUST NOT add implicit framework-specific bootstrap actions when no bootstrap command is configured.
+- **FR-004**: Stacklane MUST report bootstrap failure as a named lifecycle failure distinct from gateway, DNS, container health, or generic application-route errors.
+- **FR-005**: Stacklane MUST roll the current project runtime back when the bootstrap phase fails after readiness.
+- **FR-006**: Stacklane MUST preserve project isolation so a bootstrap failure or rollback in one project does not alter another attached project's runtime state, routes, or recorded attachment.
+- **FR-007**: Stacklane MUST document the operator workflow that distinguishes Stacklane-owned infrastructure success from application-owned follow-up defects discovered during validation.
+- **FR-008**: Stacklane MUST define a real-project validation workflow that covers at least one representative application and one multi-project scenario across attach, up, status, and down behavior.
+- **FR-009**: The validation workflow MUST explicitly cover DNS routing, shared gateway readiness, runtime env injection, database provisioning alignment, bootstrap execution, rollback behavior, and teardown outcomes.
+- **FR-010**: Stacklane MUST use `.env.stacklane` as the canonical stack-owned defaults file.
+- **FR-011**: Stacklane MUST keep the ownership boundary explicit by documenting `.env.stacklane` as stack-owned configuration and project `.env` as application-owned configuration.
+- **FR-012**: Stacklane MUST shorten the documented prefix for project-scoped runtime-owned Docker resources from `stacklane-` to `stln-`.
+- **FR-013**: Stacklane MUST document which runtime-owned resource names adopt the `stln-` prefix.
+- **FR-014**: Stacklane MUST update operator-facing documentation so the canonical naming and lifecycle contract are consistent across runtime guidance and validation guidance.
+
+### Key Entities *(include if feature involves data)*
+
+- **Bootstrap Contract**: The project-scoped declaration of whether Stacklane runs a post-up bootstrap command, when it runs, how failure is classified, and what recovery path applies.
+- **Validation Scenario**: A documented real-project workflow used to prove Stacklane behavior across single-project and multi-project lifecycle operations.
+- **Naming Contract**: The set of stack-owned and runtime-owned names that operators rely on to identify Stacklane configuration and Docker resources, including `.env.stacklane` and the `stln-` runtime prefix.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: An operator with a documented bootstrap command can bring a stopped project to either a usable post-bootstrap state or a named bootstrap failure using a single `stacklane up` run with no undocumented follow-up step.
+- **SC-002**: In the documented validation workflow, at least one representative application and one multi-project scenario complete the required attach, up, status, and down checks with all required lifecycle checkpoints recorded.
+- **SC-003**: When bootstrap fails for one project, the operator receives a bootstrap-specific failure outcome and recovery guidance, and no unrelated attached project changes state as a result.
+- **SC-004**: Operator documentation consistently names `.env.stacklane` as the stack-owned defaults file and `stln-` as the project-scoped runtime-owned Docker prefix.
+
+## Assumptions
+
+- Operators continue to use the current `stacklane <subcommand>` CLI rather than a new UI or wrapper surface.
+- The current Stacklane readiness model remains the trigger for bootstrap execution; this feature does not redefine the health model itself.
+- Project `.env` files remain application-owned and are not repurposed as the generic Stacklane configuration surface.
+- `.env.stacklane` and `stln-` are the intended contract for stack-owned config and project-scoped runtime naming in this feature scope.
+- Application migration, seeding, or schema bugs discovered during validation remain out of scope unless they reveal a Stacklane infrastructure defect.
