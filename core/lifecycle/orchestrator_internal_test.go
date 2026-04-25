@@ -80,7 +80,7 @@ func TestWriteEnvFileIncludesAppDBSettings(t *testing.T) {
 			Port:         3307,
 			PMAPort:      8082,
 		},
-		SharedGateway: config.SharedGateway{Network: "stacklane-shared"},
+		SharedGateway: config.SharedGateway{Network: "stln-shared"},
 	}
 
 	path, err := writeEnvFile(cfg)

@@ -10,8 +10,8 @@
 
 ## Decision 2: Keep Bootstrap Project-Local
 
-- Decision: Source bootstrap behavior only from `.stacklane-local`.
-- Rationale: Bootstrap commands are project behavior, not stack-wide defaults. Keeping the hook project-local makes the operator intent explicit and prevents one stack-level setting from silently affecting unrelated repos.
+- Decision: Source bootstrap behavior only from project-root `.env.stacklane`.
+- Rationale: Bootstrap commands are project behavior, not stack-wide defaults. Keeping the hook in the project file makes the operator intent explicit while consolidating Stacklane config onto one filename. The stack-home copy remains the shared-defaults layer, so one stack-level setting still cannot silently affect unrelated repos.
 - Alternatives considered:
   - Allow shell environment overrides. Rejected because it hides a project-specific lifecycle behavior in ambient operator state.
   - Allow stack-wide defaults in the stack-owned env file. Rejected because it weakens the ownership boundary between stack defaults and app/project behavior.
@@ -27,7 +27,7 @@
 ## Decision 4: Rename Stack-Owned Defaults To `.env.stacklane`
 
 - Decision: Use `.env.stacklane` as the only supported stack-owned defaults file.
-- Rationale: The name is visually explicit, reads as an env file in editor workflows, and keeps stack-owned settings distinct from both project `.env` and `.stacklane-local`.
+- Rationale: The name is visually explicit, reads as an env file in editor workflows, and now lets Stacklane use one filename for both stack-home defaults and project-local overrides while keeping project `.env` application-owned.
 - Alternatives considered:
   - Keep `.stackenv`. Rejected because it is less clear in the repo and weaker in editor tooling.
   - Reuse project `.env`. Rejected because project `.env` is application-owned, not generic Stacklane configuration.
@@ -42,8 +42,8 @@
 
 ## Decision 6: Keep Shared Resources Explicit
 
-- Decision: Keep the shared-gateway compose project name and shared network explicit as `stacklane-shared`.
-- Rationale: The `stln-` shortening applies only to project-scoped runtime resources. Shared infrastructure already represents a distinct cross-project surface, so keeping `stacklane-shared` preserves that boundary and avoids conflating shared services with per-project runtimes.
+- Decision: Keep the shared-gateway compose project name and shared network explicit as `stln-shared`, and use `stln-gateway` for the gateway service alias.
+- Rationale: The same `stln-` prefix should apply across all Stacklane-owned runtime resources. Shared infrastructure still remains a distinct cross-project surface because it uses fixed names (`stln-shared`, `stln-gateway`) rather than per-project `stln-<slug>` names.
 - Alternatives considered:
   - Rename only project-scoped resources and leave shared names implicit. Rejected because it would leave the contract underspecified.
   - Rename every shared and project-scoped resource mechanically. Rejected because the shared boundary is meaningful and should remain explicit.
@@ -60,9 +60,9 @@
 
 ## Decision 8: Restrict Bootstrap Source In The Config Loader
 
-- Decision: Enforce the `.stacklane-local`-only restriction for `STACKLANE_POST_UP_COMMAND` inside `core/config/loader.go` rather than in the lifecycle orchestrator.
+- Decision: Enforce the project-root `.env.stacklane`-only restriction for `STACKLANE_POST_UP_COMMAND` inside `core/config/loader.go` rather than in the lifecycle orchestrator.
 - Rationale: The config loader already owns precedence and source classification for every other setting. Putting the restriction in the loader keeps the orchestrator focused on lifecycle steps and makes the negative-path tests deterministic and unit-testable.
-- Implementation note: requires removing `STACKLANE_POST_UP_COMMAND` from the loader's `trackedEnvKeys` slice, excluding the key from the `loadStackEnv` merge into the precedence map, and resolving `cfg.PostUpCommand` from the `.stacklane-local` map only.
+- Implementation note: requires removing `STACKLANE_POST_UP_COMMAND` from the loader's `trackedEnvKeys` slice, excluding the key from the stack-home `loadStackEnv` merge into the precedence map, and resolving `cfg.PostUpCommand` from the project-root `.env.stacklane` map only.
 - Alternatives considered:
   - Filter at the orchestrator. Rejected because it would leave the precedence map containing a value the orchestrator then has to re-source, duplicating loader logic.
   - Filter at the CLI layer. Rejected because the loader is the canonical contract surface for precedence and the CLI should not own that knowledge.

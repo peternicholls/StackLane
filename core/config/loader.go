@@ -2,13 +2,13 @@
 // chain in the order specified by FR-003:
 //
 //  1. CLI flags (highest)
-//  2. .stacklane-local in the project directory
+//  2. .env.stacklane in the project directory
 //  3. shell environment
 //  4. .env.stacklane in the stack home (canonical stack-owned defaults file)
 //  5. built-in defaults (lowest)
 //
 // STACKLANE_POST_UP_COMMAND is a special-case bootstrap setting that is only
-// honored when set in the project's .stacklane-local file. It is intentionally
+// honored when set in the project's .env.stacklane file. It is intentionally
 // ignored if set via shell environment, .env.stacklane, or project .env.
 package config
 
@@ -108,8 +108,8 @@ func defaultStateDir(stackHome string) string {
 	return filepath.Join(stackHome, ".stacklane-state")
 }
 
-func loadProjectLocalConfig(projectDir string) (map[string]string, error) {
-	return loadEnvFile(filepath.Join(projectDir, ".stacklane-local"))
+func loadProjectStacklaneEnv(projectDir string) (map[string]string, error) {
+	return loadEnvFile(filepath.Join(projectDir, ".env.stacklane"))
 }
 
 func loadProjectRuntimeEnv(projectDir string) (map[string]string, error) {
@@ -204,13 +204,13 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 
 	// 3. Build the precedence-merged map. Lower precedence first; higher
 	// precedence overwrites by key. Order: defaults -> stacklane .env ->
-	// project runtime .env DB fallback -> shell env -> .stacklane-local ->
+	// project runtime .env DB fallback -> shell env -> project .env.stacklane ->
 	// CLI flags.
 	merged := defaults()
 
 	// .env.stacklane in the stack home applies just above built-in defaults.
 	// STACKLANE_POST_UP_COMMAND is excluded from this merge: bootstrap is a
-	// project-scoped declaration sourced only from .stacklane-local.
+	// project-scoped declaration sourced only from project .env.stacklane.
 	if envMap, err := loadStackEnv(stackHome); err == nil {
 		for k, v := range envMap {
 			if k == "STACKLANE_POST_UP_COMMAND" {
@@ -231,9 +231,12 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 			merged[k] = v
 		}
 	}
-	// .stacklane-local
-	if envMap, err := loadProjectLocalConfig(pdAbs); err == nil {
+	// Project .env.stacklane
+	if envMap, err := loadProjectStacklaneEnv(pdAbs); err == nil {
 		for k, v := range envMap {
+			if projectEnvDisallowedKeys[k] {
+				continue
+			}
 			merged[k] = v
 		}
 	}
@@ -273,6 +276,14 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	}
 
 	// 4. Materialise ProjectConfig from the merged map.
+	stackKind := normalizeStackKind(merged["STACKLANE_STACK"])
+	if stackKind == "" {
+		stackKind = "20i"
+	}
+	if stackKind != "20i" {
+		return cfg, fmt.Errorf("unsupported STACKLANE_STACK %q: only 20i is implemented today", stackKind)
+	}
+	cfg.StackKind = stackKind
 	cfg.Name = strOr(merged["SITE_NAME"], filepath.Base(pdAbs))
 	cfg.Slug = project.Slugify(cfg.Name)
 	cfg.SiteSuffix = strOr(merged["SITE_SUFFIX"], "test")
@@ -311,11 +322,11 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	}
 	cfg.MySQL.Password = strOr(merged["MYSQL_PASSWORD"], "devpass")
 
-	// Shared gateway settings.
-	cfg.SharedGateway.Network = strOr(merged["SHARED_GATEWAY_NETWORK"], "stacklane-shared")
-	cfg.SharedGateway.HTTPPort = atoiOr(merged["SHARED_GATEWAY_HTTP_PORT"], 80)
-	cfg.SharedGateway.HTTPSPort = atoiOr(merged["SHARED_GATEWAY_HTTPS_PORT"], 443)
-	cfg.SharedGateway.ComposeProjectName = strOr(merged["SHARED_GATEWAY_COMPOSE_PROJECT_NAME"], "stacklane-shared")
+	// Shared gateway settings are runtime-owned, not env-configurable.
+	cfg.SharedGateway.Network = "stln-shared"
+	cfg.SharedGateway.HTTPPort = 80
+	cfg.SharedGateway.HTTPSPort = 443
+	cfg.SharedGateway.ComposeProjectName = "stln-shared"
 	cfg.SharedGateway.ConfigFile = filepath.Join(cfg.StateDir, "shared", "gateway.conf")
 
 	// Local DNS.
@@ -346,17 +357,18 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 
 // trackedEnvKeys is the closed set of shell variables ConfigLoader honours.
 // STACKLANE_POST_UP_COMMAND is intentionally absent: bootstrap is sourced
-// only from .stacklane-local (FR-016).
+// only from project .env.stacklane (FR-016).
 var trackedEnvKeys = []string{
+	"STACKLANE_STACK",
 	"SITE_NAME", "SITE_HOSTNAME", "SITE_SUFFIX", "DOCROOT", "CODE_DIR",
 	"PHP_VERSION", "MYSQL_VERSION", "MYSQL_ROOT_PASSWORD",
 	"MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_PORT", "PMA_PORT",
 	"HOST_PORT", "COMPOSE_PROJECT_NAME", "WEB_NETWORK_ALIAS",
-	"SHARED_GATEWAY_NETWORK", "SHARED_GATEWAY_HTTP_PORT", "SHARED_GATEWAY_HTTPS_PORT",
-	"SHARED_GATEWAY_COMPOSE_PROJECT_NAME",
 	"LOCAL_DNS_PROVIDER", "LOCAL_DNS_IP", "LOCAL_DNS_PORT", "LOCAL_DNS_SUFFIX",
 	"STACK_HOME", "STACK_STATE_DIR", "STACKLANE_WAIT_TIMEOUT",
 }
+
+var projectEnvDisallowedKeys = map[string]bool{}
 
 func (l *Loader) lookupEnv(k string) (string, bool) {
 	get := l.Env
@@ -368,21 +380,22 @@ func (l *Loader) lookupEnv(k string) (string, bool) {
 
 func defaults() map[string]string {
 	return map[string]string{
-		"SHARED_GATEWAY_NETWORK":              "stacklane-shared",
-		"SHARED_GATEWAY_HTTP_PORT":            "80",
-		"SHARED_GATEWAY_HTTPS_PORT":           "443",
-		"SHARED_GATEWAY_COMPOSE_PROJECT_NAME": "stacklane-shared",
-		"MYSQL_VERSION":                       "10.6",
-		"MYSQL_ROOT_PASSWORD":                 "root",
-		"MYSQL_DATABASE":                      "devdb",
-		"MYSQL_USER":                          "devuser",
-		"MYSQL_PASSWORD":                      "devpass",
-		"PHP_VERSION":                         "8.5",
-		"LOCAL_DNS_PROVIDER":                  "dnsmasq",
-		"LOCAL_DNS_IP":                        "127.0.0.1",
-		"LOCAL_DNS_PORT":                      "53535",
-		"SITE_SUFFIX":                         "test",
+		"STACKLANE_STACK":     "20i",
+		"MYSQL_VERSION":       "10.6",
+		"MYSQL_ROOT_PASSWORD": "root",
+		"MYSQL_DATABASE":      "devdb",
+		"MYSQL_USER":          "devuser",
+		"MYSQL_PASSWORD":      "devpass",
+		"PHP_VERSION":         "8.5",
+		"LOCAL_DNS_PROVIDER":  "dnsmasq",
+		"LOCAL_DNS_IP":        "127.0.0.1",
+		"LOCAL_DNS_PORT":      "53535",
+		"SITE_SUFFIX":         "test",
 	}
+}
+
+func normalizeStackKind(v string) string {
+	return strings.ToLower(strings.TrimSpace(v))
 }
 
 func strOr(v, fallback string) string {

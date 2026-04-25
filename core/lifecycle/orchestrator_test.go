@@ -40,8 +40,8 @@ func newCfg(t *testing.T) config.ProjectConfig {
 			Version: "10.6", Database: "demo", User: "demo", Password: "demo", RootPassword: "root",
 		},
 		SharedGateway: config.SharedGateway{
-			Network:            "stacklane-shared",
-			ComposeProjectName: "stacklane-shared",
+			Network:            "stln-shared",
+			ComposeProjectName: "stln-shared",
 			HTTPPort:           80,
 			HTTPSPort:          443,
 			ConfigFile:         stateDir + "/shared/gateway.conf",
@@ -68,7 +68,7 @@ func TestOrchestrator_UpHappyPath(t *testing.T) {
 	if err := orch.Up(context.Background(), cfg); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	if !dc.Networks["stacklane-shared"] {
+	if !dc.Networks["stln-shared"] {
 		t.Errorf("shared network was not ensured")
 	}
 	if len(composer.UpCalls) < 2 {

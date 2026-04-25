@@ -40,7 +40,7 @@ Implement the spec by tightening four concrete surfaces rather than widening the
 - Keep one bootstrap phase only.
 - Run it after Stacklane-owned readiness succeeds.
 - Run it inside the `apache` service container.
-- Source it only from `.stacklane-local`. Enforce that restriction in the config loader (not the orchestrator) by removing `STACKLANE_POST_UP_COMMAND` from `trackedEnvKeys` and excluding it from the stack-defaults merge.
+- Source it only from project-root `.env.stacklane`. Enforce that restriction in the config loader (not the orchestrator) by removing `STACKLANE_POST_UP_COMMAND` from `trackedEnvKeys` and excluding it from the stack-home defaults merge.
 - Roll the project back if bootstrap fails, including on operator `Ctrl-C` cancellation. Bootstrap has no separate timeout setting; it inherits the foreground process.
 
 Rationale: this locks the already-implemented behavior in `core/lifecycle/orchestrator.go` instead of widening scope into additional phases or optional degraded states.
@@ -53,8 +53,9 @@ Alternatives considered:
 ### Naming Contract
 
 - Use `.env.stacklane` as the only stack-owned defaults file. Remove both legacy paths: `<stackHome>/.stackenv` and the `<stackHome>/.env` fallback.
+- Use project-root `.env.stacklane` as the canonical project-local Stacklane config surface as well; location now defines ownership.
 - Use `stln-` as the project-scoped runtime prefix. Enumerated defaults to change: `ComposeProjectName` (`stln-<slug>`) and `WebNetworkAlias` (`stln-<slug>-web`); `RuntimeNetwork` and `DatabaseVolume` derive from `ComposeProjectName`.
-- Keep shared resources on the `stacklane-` prefix: `stacklane-shared` for the shared compose project and shared network, `stacklane-gateway` for the gateway service network alias.
+- Keep shared resources aligned to the same `stln-` family: `stln-shared` for the shared compose project and shared network, `stln-gateway` for the gateway service network alias.
 - Keep project `.env` application-owned.
 
 Rationale: the stack-owned file should be visually obvious and editor-friendly, while project-scoped Docker names should leave more room to identify the attached project in operator views.
@@ -140,8 +141,8 @@ docker-compose.yml
 1. Rename the stack-wide defaults surface from `.stackenv` to `.env.stacklane` in the config loader, docs, and examples. Update the loader package docstring and `loadStackEnv` comment so the in-code description matches the spec.
 2. Remove old-name handling rather than keeping compatibility behavior in the common path. Specifically: (a) drop the `<stackHome>/.stackenv` reader, (b) drop the `<stackHome>/.env` fallback, (c) add a regression test asserting neither is loaded.
 3. Change project-scoped runtime naming defaults from `stacklane-<slug>` to `stln-<slug>` where those defaults are derived (`ComposeProjectName`, `WebNetworkAlias`).
-4. Keep the shared-gateway compose project and shared network explicit as `stacklane-shared`, and keep the gateway service network alias as `stacklane-gateway`, while limiting `stln-` to project-scoped runtime resources.
-5. Restrict `STACKLANE_POST_UP_COMMAND` to `.stacklane-local` only by removing it from `trackedEnvKeys` and excluding it from the stack-defaults merge in `loader.go`.
+4. Keep the shared-gateway compose project and shared network explicit as `stln-shared`, and keep the gateway service network alias as `stln-gateway`, while still distinguishing those fixed shared names from per-project `stln-<slug>` runtime resources.
+5. Restrict `STACKLANE_POST_UP_COMMAND` to project-root `.env.stacklane` only by removing it from `trackedEnvKeys` and excluding it from the stack-defaults merge in `loader.go`.
 6. Delete `.stackenv.example` and add `.env.stacklane.example`.
 
 ### Phase 3 - Tighten Lifecycle Diagnostics And Boundaries
@@ -168,7 +169,7 @@ docker-compose.yml
   - removal of `<stackHome>/.stackenv` and `<stackHome>/.env` as stack-defaults sources (negative regression test)
   - project `.env` remaining application-owned fallback only
   - `stln-<slug>` and `stln-<slug>-web` project-scoped runtime naming defaults
-  - shared-resource naming staying `stacklane-shared` / `stacklane-gateway`
+  - shared-resource naming staying `stln-shared` / `stln-gateway`
   - `STACKLANE_POST_UP_COMMAND` source restriction (negative tests for shell env, `.env.stacklane`, project `.env`)
   - bootstrap failure classification, operator-cancellation rollback, and post-rollback state coherence
   - rollback isolation between concurrently attached projects
@@ -194,7 +195,7 @@ docker-compose.yml
 
 | Risk | Why It Matters | Mitigation |
 |---|---|---|
-| Shared and project-scoped naming drift apart | Operators will not know which Docker resources belong to which contract | Keep `stacklane-shared` and `stacklane-gateway` explicit for shared infrastructure and limit `stln-` to project-scoped runtime resources |
+| Shared and project-scoped naming drift apart | Operators will not know which Docker resources belong to which contract | Keep `stln-shared` and `stln-gateway` explicit for shared infrastructure and distinguish them from per-project `stln-<slug>` runtime resources |
 | `.env.stacklane` rename leaks into application-owned `.env` behavior | Stacklane would blur the ownership boundary the spec is trying to enforce | Keep stack defaults loading and app `.env` fallback tests separate in `core/config` |
 | `STACKLANE_POST_UP_COMMAND` leaks through shell env or stack defaults | The bootstrap source restriction would be a doc-only claim | Enforce the restriction in the config loader (`trackedEnvKeys`, stack-defaults merge) and assert it with three negative-path tests |
 | Rollback leaves stale recorded state or gateway routes | Failure handling becomes harder to trust than the bootstrap hook it added | Validate rollback through `stacklane status`, state-store assertions, and gateway route checks; assert no `attached` record after rollback |

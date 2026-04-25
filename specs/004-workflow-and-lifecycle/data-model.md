@@ -4,7 +4,7 @@
 
 - Purpose: Represents the project-scoped declaration of whether Stacklane runs a post-up bootstrap command and how that command participates in lifecycle success or failure.
 - Fields:
-  - `source`: fixed to `.stacklane-local` (silently ignored if set via shell env, `.env.stacklane`, or project `.env`)
+  - `source`: fixed to project-root `.env.stacklane` (silently ignored if set via shell env, stack-home `.env.stacklane`, or project `.env`)
   - `command`: string value from `STACKLANE_POST_UP_COMMAND`
   - `phase`: fixed to `post-up`
   - `execution_target`: fixed to the `apache` service container
@@ -26,12 +26,12 @@
 - Purpose: Represents stack-owned defaults that apply across projects without taking ownership of project application config.
 - Fields:
   - `file_name`: `.env.stacklane`
-  - `scope`: stack-owned defaults only
+  - `scope`: location-defined: stack-home defaults or project-local overrides
   - `precedence_rank`: below shell environment, above built-in defaults
   - `allowed_keys`: stack runtime defaults such as shared gateway, DNS, and runtime defaults
 - Relationships:
   - Feeds the config loader.
-  - Must remain distinct from both `.stacklane-local` and project `.env`.
+  - Must remain distinct from project `.env` and from machine-generated envfiles under `.stacklane-state/envfiles/`.
 - Validation rules:
   - The file must be the only stack-owned defaults file in the supported contract.
   - It must not be documented as application config.
@@ -46,15 +46,15 @@
   - `runtime_network`: `<compose-project>-runtime` (derived; config field `RuntimeNetwork`)
   - `database_volume`: `<compose-project>-db-data` (derived; config field `DatabaseVolume`)
 - Shared-resource fields (separate naming rule, not project-scoped):
-  - `shared_compose_project`: `stacklane-shared`
-  - `shared_network`: `stacklane-shared`
-  - `gateway_service_alias`: `stacklane-gateway`
+  - `shared_compose_project`: `stln-shared`
+  - `shared_network`: `stln-shared`
+  - `gateway_service_alias`: `stln-gateway`
 - Relationships:
   - Derived from the project slug and config loader defaults.
   - Used by compose invocations, gateway upstream routing, Docker label lookup, and operator-facing status output.
 - Validation rules:
   - Every project-scoped default field listed above must use the `stln-` prefix consistently.
-  - Shared-resource fields must keep the `stacklane-` prefix and must not be conflated with project-scoped naming.
+  - Shared-resource fields must stay aligned with the same `stln-` prefix family and must remain distinguishable from per-project names by their fixed `shared` / `gateway` suffixes.
 
 ## Validation Scenario
 

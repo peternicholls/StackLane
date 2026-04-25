@@ -6,7 +6,7 @@ package config
 
 // CLIFlags carries the highest-precedence configuration source: command-line flags
 // the operator passed in. Empty fields fall through to the next layer
-// (.stacklane-local -> shell env -> .env -> defaults).
+// (project .env.stacklane -> shell env -> stack .env.stacklane -> defaults).
 type CLIFlags struct {
 	ProjectDir      string
 	SiteName        string
@@ -26,11 +26,11 @@ type CLIFlags struct {
 // SharedGateway captures the resolved shared-gateway runtime settings. These were
 // SHARED_GATEWAY_* globals in the bash implementation.
 type SharedGateway struct {
-	Network            string // SHARED_GATEWAY_NETWORK
-	HTTPPort           int    // SHARED_GATEWAY_HTTP_PORT
-	HTTPSPort          int    // SHARED_GATEWAY_HTTPS_PORT
-	ComposeProjectName string // SHARED_GATEWAY_COMPOSE_PROJECT_NAME
-	ConfigFile         string // SHARED_GATEWAY_CONFIG_FILE (path)
+	Network            string // fixed shared network name
+	HTTPPort           int    // fixed HTTP host port (80)
+	HTTPSPort          int    // fixed/default HTTPS host port (443, or runtime fallback for .dev)
+	ComposeProjectName string // fixed shared compose project name
+	ConfigFile         string // generated gateway config path
 }
 
 // LocalDNS captures the resolved local-DNS settings (LOCAL_DNS_* in bash).
@@ -65,6 +65,7 @@ type PortAllocation struct {
 // values for the current project.
 type ProjectConfig struct {
 	// Identity
+	StackKind          string // STACKLANE_STACK
 	Name               string // PROJECT_NAME
 	Slug               string // PROJECT_SLUG
 	Dir                string // PROJECT_DIR (absolute)
@@ -105,10 +106,11 @@ type ProjectConfig struct {
 	ProjectSelector string
 }
 
-// ConfigLoader resolves the full precedence chain (CLI flags -> .stacklane-local
-// -> shell env -> .env.stacklane -> defaults) and returns a populated ProjectConfig.
+// ConfigLoader resolves the full precedence chain (CLI flags -> project
+// .env.stacklane -> shell env -> stack .env.stacklane -> defaults) and returns
+// a populated ProjectConfig.
 // STACKLANE_POST_UP_COMMAND is the one project-scoped exception: it is honored
-// only when set in .stacklane-local.
+// only when set in project .env.stacklane.
 //
 // Implementations must NOT depend on Docker, the network, or any subsystem
 // outside the local filesystem.

@@ -49,9 +49,9 @@ As a developer, I want the current `stacklane <subcommand>` workflow to be predi
 ### Phase 1: Runtime contract and CLI semantics
 
 - [x] Define exact command semantics for `stacklane up`, `stacklane attach`, `stacklane detach`, `stacklane down`, and global teardown.
-- [x] Decide the canonical hostname derivation rule: folder name by default, `.stacklane-local` override when set.
+- [x] Decide the canonical hostname derivation rule: folder name by default, project-root `.env.stacklane` override when set.
 - [x] Define the first-stage suffix as `.test` and record `.dev` as a later HTTPS-capable option.
-- [x] Extend `.stacklane-local` contract with site name override, document root override, PHP version override, and project database settings.
+- [x] Extend the project-root `.env.stacklane` contract with site name override, document root override, PHP version override, and project database settings.
 - [x] Define the expected state transitions for attached, detached, down, and global teardown.
 - [x] Document behavior for running `stacklane up` in a single project with no other attachments.
 
@@ -110,7 +110,7 @@ As a developer, I want the current `stacklane <subcommand>` workflow to be predi
 ### Phase 8: Documentation and migration
 
 - [x] Update README examples away from `localhost` toward project hostnames.
-- [x] Document `.stacklane-local` additions and override precedence.
+- [x] Document project-root `.env.stacklane` additions and override precedence.
 - [x] Add docs for attach, detach, shared teardown, and concurrent project workflows.
 - [x] Add a migration section explaining old versus new behavior.
 - [x] Mark GUI support as deferred or partial if CLI ships first.
@@ -221,7 +221,7 @@ Pass criteria:
 
 - Included now: CLI/runtime architecture, attach/detach semantics, shared gateway, local DNS integration, monitoring/status output, and shell docs.
 - Excluded unless you want them pulled in now: full GUI parity, local TLS/cert management for `.dev`, and a full redesign of database admin UX.
-- Recommended hostname policy: folder name by default, override via `.stacklane-local`.
+- Recommended hostname policy: folder name by default, override via project-root `.env.stacklane`.
 - Recommended suffix policy: ship `.test` first, leave `.dev` for a later HTTPS-capable phase.
 
 ## Recommended delivery order

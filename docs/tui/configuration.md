@@ -11,9 +11,9 @@ That means the first configuration question is not "how should the TUI be config
 The active Stacklane runtime currently resolves configuration in this order:
 
 1. CLI flags
-2. `.stacklane-local`
+2. project-root `.env.stacklane`
 3. shell environment
-4. stack `.env`
+4. stack-home `.env.stacklane`
 5. built-in defaults
 
 That precedence should remain unchanged regardless of whether a future interaction layer is terminal-based or graphical.
@@ -22,6 +22,7 @@ That precedence should remain unchanged regardless of whether a future interacti
 
 These are runtime settings, not UI settings:
 
+- `STACKLANE_STACK` (currently `20i` only; future stack kinds may be added later)
 - `SITE_NAME`
 - `SITE_HOSTNAME`
 - `SITE_SUFFIX`
@@ -35,14 +36,14 @@ These are runtime settings, not UI settings:
 - `MYSQL_PASSWORD`
 - `MYSQL_PORT`
 - `PMA_PORT`
-- `SHARED_GATEWAY_HTTP_PORT`
-- `SHARED_GATEWAY_HTTPS_PORT`
 - `LOCAL_DNS_PROVIDER`
 - `LOCAL_DNS_IP`
 - `LOCAL_DNS_PORT`
 - `LOCAL_DNS_SUFFIX`
 
 Any richer interface should display and edit these carefully, but should not silently reinterpret them.
+
+Shared gateway settings are runtime-owned rather than env-configured. A future UI should treat them as stack runtime state, not editable env keys.
 
 ## State Inputs A Future Surface Must Read
 
@@ -69,7 +70,7 @@ Likely UI-only preferences:
 - whether to show archived or down projects by default,
 - theme or accessibility preferences.
 
-These should not live in `.stacklane-local` because they are operator preferences, not project runtime settings.
+These should not live in project-root `.env.stacklane` because they are operator preferences, not project runtime settings.
 
 ## What Should Not Happen
 

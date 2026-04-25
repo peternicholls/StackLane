@@ -6,6 +6,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,6 +43,9 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.SiteSuffix != "test" {
 		t.Errorf("default SITE_SUFFIX=%q want test", cfg.SiteSuffix)
 	}
+	if cfg.StackKind != "20i" {
+		t.Errorf("default STACKLANE_STACK=%q want 20i", cfg.StackKind)
+	}
 	if cfg.PHPVersion != "8.5" {
 		t.Errorf("default PHP_VERSION=%q want 8.5", cfg.PHPVersion)
 	}
@@ -69,12 +73,12 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.DatabaseVolume != "stln-"+cfg.Slug+"-db-data" {
 		t.Errorf("DatabaseVolume=%q", cfg.DatabaseVolume)
 	}
-	// Shared resources keep the stacklane- prefix per the data-model contract.
-	if cfg.SharedGateway.Network != "stacklane-shared" {
-		t.Errorf("SharedGateway.Network=%q want stacklane-shared", cfg.SharedGateway.Network)
+	// Shared resources now use the same stln- prefix family as project runtimes.
+	if cfg.SharedGateway.Network != "stln-shared" {
+		t.Errorf("SharedGateway.Network=%q want stln-shared", cfg.SharedGateway.Network)
 	}
-	if cfg.SharedGateway.ComposeProjectName != "stacklane-shared" {
-		t.Errorf("SharedGateway.ComposeProjectName=%q want stacklane-shared", cfg.SharedGateway.ComposeProjectName)
+	if cfg.SharedGateway.ComposeProjectName != "stln-shared" {
+		t.Errorf("SharedGateway.ComposeProjectName=%q want stln-shared", cfg.SharedGateway.ComposeProjectName)
 	}
 }
 
@@ -84,8 +88,8 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 
 	// .env.stacklane in stack home (lowest of the file layers)
 	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
-	// .stacklane-local in project dir (overrides shell env and .env)
-	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "PHP_VERSION=8.2\nSITE_SUFFIX=local\n")
+	// project .env.stacklane overrides shell env and stack defaults.
+	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "PHP_VERSION=8.2\nSITE_SUFFIX=local\n")
 
 	env := map[string]string{
 		"PHP_VERSION": "8.1",
@@ -106,9 +110,9 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 	if cfg.PHPVersion != "8.3" {
 		t.Errorf("PHP_VERSION precedence: got %q, want 8.3 (CLI)", cfg.PHPVersion)
 	}
-	// .stacklane-local wins over shell env when no CLI value.
+	// Project .env.stacklane wins over shell env when no CLI value.
 	if cfg.SiteSuffix != "local" {
-		t.Errorf("SITE_SUFFIX precedence: got %q, want local (.stacklane-local)", cfg.SiteSuffix)
+		t.Errorf("SITE_SUFFIX precedence: got %q, want local (project .env.stacklane)", cfg.SiteSuffix)
 	}
 	// shell env populates ports when no project-local file / CLI value.
 	if cfg.MySQL.Port != 33060 {
@@ -184,7 +188,7 @@ func TestLoader_StackHomeEnvIsNotLoaded(t *testing.T) {
 func TestLoader_StackHomeOverrideLoadsEnvStacklane(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
-	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "PHP_VERSION=8.2\nSITE_SUFFIX=stack-defaults\n")
+	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "STACKLANE_STACK=20i\nPHP_VERSION=8.2\nSITE_SUFFIX=stack-defaults\n")
 
 	loader := newLoader(t, nil, stackHome)
 	cfg, err := loader.Load(projectDir, CLIFlags{})
@@ -199,11 +203,63 @@ func TestLoader_StackHomeOverrideLoadsEnvStacklane(t *testing.T) {
 	}
 }
 
+func TestLoader_RejectsUnsupportedStackKind(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "STACKLANE_STACK=laravel\n")
+
+	loader := newLoader(t, nil, stackHome)
+	_, err := loader.Load(projectDir, CLIFlags{})
+	if err == nil {
+		t.Fatal("load succeeded, want unsupported stack error")
+	}
+	if !strings.Contains(err.Error(), "unsupported STACKLANE_STACK") {
+		t.Fatalf("error=%q want unsupported STACKLANE_STACK message", err)
+	}
+}
+
+func TestLoader_SharedGatewaySettingsAreNotLoadedFromEnv(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "SHARED_GATEWAY_HTTP_PORT=8080\nSHARED_GATEWAY_HTTPS_PORT=8443\nSHARED_GATEWAY_NETWORK=stln-central\nSHARED_GATEWAY_COMPOSE_PROJECT_NAME=stln-central\n")
+	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "SHARED_GATEWAY_HTTP_PORT=18080\nSHARED_GATEWAY_HTTPS_PORT=18443\nSHARED_GATEWAY_NETWORK=stln-project\nSHARED_GATEWAY_COMPOSE_PROJECT_NAME=stln-project\n")
+	env := map[string]string{
+		"SHARED_GATEWAY_HTTP_PORT":            "28080",
+		"SHARED_GATEWAY_HTTPS_PORT":           "28443",
+		"SHARED_GATEWAY_NETWORK":              "stln-shell",
+		"SHARED_GATEWAY_COMPOSE_PROJECT_NAME": "stln-shell",
+	}
+
+	loader := newLoader(t, env, stackHome)
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.SharedGateway.HTTPPort != 80 {
+		t.Fatalf("SharedGateway.HTTPPort=%d want fixed default 80", cfg.SharedGateway.HTTPPort)
+	}
+	if cfg.SharedGateway.HTTPSPort != 443 {
+		t.Fatalf("SharedGateway.HTTPSPort=%d want fixed default 443", cfg.SharedGateway.HTTPSPort)
+	}
+	if cfg.SharedGateway.Network != "stln-shared" {
+		t.Fatalf("SharedGateway.Network=%q want stln-shared", cfg.SharedGateway.Network)
+	}
+	if cfg.SharedGateway.ComposeProjectName != "stln-shared" {
+		t.Fatalf("SharedGateway.ComposeProjectName=%q want stln-shared", cfg.SharedGateway.ComposeProjectName)
+	}
+	if cfg.Hostname != cfg.Slug+".test" {
+		t.Fatalf("hostname=%q want project defaults to keep working", cfg.Hostname)
+	}
+	if cfg.PHPVersion != "8.5" {
+		t.Fatalf("PHPVersion=%q want normal project/default precedence unaffected", cfg.PHPVersion)
+	}
+}
+
 func TestLoader_PostUpHookFromProjectLocalConfig(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "STACKLANE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
+	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "STACKLANE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
 
 	loader := newLoader(t, nil, stackHome)
 	cfg, err := loader.Load(projectDir, CLIFlags{})
@@ -255,9 +311,34 @@ func TestLoader_PostUpHookOnlyHonoredFromProjectLocal(t *testing.T) {
 				t.Fatalf("load: %v", err)
 			}
 			if cfg.PostUpCommand != "" {
-				t.Fatalf("PostUpCommand=%q want empty (only .stacklane-local is honored)", cfg.PostUpCommand)
+				t.Fatalf("PostUpCommand=%q want empty (only project .env.stacklane is honored)", cfg.PostUpCommand)
 			}
 		})
+	}
+}
+
+func TestLoader_IgnoresLegacyStacklaneLocalFile(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "PHP_VERSION=7.4\nSITE_SUFFIX=legacy\n")
+
+	loader := newLoader(t, nil, stackHome)
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.PHPVersion != "8.5" {
+		t.Errorf("PHP_VERSION=%q, want default 8.5 because .stacklane-local is ignored", cfg.PHPVersion)
+	}
+	if cfg.SiteSuffix != "test" {
+		t.Errorf("SITE_SUFFIX=%q, want default test because .stacklane-local is ignored", cfg.SiteSuffix)
+	}
+	legacy, err := loadEnvFile(filepath.Join(projectDir, ".stacklane-local"))
+	if err != nil {
+		t.Fatalf("legacy project file should still be parseable for migration checks: %v", err)
+	}
+	if legacy["PHP_VERSION"] != "7.4" {
+		t.Fatalf("legacy project config parse mismatch: %#v", legacy)
 	}
 }
 

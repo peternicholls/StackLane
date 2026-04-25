@@ -13,7 +13,7 @@
 
 - Stacklane defines one bootstrap phase only: `post-up`.
 - Stacklane runs the bootstrap phase only after Stacklane-owned readiness succeeds.
-- Stacklane sources bootstrap configuration only from `.stacklane-local`.
+- Stacklane sources bootstrap configuration only from project-root `.env.stacklane`.
 - Stacklane runs the bootstrap command inside the `apache` service container.
 - If no bootstrap command is configured, Stacklane completes the normal runtime lifecycle without adding implicit framework-specific behavior.
 
@@ -32,16 +32,17 @@
 
 ### Canonical config surfaces
 
-- Project-local Stacklane config: `.stacklane-local`
-- Stack-owned defaults: `.env.stacklane`
+- Project-local Stacklane config: project-root `.env.stacklane`
+- Stack-owned defaults: `<stack-home>/.env.stacklane`
 - Application-owned config: project `.env`
+- Machine-generated runtime envfiles: `<stack-home>/.stacklane-state/envfiles/*.env`
 
 ### Precedence order
 
 1. CLI flags
-2. `.stacklane-local`
+2. Project-root `.env.stacklane`
 3. Shell environment
-4. `.env.stacklane`
+4. Stack-home `.env.stacklane`
 5. Built-in defaults
 
 Project `.env` is not a generic Stacklane config surface.
@@ -57,14 +58,14 @@ Project `.env` is not a generic Stacklane config surface.
 
 ### Shared resources
 
-- Shared-gateway compose project and shared network stay `stacklane-shared`.
-- The gateway service network alias on the shared network stays `stacklane-gateway`.
+- Shared-gateway compose project and shared network use `stln-shared`.
+- The gateway service network alias on the shared network uses `stln-gateway`.
 - Shared resources must remain distinguishable from project-scoped resources in both docs and status output.
 
 ### Bootstrap source restriction
 
-- `STACKLANE_POST_UP_COMMAND` is honored only when set in `.stacklane-local`.
-- Setting `STACKLANE_POST_UP_COMMAND` in shell environment, `.env.stacklane`, or project `.env` is silently ignored.
+- `STACKLANE_POST_UP_COMMAND` is honored only when set in project-root `.env.stacklane`.
+- Setting `STACKLANE_POST_UP_COMMAND` in shell environment, stack-home `.env.stacklane`, or project `.env` is silently ignored.
 - This is enforced in the config loader, not in the lifecycle orchestrator.
 
 ### Bootstrap timeout and cancellation

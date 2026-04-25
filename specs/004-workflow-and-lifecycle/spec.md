@@ -17,7 +17,7 @@ An operator starts a real application with `stacklane up` and expects Stacklane 
 
 **Acceptance Scenarios**:
 
-1. **Given** a project defines a bootstrap command in `.stacklane-local`, **When** the operator runs `stacklane up`, **Then** Stacklane runs that command after Stacklane-owned readiness succeeds and surfaces the result as part of the lifecycle outcome.
+1. **Given** a project defines a bootstrap command in project-root `.env.stacklane`, **When** the operator runs `stacklane up`, **Then** Stacklane runs that command after Stacklane-owned readiness succeeds and surfaces the result as part of the lifecycle outcome.
 2. **Given** a project defines a bootstrap command that fails, **When** the operator runs `stacklane up`, **Then** Stacklane reports a named bootstrap failure, rolls the project runtime back, and provides a documented recovery path.
 3. **Given** a project does not define a bootstrap command, **When** the operator runs `stacklane up`, **Then** Stacklane completes the normal runtime lifecycle without inventing an implicit framework-specific bootstrap step.
 
@@ -65,13 +65,13 @@ An operator using several local sites wants the attach, up, status, and down wor
 ### Ease Of Use & Workflow Impact
 
 - Affected commands, wrappers, or entry points: `stacklane up`, `stacklane status`, `stacklane down`, and the real-project validation workflow that exercises attach/up/status/down behavior.
-- Backward compatibility or migration expectation: none. `stacklane <subcommand>`, `.stacklane-local`, `.env.stacklane`, and `stln-` are the supported contract after this feature lands.
+- Backward compatibility or migration expectation: none. `stacklane <subcommand>`, location-based `.env.stacklane`, and `stln-` are the supported contract after this feature lands.
 - Operator friction removed or introduced: the feature removes undocumented post-start commands, makes bootstrap failure handling explicit, makes stack-owned config easier to identify in editors and repos, and shortens runtime-owned Docker names so attached projects are easier to distinguish.
 
 ### Configuration & Precedence
 
-- New or changed configuration inputs: `.env.stacklane` becomes the canonical stack-owned defaults file; `.stacklane-local` remains the canonical project-local Stacklane config; `STACKLANE_POST_UP_COMMAND` remains the bootstrap setting but is valid only from `.stacklane-local` in this feature scope, and is ignored if set via shell environment, `.env.stacklane`, or project `.env`.
-- Precedence order: CLI flags override `.stacklane-local`, which overrides shell environment, which overrides `.env.stacklane`, which overrides built-in defaults. Project `.env` remains application-owned and is not a generic Stacklane config surface, aside from documented runtime fallbacks that already exist.
+- New or changed configuration inputs: `.env.stacklane` becomes the canonical Stacklane config filename for both stack-home defaults and project-local overrides; location defines ownership. `STACKLANE_POST_UP_COMMAND` remains the bootstrap setting but is valid only from project-root `.env.stacklane` in this feature scope, and is ignored if set via shell environment, stack-home `.env.stacklane`, or project `.env`.
+- Precedence order: CLI flags override project-root `.env.stacklane`, which overrides shell environment, which overrides stack-home `.env.stacklane`, which overrides built-in defaults. Project `.env` remains application-owned and is not a generic Stacklane config surface, aside from documented runtime fallbacks that already exist.
 
 ### State, Isolation & Recovery
 
@@ -88,7 +88,7 @@ An operator using several local sites wants the attach, up, status, and down wor
 ### Functional Requirements
 
 - **FR-001**: Stacklane MUST define a single documented bootstrap phase that runs inside the `apache` service container after Stacklane-owned readiness succeeds during `stacklane up`.
-- **FR-002**: Stacklane MUST source bootstrap behavior only from `.stacklane-local` for this feature scope.
+- **FR-002**: Stacklane MUST source bootstrap behavior only from project-root `.env.stacklane` for this feature scope.
 - **FR-003**: Stacklane MUST treat bootstrap execution as explicit operator-declared behavior and MUST NOT add implicit framework-specific bootstrap actions when no bootstrap command is configured.
 - **FR-004**: Stacklane MUST report bootstrap failure as a named lifecycle failure distinct from gateway, DNS, container health, or generic application-route errors.
 - **FR-005**: Stacklane MUST roll the current project runtime back when the bootstrap phase fails after readiness.
@@ -102,7 +102,7 @@ An operator using several local sites wants the attach, up, status, and down wor
 - **FR-013**: Stacklane MUST document which runtime-owned resource names adopt the `stln-` prefix.
 - **FR-014**: Stacklane MUST update operator-facing documentation so the canonical naming and lifecycle contract are consistent across runtime guidance and validation guidance.
 - **FR-015**: Stacklane MUST honor operator-initiated cancellation (`Ctrl-C` / context cancel) during the bootstrap phase by aborting the bootstrap command and triggering project rollback under the same `post-up-hook` step name.
-- **FR-016**: Stacklane MUST resolve `STACKLANE_POST_UP_COMMAND` only from `.stacklane-local`. Setting the variable via shell environment, `.env.stacklane`, or project `.env` MUST NOT cause it to be honored.
+- **FR-016**: Stacklane MUST resolve `STACKLANE_POST_UP_COMMAND` only from project-root `.env.stacklane`. Setting the variable via shell environment, stack-home `.env.stacklane`, or project `.env` MUST NOT cause it to be honored.
 
 ### Out Of Scope
 

@@ -14,9 +14,9 @@ Validate the 004 lifecycle contract end to end: project-local bootstrap after re
 
 ## Configuration Setup
 
-1. Create or update the stack-owned defaults file as `.env.stacklane`.
-2. Confirm project-local runtime settings live in `.stacklane-local`.
-3. If the representative app needs bootstrap, set `STACKLANE_POST_UP_COMMAND` in `.stacklane-local`.
+1. Create or update the stack-owned defaults file as `<stack-home>/.env.stacklane`.
+2. Confirm project-local runtime settings live in project-root `.env.stacklane`.
+3. If the representative app needs bootstrap, set `STACKLANE_POST_UP_COMMAND` in project-root `.env.stacklane`.
 4. Confirm project `.env` remains application-owned rather than a generic Stacklane config file.
 
 ## Happy-Path Validation
@@ -27,12 +27,12 @@ Validate the 004 lifecycle contract end to end: project-local bootstrap after re
 4. Confirm DNS routing resolves the project hostname to the local stack as documented.
 5. Confirm the reported hostname, routes, runtime details, and Docker identities match the running project.
 6. Confirm runtime env injection and database provisioning alignment by checking the app or container environment for the expected `DB_*` / `MYSQL_*` values used by the representative app.
-7. Inspect Docker resources and confirm project-scoped runtime names use the `stln-` prefix while shared infrastructure remains `stacklane-shared` and the gateway service alias remains `stacklane-gateway`.
+7. Inspect Docker resources and confirm both project-scoped and shared Stacklane-owned runtime names use the `stln-` prefix, including the shared compose project/network (`stln-shared`) and gateway service alias (`stln-gateway`).
 8. Open the project route and confirm the app reaches the expected post-bootstrap state.
 
 ## Bootstrap Failure Validation
 
-1. Change `STACKLANE_POST_UP_COMMAND` (in `.stacklane-local` only — setting it via shell env, `.env.stacklane`, or project `.env` is silently ignored) to a command that fails deterministically.
+1. Change `STACKLANE_POST_UP_COMMAND` in project-root `.env.stacklane` only — setting it via shell env, stack-home `.env.stacklane`, or project `.env` is silently ignored — to a command that fails deterministically.
 2. Run `stacklane up` again.
 3. Confirm Stacklane reports a named bootstrap lifecycle failure under the `post-up-hook` step.
 4. Run `stacklane status`.

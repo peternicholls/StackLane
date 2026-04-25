@@ -77,7 +77,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 	// Step 4: ensure shared gateway is running.
 	if err := o.ensureSharedGateway(ctx, cfg); err != nil {
-		return Wrap("shared-gateway", "", err, "Run `docker compose -p stacklane-shared up -d` and inspect logs.")
+		return Wrap("shared-gateway", "", err, "Run `docker compose -p stln-shared up -d` and inspect logs.")
 	}
 
 	// Step 5: write per-project compose env file (synthesized from cfg).
@@ -122,7 +122,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	}
 	if err := o.reloadSharedGateway(ctx, cfg); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stacklane-shared up -d --force-recreate gateway`.")
+		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stln-shared up -d --force-recreate gateway`.")
 	}
 
 	// Step 9: persist state.
@@ -158,7 +158,7 @@ func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, remov
 		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stacklane-shared up -d gateway`.")
+		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stln-shared up -d gateway`.")
 	}
 	return nil
 }
@@ -185,7 +185,7 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 		}
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", "", err, "Run `docker compose -p stacklane-shared up -d gateway`.")
+		return Wrap("gateway-reload", "", err, "Run `docker compose -p stln-shared up -d gateway`.")
 	}
 	return nil
 }
@@ -225,7 +225,7 @@ func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) err
 		return Wrap("remove-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
-		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stacklane-shared up -d gateway`.")
+		return Wrap("gateway-reload", cfg.Slug, err, "Run `docker compose -p stln-shared up -d gateway`.")
 	}
 	return nil
 }

@@ -100,10 +100,10 @@ Older `20i-*` wrapper names are intentionally not retained at the repository roo
 
 ## Config Migration
 
-The canonical per-project config file is `.stacklane-local`:
+The canonical per-project config file is now `.env.stacklane`:
 
 ```bash
-# .stacklane-local
+# .env.stacklane
 export SITE_NAME=mysite
 export DOCROOT=public_html
 export PHP_VERSION=8.4
@@ -116,7 +116,7 @@ export MYSQL_DATABASE=mysite_db
 
 The hostname defaults to the project folder name. For a repo at `/path/to/my-project` the hostname is `my-project.test`.
 
-Override in `.stacklane-local`:
+Override in project `.env.stacklane`:
 
 ```bash
 export SITE_NAME=brand-name      # becomes brand-name.test
@@ -126,7 +126,7 @@ export SITE_HOSTNAME=exact.test  # full override, no suffix appended
 ## What Stays the Same
 
 - Runtime behavior, config precedence, and state isolation are defined under `stacklane`.
-- Config resolution order is CLI flags → `.stacklane-local` → environment → `.env` → defaults.
+- Config resolution order is CLI flags → project `.env.stacklane` → environment → stack-home `.env.stacklane` → defaults.
 - PHP version, database credentials, and document root overrides all work as before.
 - The `public_html` default document root fallback is unchanged.
 - The GUI layer (`Stacklane Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting. GUI assets and documentation have been moved to `previous-version-archive/GUI-HELP.md`.
