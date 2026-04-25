@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/peternicholls/stacklane/core/config"
@@ -233,6 +234,38 @@ func TestOrchestrator_UpPortConflictBeforeDocker(t *testing.T) {
 	}
 	if len(composer.UpCalls) != 0 {
 		t.Errorf("compose up should not run on port failure")
+	}
+}
+
+func TestOrchestrator_UpSharedGatewayFailureIncludesSharedComposeFile(t *testing.T) {
+	cfg := newCfg(t)
+	dc := mocks.NewDocker()
+	composer := mocks.NewComposer()
+	composer.UpErr = errors.New("shared gateway unavailable")
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	err := orch.Up(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected shared gateway failure")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok {
+		t.Fatalf("error not StepError: %v", err)
+	}
+	if se.Step != "shared-gateway" {
+		t.Fatalf("step=%q want shared-gateway", se.Step)
+	}
+	if !strings.Contains(se.Remedy, cfg.SharedFile) {
+		t.Fatalf("remedy=%q missing shared compose path %q", se.Remedy, cfg.SharedFile)
+	}
+	if !strings.Contains(se.Remedy, "STACK_HOME") {
+		t.Fatalf("remedy=%q missing STACK_HOME guidance", se.Remedy)
 	}
 }
 
