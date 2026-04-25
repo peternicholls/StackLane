@@ -8,7 +8,7 @@
   - `command`: string value from `STACKLANE_POST_UP_COMMAND`
   - `phase`: fixed to `post-up`
   - `execution_target`: fixed to the `apache` service container
-  - `working_directory`: container default (image WORKDIR). Spec 004 does not set this explicitly. If a future task requires a deterministic site-root working directory, it must be set on the docker exec invocation in the orchestrator and asserted by tests.
+  - `working_directory`: fixed to the container site root (`/home/sites/<project-slug>`) via the orchestrator's docker exec invocation
   - `failure_mode`: fixed to rollback
   - `failure_step_name`: lifecycle step label `post-up-hook` used in operator-visible errors
   - `cancellation_behavior`: operator `Ctrl-C` during bootstrap aborts the hook and triggers rollback under the same step name

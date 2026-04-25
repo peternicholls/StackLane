@@ -13,7 +13,7 @@ The command surface is implemented as a single Go binary (`stacklane-bin`, expos
 - `stacklane` is the canonical CLI entrypoint, with subcommands such as `up`, `attach`, `status`, and `down`.
 - The runtime is a single statically-linked Go binary; no language runtime is required to run it.
 - Root-level `20i-*` wrapper entrypoints are not part of the active runtime.
-- Project config is resolved consistently from `.env.stacklane` by location: project-root overrides first, then shell environment, then stack-home defaults, then CLI flags.
+- Project config is resolved consistently with this precedence: CLI flags, then project-root `.env.stacklane`, then shell environment, then stack-home `.env.stacklane`, then built-in defaults.
 - Project identity is standardized around a slug and a `.test` (or configured) hostname.
 - Project state is recorded as one JSON file per project under `.stacklane-state/projects/<slug>.json`.
 - Stacklane keeps shared hostname-aware routing available for attached projects, reuses it when already healthy, and repairs it when missing.

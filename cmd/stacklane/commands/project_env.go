@@ -22,7 +22,7 @@ func ensureProjectEnvFile(cfg config.ProjectConfig, flags *SharedFlags) error {
 		return fmt.Errorf("check project env: %w", err)
 	}
 	body := renderProjectEnvFile(cfg, flags)
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		return fmt.Errorf("write project env: %w", err)
 	}
 	return nil
@@ -129,11 +129,15 @@ func renderEnvValue(value string) string {
 	if safeEnvValue.MatchString(value) {
 		return value
 	}
-	if !strings.Contains(value, "'") {
-		return "'" + value + "'"
-	}
-	if !strings.Contains(value, `"`) {
-		return `"` + value + `"`
-	}
-	return value
+	return shellDoubleQuote(value)
+}
+
+func shellDoubleQuote(value string) string {
+	replacer := strings.NewReplacer(
+		`\`, `\\`,
+		`"`, `\"`,
+		`$`, `\$`,
+		"`", "\\`",
+	)
+	return `"` + replacer.Replace(value) + `"`
 }

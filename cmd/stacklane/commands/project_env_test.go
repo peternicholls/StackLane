@@ -30,6 +30,13 @@ func TestEnsureProjectEnvFileCreatesStarterWhenMissing(t *testing.T) {
 	if err := ensureProjectEnvFile(cfg, flags); err != nil {
 		t.Fatalf("ensure project env: %v", err)
 	}
+	info, err := os.Stat(filepath.Join(projectDir, projectEnvFileName))
+	if err != nil {
+		t.Fatalf("stat created env: %v", err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("created env mode=%#o want 0600", info.Mode().Perm())
+	}
 
 	body, err := os.ReadFile(filepath.Join(projectDir, projectEnvFileName))
 	if err != nil {
@@ -76,7 +83,15 @@ func TestEnsureProjectEnvFileDoesNotOverwriteExistingFile(t *testing.T) {
 
 func TestRenderEnvValueQuotesWhitespace(t *testing.T) {
 	got := renderEnvValue("my site")
-	if got != "'my site'" {
-		t.Fatalf("renderEnvValue=%q want %q", got, "'my site'")
+	if got != `"my site"` {
+		t.Fatalf("renderEnvValue=%q want %q", got, `"my site"`)
+	}
+}
+
+func TestRenderEnvValueEscapesMixedQuotesForShell(t *testing.T) {
+	got := renderEnvValue(`It's "his" site`)
+	want := `"It's \"his\" site"`
+	if got != want {
+		t.Fatalf("renderEnvValue=%q want %q", got, want)
 	}
 }

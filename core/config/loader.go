@@ -1,5 +1,5 @@
 // Loader implements ConfigLoader. It resolves the configuration precedence
-// chain in the order specified by FR-003:
+// chain as defined by the active Stacklane config contract:
 //
 //  1. CLI flags (highest)
 //  2. .env.stacklane in the project directory
@@ -9,7 +9,7 @@
 //
 // STACKLANE_POST_UP_COMMAND is a special-case bootstrap setting that is only
 // honored when set in the project's .env.stacklane file. It is intentionally
-// ignored if set via shell environment, .env.stacklane, or project .env.
+// ignored if set via shell environment, stack-home .env.stacklane, or project .env.
 package config
 
 import (
@@ -78,7 +78,12 @@ func loadEnvFile(path string) (map[string]string, error) {
 		}
 		switch {
 		case len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"':
-			value = value[1 : len(value)-1]
+			unquoted, unquoteErr := strconv.Unquote(value)
+			if unquoteErr != nil {
+				value = value[1 : len(value)-1]
+			} else {
+				value = unquoted
+			}
 		case len(value) >= 2 && value[0] == '\'' && value[len(value)-1] == '\'':
 			value = value[1 : len(value)-1]
 		}

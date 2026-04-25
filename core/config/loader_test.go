@@ -218,6 +218,19 @@ func TestLoader_RejectsUnsupportedStackKind(t *testing.T) {
 	}
 }
 
+func TestLoadEnvFile_UnquotesGeneratedDoubleQuotedValues(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".env.stacklane")
+	writeFile(t, path, "SITE_NAME=\"It's \\\"his\\\" site\"\n")
+
+	envMap, err := loadEnvFile(path)
+	if err != nil {
+		t.Fatalf("loadEnvFile: %v", err)
+	}
+	if envMap["SITE_NAME"] != `It's "his" site` {
+		t.Fatalf("SITE_NAME=%q want %q", envMap["SITE_NAME"], `It's "his" site`)
+	}
+}
+
 func TestLoader_SharedGatewaySettingsAreNotLoadedFromEnv(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
