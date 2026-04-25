@@ -53,6 +53,7 @@ build/
 # Test files
 test-site/
 demo-site/
+previous-version-archive/
 
 # Go build artefacts
 /stacklane-bin
