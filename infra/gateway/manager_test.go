@@ -45,7 +45,7 @@ func TestRender_SingleRoute_TLS(t *testing.T) {
 		TLSEnabled: true,
 		HTTPSPort:  443,
 		Routes: []Route{
-			{Hostname: "alpha.test", Slug: "alpha", WebNetworkAlias: "stacklane-alpha-web"},
+			{Hostname: "alpha.test", Slug: "alpha", WebNetworkAlias: "stln-alpha-web"},
 		},
 	}
 	out, err := Render(in)
@@ -64,8 +64,8 @@ func TestRender_MultiRoute_NoTLS(t *testing.T) {
 		TLSEnabled: false,
 		HTTPSPort:  443,
 		Routes: []Route{
-			{Hostname: "alpha.test", Slug: "alpha", WebNetworkAlias: "stacklane-alpha-web"},
-			{Hostname: "beta.test", Slug: "beta", WebNetworkAlias: "stacklane-beta-web"},
+			{Hostname: "alpha.test", Slug: "alpha", WebNetworkAlias: "stln-alpha-web"},
+			{Hostname: "beta.test", Slug: "beta", WebNetworkAlias: "stln-beta-web"},
 		},
 	}
 	out, err := Render(in)

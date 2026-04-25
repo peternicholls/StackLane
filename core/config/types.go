@@ -106,7 +106,9 @@ type ProjectConfig struct {
 }
 
 // ConfigLoader resolves the full precedence chain (CLI flags -> .stacklane-local
-// -> shell env -> .stackenv/.env -> defaults) and returns a populated ProjectConfig.
+// -> shell env -> .env.stacklane -> defaults) and returns a populated ProjectConfig.
+// STACKLANE_POST_UP_COMMAND is the one project-scoped exception: it is honored
+// only when set in .stacklane-local.
 //
 // Implementations must NOT depend on Docker, the network, or any subsystem
 // outside the local filesystem.

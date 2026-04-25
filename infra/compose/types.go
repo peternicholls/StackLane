@@ -27,26 +27,26 @@ type Composer interface {
 
 // UpOptions describes a single compose-up invocation.
 type UpOptions struct {
-	ProjectDir   string   // working directory for the subprocess
-	ComposeFile  string   // -f
-	ProjectName  string   // -p
-	EnvFile      string   // --env-file (optional)
-	Env          []string // extra environment for the subprocess (KEY=VALUE)
-	Profiles     []string // --profile <name> ...
-	WaitTimeout  time.Duration
-	Detach       bool // --detach (default true)
-	NoDeps       bool
+	ProjectDir    string   // working directory for the subprocess
+	ComposeFile   string   // -f
+	ProjectName   string   // -p
+	EnvFile       string   // --env-file (optional)
+	Env           []string // extra environment for the subprocess (KEY=VALUE)
+	Profiles      []string // --profile <name> ...
+	WaitTimeout   time.Duration
+	Detach        bool // --detach (default true)
+	NoDeps        bool
 	ForceRecreate bool
-	Services     []string // optional, restricts the up to specific services
+	Services      []string // optional, restricts the up to specific services
 }
 
 // DownOptions describes a compose-down invocation.
 type DownOptions struct {
-	ProjectDir  string
-	ComposeFile string
-	ProjectName string
-	EnvFile     string
-	Env         []string
+	ProjectDir    string
+	ComposeFile   string
+	ProjectName   string
+	EnvFile       string
+	Env           []string
 	RemoveVolumes bool
 }
 

@@ -113,9 +113,10 @@ The lifecycle layer rolls back partial progress before returning. A failed `stac
 ## Runtime Identity Mapping
 
 - Project slug defaults to the repo folder name, unless `SITE_NAME` overrides it.
-- Compose project defaults to `stacklane-<slug>`.
+- Compose project defaults to `stln-<slug>`.
 - Runtime network is `<compose-project>-runtime`.
 - Database volume is `<compose-project>-db-data`.
+- Web alias on the shared network is `<compose-project>-web`.
 - Planned hostname defaults to `<slug>.test` unless overridden.
 - State records keep the repo path, slug, compose project, hostname, and docroot together so live Docker resources can be mapped back to the originating repo.
 

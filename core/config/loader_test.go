@@ -57,8 +57,24 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.ContainerSiteRoot != "/home/sites/"+cfg.Slug {
 		t.Errorf("ContainerSiteRoot=%q", cfg.ContainerSiteRoot)
 	}
-	if cfg.WebNetworkAlias != "stacklane-"+cfg.Slug+"-web" {
+	if cfg.WebNetworkAlias != "stln-"+cfg.Slug+"-web" {
 		t.Errorf("WebNetworkAlias=%q", cfg.WebNetworkAlias)
+	}
+	if cfg.ComposeProjectName != "stln-"+cfg.Slug {
+		t.Errorf("ComposeProjectName=%q", cfg.ComposeProjectName)
+	}
+	if cfg.RuntimeNetwork != "stln-"+cfg.Slug+"-runtime" {
+		t.Errorf("RuntimeNetwork=%q", cfg.RuntimeNetwork)
+	}
+	if cfg.DatabaseVolume != "stln-"+cfg.Slug+"-db-data" {
+		t.Errorf("DatabaseVolume=%q", cfg.DatabaseVolume)
+	}
+	// Shared resources keep the stacklane- prefix per the data-model contract.
+	if cfg.SharedGateway.Network != "stacklane-shared" {
+		t.Errorf("SharedGateway.Network=%q want stacklane-shared", cfg.SharedGateway.Network)
+	}
+	if cfg.SharedGateway.ComposeProjectName != "stacklane-shared" {
+		t.Errorf("SharedGateway.ComposeProjectName=%q want stacklane-shared", cfg.SharedGateway.ComposeProjectName)
 	}
 }
 
@@ -66,8 +82,8 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	// .stackenv in stack home (lowest of the file layers)
-	writeFile(t, filepath.Join(stackHome, ".stackenv"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
+	// .env.stacklane in stack home (lowest of the file layers)
+	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
 	// .stacklane-local in project dir (overrides shell env and .env)
 	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "PHP_VERSION=8.2\nSITE_SUFFIX=local\n")
 
@@ -107,7 +123,7 @@ func TestLoader_ProjectRuntimeEnvDBFallback(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	writeFile(t, filepath.Join(stackHome, ".stackenv"), "SITE_SUFFIX=stack-env\n")
+	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "SITE_SUFFIX=stack-env\n")
 	writeFile(t, filepath.Join(projectDir, ".env"), "DB_HOST=127.0.0.1\nDB_DATABASE=budget_forecaster\nDB_USERNAME=devuser\nDB_PASSWORD=devpass\nSITE_SUFFIX=project-should-be-ignored\n")
 
 	loader := newLoader(t, nil, stackHome)
@@ -139,19 +155,47 @@ func TestLoader_ProjectRuntimeEnvDBFallback(t *testing.T) {
 	}
 }
 
-func TestLoader_StackEnvFallsBackToLegacyEnv(t *testing.T) {
+// TestLoader_StackHomeEnvIsNotLoaded asserts that the loader does NOT consult
+// either of the legacy stack-defaults files: <stackHome>/.stackenv (the prior
+// canonical name) and <stackHome>/.env (the legacy fallback). Spec 004
+// removes both with no compatibility shim.
+func TestLoader_StackHomeEnvIsNotLoaded(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	writeFile(t, filepath.Join(stackHome, ".env"), "SITE_SUFFIX=legacy-stack-env\n")
+	writeFile(t, filepath.Join(stackHome, ".env"), "SITE_SUFFIX=legacy-stack-env\nPHP_VERSION=7.4\n")
+	writeFile(t, filepath.Join(stackHome, ".stackenv"), "SITE_SUFFIX=legacy-stackenv\nPHP_VERSION=7.0\n")
 
 	loader := newLoader(t, nil, stackHome)
 	cfg, err := loader.Load(projectDir, CLIFlags{})
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if cfg.SiteSuffix != "legacy-stack-env" {
-		t.Fatalf("SITE_SUFFIX=%q want legacy-stack-env from fallback .env", cfg.SiteSuffix)
+	if cfg.SiteSuffix != "test" {
+		t.Fatalf("SITE_SUFFIX=%q want default test (legacy stack files must not load)", cfg.SiteSuffix)
+	}
+	if cfg.PHPVersion != "8.5" {
+		t.Fatalf("PHP_VERSION=%q want default 8.5 (legacy stack files must not load)", cfg.PHPVersion)
+	}
+}
+
+// TestLoader_StackHomeOverrideLoadsEnvStacklane confirms the canonical
+// .env.stacklane file is loaded from a STACK_HOME override directory.
+func TestLoader_StackHomeOverrideLoadsEnvStacklane(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "PHP_VERSION=8.2\nSITE_SUFFIX=stack-defaults\n")
+
+	loader := newLoader(t, nil, stackHome)
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.PHPVersion != "8.2" {
+		t.Fatalf("PHP_VERSION=%q want 8.2 from .env.stacklane", cfg.PHPVersion)
+	}
+	if cfg.SiteSuffix != "stack-defaults" {
+		t.Fatalf("SITE_SUFFIX=%q want stack-defaults from .env.stacklane", cfg.SiteSuffix)
 	}
 }
 
@@ -168,6 +212,52 @@ func TestLoader_PostUpHookFromProjectLocalConfig(t *testing.T) {
 	}
 	if cfg.PostUpCommand != "php artisan migrate --force --no-interaction" {
 		t.Fatalf("PostUpCommand=%q", cfg.PostUpCommand)
+	}
+}
+
+// TestLoader_PostUpHookOnlyHonoredFromProjectLocal proves FR-016: the bootstrap
+// command must be ignored when set via shell env, .env.stacklane, or project
+// .env. Each case below asserts cfg.PostUpCommand stays empty.
+func TestLoader_PostUpHookOnlyHonoredFromProjectLocal(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T, stackHome, projectDir string) map[string]string
+	}{
+		{
+			name: "shell env is ignored",
+			setup: func(t *testing.T, stackHome, projectDir string) map[string]string {
+				return map[string]string{"STACKLANE_POST_UP_COMMAND": "echo from-shell"}
+			},
+		},
+		{
+			name: ".env.stacklane is ignored",
+			setup: func(t *testing.T, stackHome, projectDir string) map[string]string {
+				writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "STACKLANE_POST_UP_COMMAND=echo from-stack-env\n")
+				return nil
+			},
+		},
+		{
+			name: "project .env is ignored",
+			setup: func(t *testing.T, stackHome, projectDir string) map[string]string {
+				writeFile(t, filepath.Join(projectDir, ".env"), "STACKLANE_POST_UP_COMMAND=echo from-project-env\n")
+				return nil
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stackHome := t.TempDir()
+			projectDir := t.TempDir()
+			env := tc.setup(t, stackHome, projectDir)
+			loader := newLoader(t, env, stackHome)
+			cfg, err := loader.Load(projectDir, CLIFlags{})
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if cfg.PostUpCommand != "" {
+				t.Fatalf("PostUpCommand=%q want empty (only .stacklane-local is honored)", cfg.PostUpCommand)
+			}
+		})
 	}
 }
 

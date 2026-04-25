@@ -4,8 +4,12 @@
 //  1. CLI flags (highest)
 //  2. .stacklane-local in the project directory
 //  3. shell environment
-//  4. .env in the stack home
+//  4. .env.stacklane in the stack home (canonical stack-owned defaults file)
 //  5. built-in defaults (lowest)
+//
+// STACKLANE_POST_UP_COMMAND is a special-case bootstrap setting that is only
+// honored when set in the project's .stacklane-local file. It is intentionally
+// ignored if set via shell environment, .env.stacklane, or project .env.
 package config
 
 import (
@@ -112,14 +116,11 @@ func loadProjectRuntimeEnv(projectDir string) (map[string]string, error) {
 	return loadEnvFile(filepath.Join(projectDir, ".env"))
 }
 
+// loadStackEnv reads the canonical stack-owned defaults file. .env.stacklane is
+// the only supported file; legacy <stackHome>/.stackenv and <stackHome>/.env
+// are intentionally NOT consulted (workspace legacy policy: no compat shims).
 func loadStackEnv(stackHome string) (map[string]string, error) {
-	preferred := filepath.Join(stackHome, ".stackenv")
-	if envMap, err := loadEnvFile(preferred); err != nil {
-		return nil, err
-	} else if len(envMap) > 0 {
-		return envMap, nil
-	}
-	return loadEnvFile(filepath.Join(stackHome, ".env"))
+	return loadEnvFile(filepath.Join(stackHome, ".env.stacklane"))
 }
 
 func applyProjectRuntimeDBFallback(merged, runtimeEnv map[string]string) {
@@ -207,10 +208,14 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	// CLI flags.
 	merged := defaults()
 
-	// .stackenv in the stack home applies just above built-in defaults, with
-	// legacy .env still accepted as a fallback.
+	// .env.stacklane in the stack home applies just above built-in defaults.
+	// STACKLANE_POST_UP_COMMAND is excluded from this merge: bootstrap is a
+	// project-scoped declaration sourced only from .stacklane-local.
 	if envMap, err := loadStackEnv(stackHome); err == nil {
 		for k, v := range envMap {
+			if k == "STACKLANE_POST_UP_COMMAND" {
+				continue
+			}
 			merged[k] = v
 		}
 	}
@@ -273,8 +278,8 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.SiteSuffix = strOr(merged["SITE_SUFFIX"], "test")
 	cfg.Hostname, cfg.SiteSuffix = project.ResolveHostname(cfg.Slug, merged["SITE_HOSTNAME"], cfg.SiteSuffix)
 
-	cfg.ComposeProjectName = strOr(merged["COMPOSE_PROJECT_NAME"], "stacklane-"+cfg.Slug)
-	cfg.WebNetworkAlias = strOr(merged["WEB_NETWORK_ALIAS"], "stacklane-"+cfg.Slug+"-web")
+	cfg.ComposeProjectName = strOr(merged["COMPOSE_PROJECT_NAME"], "stln-"+cfg.Slug)
+	cfg.WebNetworkAlias = strOr(merged["WEB_NETWORK_ALIAS"], "stln-"+cfg.Slug+"-web")
 	cfg.ContainerSiteRoot = "/home/sites/" + cfg.Slug
 	cfg.RuntimeNetwork = cfg.ComposeProjectName + "-runtime"
 	cfg.DatabaseVolume = cfg.ComposeProjectName + "-db-data"
@@ -340,6 +345,8 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 }
 
 // trackedEnvKeys is the closed set of shell variables ConfigLoader honours.
+// STACKLANE_POST_UP_COMMAND is intentionally absent: bootstrap is sourced
+// only from .stacklane-local (FR-016).
 var trackedEnvKeys = []string{
 	"SITE_NAME", "SITE_HOSTNAME", "SITE_SUFFIX", "DOCROOT", "CODE_DIR",
 	"PHP_VERSION", "MYSQL_VERSION", "MYSQL_ROOT_PASSWORD",
@@ -347,7 +354,6 @@ var trackedEnvKeys = []string{
 	"HOST_PORT", "COMPOSE_PROJECT_NAME", "WEB_NETWORK_ALIAS",
 	"SHARED_GATEWAY_NETWORK", "SHARED_GATEWAY_HTTP_PORT", "SHARED_GATEWAY_HTTPS_PORT",
 	"SHARED_GATEWAY_COMPOSE_PROJECT_NAME",
-	"STACKLANE_POST_UP_COMMAND",
 	"LOCAL_DNS_PROVIDER", "LOCAL_DNS_IP", "LOCAL_DNS_PORT", "LOCAL_DNS_SUFFIX",
 	"STACK_HOME", "STACK_STATE_DIR", "STACKLANE_WAIT_TIMEOUT",
 }

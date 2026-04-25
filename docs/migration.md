@@ -214,7 +214,7 @@ the same `stacklane` entrypoint. The archived Bash implementation lives under
 - Project slug derivation (`stacklane_slugify`).
 - Hostname resolution rules (explicit > `<slug>.<suffix>`).
 - Document root canonicalisation (explicit `DOCROOT` > `CODE_DIR` alias > `public_html` > project root).
-- Compose project name (`stacklane-<slug>`), web alias (`stacklane-<slug>-web`), runtime network, database volume.
+- Compose project name (`stln-<slug>`, renamed from `stacklane-<slug>` in spec 004), web alias (`stln-<slug>-web`), runtime network, database volume.
 - nginx gateway block layout (golden-tested under `infra/gateway/testdata/`).
 
 ### Deferred for follow-up

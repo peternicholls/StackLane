@@ -11,13 +11,13 @@ The command surface is implemented as a single Go binary (`stacklane-bin`, expos
 - `stacklane` is the canonical CLI entrypoint, with subcommands such as `up`, `attach`, `status`, and `down`.
 - The runtime is a single statically-linked Go binary; no language runtime is required to run it.
 - Root-level `20i-*` wrapper entrypoints are not part of the active runtime.
-- Project config is resolved consistently from stack `.stackenv`, project `.env`, `.stacklane-local`, shell environment, and CLI flags.
+- Project config is resolved consistently from stack `.env.stacklane`, project `.stacklane-local`, shell environment, and CLI flags.
 - Project identity is standardized around a slug and a `.test` (or configured) hostname.
 - Project state is recorded as one JSON file per project under `.stacklane-state/projects/<slug>.json`.
 - One shared gateway owns the host web ports and routes to one or more attached projects via hostname-aware nginx rules.
 - Per-project web containers are isolated behind the shared Docker network instead of publishing host ports directly.
 - Project code is mounted internally at `/home/sites/<project-slug>/...` to mirror a 20i-style hosting layout.
-- Per-project runtimes get deterministic Docker names: compose project `stacklane-<slug>`, network `stacklane-<slug>-runtime`, DB volume `stacklane-<slug>-db-data`.
+- Per-project runtimes get deterministic Docker names: compose project `stln-<slug>`, network `stln-<slug>-runtime`, DB volume `stln-<slug>-db-data`. Shared infrastructure stays under `stacklane-shared` (compose project + network) and `stacklane-gateway` (container).
 - Healthcheck-driven readiness: `stacklane up` blocks until nginx, apache/PHP-FPM, and MariaDB report healthy (default 120 s, override via `--wait-timeout` or `STACKLANE_WAIT_TIMEOUT`).
 - phpMyAdmin is opt-in via the `debug` compose profile.
 
@@ -93,11 +93,11 @@ Config is resolved in this order:
 1. CLI flags such as `--php-version`, `--docroot`, or `--site-name`
 2. Project-local `.stacklane-local`
 3. Current shell environment
-4. Stack-wide `.stackenv`
+4. Stack-wide `<stack-home>/.env.stacklane`
 5. Built-in defaults
 
-The stack-wide `.stackenv` is for Stacklane defaults. Project `.env` stays application-owned. `.stacklane-local` is the Stacklane project contract.
-`STACKLANE_POST_UP_COMMAND` is the one project-local escape hatch intended for app bootstrap, such as migrations, after Stacklane has already declared the containers healthy.
+The stack-wide `.env.stacklane` is the only stack-defaults source Stacklane reads — there is no `<stack-home>/.env` fallback (FR-014). `.stacklane-local` is the Stacklane project contract.
+`STACKLANE_POST_UP_COMMAND` is the one project-local escape hatch intended for app bootstrap, such as migrations, after Stacklane has already declared the containers healthy. It is honored **only** when set in the project's `.stacklane-local` (FR-016) — it is intentionally ignored if present in `.env.stacklane` or the shell so that one project cannot smuggle a hook into another.
 
 ## `.stacklane-local` Contract
 
@@ -144,9 +144,11 @@ Current container path model:
 
 Current runtime naming model:
 
-- Compose project: `stacklane-<slug>` by default
+- Compose project: `stln-<slug>` by default
 - Runtime network: `<compose-project>-runtime`
 - Database volume: `<compose-project>-db-data`
+- Web alias on the shared network: `<compose-project>-web`
+- Shared gateway resources keep the `stacklane-` prefix: compose project `stacklane-shared`, network `stacklane-shared`, container `stacklane-gateway` (FR-013)
 - State file: `.stacklane-state/projects/<slug>.json`
 - Stack registry: derived from the JSON state directory (no positional `registry.tsv` file)
 
@@ -189,8 +191,8 @@ stacklane/
 ├── docker-compose.shared.yml # shared gateway and network
 ├── docker/
 │   └── nginx.conf.tmpl       # reference nginx template (Go renderer is authoritative)
-├── .env.example              # legacy stack-wide defaults reference
-├── .stackenv.example         # preferred stack-wide defaults reference
+├── .env.stacklane.example    # stack-wide defaults reference (copy to <stack-home>/.env.stacklane)
+├── .env.example              # project-local override reference (copy into a project as .stacklane-local)
 ├── .stacklane-state/         # runtime state (git-ignored)
 │   ├── projects/<slug>.json  # per-project state file
 │   └── shared/               # generated gateway config
