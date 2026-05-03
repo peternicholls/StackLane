@@ -72,6 +72,9 @@ func NewRoot(version string) *cobra.Command {
 	root.AddCommand(NewStatus(flags))
 	root.AddCommand(NewLogs(flags))
 	root.AddCommand(NewDNSSetup(flags))
+	root.AddCommand(NewSetup(flags))
+	root.AddCommand(NewDoctor(flags))
+	root.AddCommand(NewInit(flags))
 	root.AddCommand(NewVersion(version))
 	return root
 }
