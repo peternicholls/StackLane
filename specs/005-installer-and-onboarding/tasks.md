@@ -19,11 +19,11 @@ description: "Detailed implementation tasks for installer, onboarding, and readi
 
 **Purpose**: Establish command scaffolding and shared onboarding artifacts.
 
-- [ ] T001 Add onboarding command registrations in `cmd/stacklane/commands/root.go`.
-- [ ] T002 Create setup command scaffold in `cmd/stacklane/commands/setup.go`.
-- [ ] T003 Create doctor command scaffold in `cmd/stacklane/commands/doctor.go`.
-- [ ] T004 Create init command scaffold in `cmd/stacklane/commands/init.go`.
-- [ ] T005 Add Bubble Tea and Huh dependencies in `go.mod`.
+- [x] T001 Add onboarding command registrations in `cmd/stacklane/commands/root.go`.
+- [x] T002 Create setup command scaffold in `cmd/stacklane/commands/setup.go`.
+- [x] T003 Create doctor command scaffold in `cmd/stacklane/commands/doctor.go`.
+- [x] T004 Create init command scaffold in `cmd/stacklane/commands/init.go`.
+- [x] T005 Add Bubble Tea and Huh dependencies in `go.mod`.
 
 ---
 
@@ -33,15 +33,15 @@ description: "Detailed implementation tasks for installer, onboarding, and readi
 
 **CRITICAL**: Complete this phase before user-story implementation.
 
-- [ ] T006 Implement shared onboarding types and result envelope in `core/onboarding/types.go`.
-- [ ] T007 Implement shared onboarding runtime and exit-code reduction in `core/onboarding/runtime.go`.
-- [ ] T008 [P] Implement text projection adapter in `core/onboarding/projection_text.go`.
-- [ ] T009 [P] Implement JSON projection adapter in `core/onboarding/projection_json.go`.
-- [ ] T010 [P] Implement TUI projection adapter in `core/onboarding/projection_tui.go`.
-- [ ] T011 Implement command-mode resolution for adapters in `cmd/stacklane/commands/onboarding_mode.go`.
-- [ ] T012 Implement shared machine-readiness module skeleton in `core/onboarding/machine_readiness.go`.
-- [ ] T013 Implement shared project-env ownership module skeleton in `core/onboarding/project_env.go`.
-- [ ] T014 Add shared runtime and projection tests in `core/onboarding/runtime_test.go`.
+- [x] T006 Implement shared onboarding types and result envelope in `core/onboarding/types.go`.
+- [x] T007 Implement shared onboarding runtime and exit-code reduction in `core/onboarding/runtime.go`.
+- [x] T008 [P] Implement text projection adapter in `core/onboarding/projection_text.go`.
+- [x] T009 [P] Implement JSON projection adapter in `core/onboarding/projection_json.go`.
+- [x] T010 [P] Implement TUI projection adapter in `core/onboarding/projection_tui.go`.
+- [x] T011 Implement command-mode resolution for adapters in `cmd/stacklane/commands/onboarding_mode.go`.
+- [x] T012 Implement shared machine-readiness module skeleton in `core/onboarding/machine_readiness.go`.
+- [x] T013 Implement shared project-env ownership module skeleton in `core/onboarding/project_env.go`.
+- [x] T014 Add shared runtime and projection tests in `core/onboarding/runtime_test.go`.
 
 **Checkpoint**: Shared onboarding runtime is ready; user stories can proceed.
 
@@ -55,19 +55,19 @@ description: "Detailed implementation tasks for installer, onboarding, and readi
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add installer behavior test script for interactive and non-interactive handoff in `scripts/tests/install_handoff_smoke.sh`.
-- [ ] T016 [P] [US1] Add installer checksum and asset-name validation test script in `scripts/tests/install_checksum_smoke.sh`.
+- [x] T015 [P] [US1] Add installer behavior test script for interactive and non-interactive handoff in `scripts/tests/install_handoff_smoke.sh`.
+- [x] T016 [P] [US1] Add installer checksum and asset-name validation test script in `scripts/tests/install_checksum_smoke.sh`.
 
 ### Implementation for User Story 1
 
 Execute US1 in red-green-refactor slices: write the failing test for asset selection or handoff behavior first, make it pass, then move to the next install behavior.
 
-- [ ] T017 [US1] Implement release asset OS/arch detection and naming in `install.sh`.
-- [ ] T018 [US1] Implement checksum fetch and verification workflow in `install.sh`.
-- [ ] T019 [US1] Implement deterministic install destination and PATH warning behavior in `install.sh`.
-- [ ] T020 [US1] Implement interactive `stacklane setup --tui` handoff and `NONINTERACTIVE=1` next-step behavior in `install.sh`.
-- [ ] T021 [US1] Implement release artifact naming and checksum publication updates in `.github/workflows/release.yml`.
-- [ ] T022 [US1] Publish installer path, fallback verification, and next-step docs in `README.md`.
+- [x] T017 [US1] Implement release asset OS/arch detection and naming in `install.sh`.
+- [x] T018 [US1] Implement checksum fetch and verification workflow in `install.sh`.
+- [x] T019 [US1] Implement deterministic install destination and PATH warning behavior in `install.sh`.
+- [x] T020 [US1] Implement interactive `stacklane setup --tui` handoff and `NONINTERACTIVE=1` next-step behavior in `install.sh`.
+- [x] T021 [US1] Implement release artifact naming and checksum publication updates in `.github/workflows/release.yml`.
+- [x] T022 [US1] Publish installer path, fallback verification, and next-step docs in `README.md`.
 
 **Checkpoint**: Installer path is fully functional and independently verifiable.
 
@@ -81,21 +81,21 @@ Execute US1 in red-green-refactor slices: write the failing test for asset selec
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Add setup command-adapter flag and contract tests in `cmd/stacklane/commands/setup_test.go`.
-- [ ] T024 [P] [US2] Add machine-readiness and setup-policy tests in `core/onboarding/machine_readiness_test.go`.
+- [x] T023 [P] [US2] Add setup command-adapter flag and contract tests in `cmd/stacklane/commands/setup_test.go`.
+- [x] T024 [P] [US2] Add machine-readiness and setup-policy tests in `core/onboarding/machine_readiness_test.go`.
 
 ### Implementation for User Story 2
 
 Execute US2 in red-green-refactor slices: start with one failing readiness or policy test, pass it through the shared runtime or machine-readiness seam, then move to the next step behavior.
 
-- [ ] T025 [US2] Implement setup command adapter and mode wiring in `cmd/stacklane/commands/setup.go`.
-- [ ] T026 [US2] Implement suffix-resolution and setup policy on top of the runtime seam in `core/onboarding/runtime.go`.
-- [ ] T027 [US2] Implement shared Docker, state-dir, and port readiness rules in `core/onboarding/machine_readiness.go`.
-- [ ] T028 [US2] Implement shared DNS and mkcert readiness rules in `core/onboarding/machine_readiness.go` and `platform/dns/macos.go`.
-- [ ] T029 [US2] Implement setup-specific privilege prompts and manual remediation behavior in `cmd/stacklane/commands/setup.go`.
-- [ ] T030 [US2] Implement setup TUI projection adapter usage in `cmd/stacklane/commands/setup.go` and `core/onboarding/projection_tui.go`.
-- [ ] T031 [P] [US2] Add setup unsupported-platform and exit-code tests in `cmd/stacklane/commands/setup_platform_test.go`.
-- [ ] T032 [US2] Implement setup unsupported-platform policy on top of machine-readiness results in `cmd/stacklane/commands/setup.go`.
+- [x] T025 [US2] Implement setup command adapter and mode wiring in `cmd/stacklane/commands/setup.go`.
+- [x] T026 [US2] Implement suffix-resolution and setup policy on top of the runtime seam in `core/onboarding/runtime.go`.
+- [x] T027 [US2] Implement shared Docker, state-dir, and port readiness rules in `core/onboarding/machine_readiness.go`.
+- [x] T028 [US2] Implement shared DNS and mkcert readiness rules in `core/onboarding/machine_readiness.go` and `platform/dns/macos.go`.
+- [x] T029 [US2] Implement setup-specific privilege prompts and manual remediation behavior in `cmd/stacklane/commands/setup.go`.
+- [x] T030 [US2] Implement setup TUI projection adapter usage in `cmd/stacklane/commands/setup.go` and `core/onboarding/projection_tui.go`.
+- [x] T031 [P] [US2] Add setup unsupported-platform and exit-code tests in `cmd/stacklane/commands/setup_platform_test.go`.
+- [x] T032 [US2] Implement setup unsupported-platform policy on top of machine-readiness results in `cmd/stacklane/commands/setup.go`.
 
 **Checkpoint**: Setup flow is independently usable, idempotent, and automation-safe.
 
@@ -109,19 +109,19 @@ Execute US2 in red-green-refactor slices: start with one failing readiness or po
 
 ### Tests for User Story 4
 
-- [ ] T033 [P] [US4] Add init command-adapter and contract tests in `cmd/stacklane/commands/init_test.go`.
-- [ ] T034 [P] [US4] Add project-env ownership tests in `core/onboarding/project_env_test.go`.
+- [x] T033 [P] [US4] Add init command-adapter and contract tests in `cmd/stacklane/commands/init_test.go`.
+- [x] T034 [P] [US4] Add project-env ownership tests in `core/onboarding/project_env_test.go`.
 
 ### Implementation for User Story 4
 
 Execute US4 in red-green-refactor slices: start with one failing ownership or validation test, pass it in `core/onboarding/project_env.go`, then layer the adapter behavior afterward.
 
-- [ ] T035 [US4] Implement init command adapter and mode wiring in `cmd/stacklane/commands/init.go`.
-- [ ] T036 [US4] Implement project-root resolution, validation, and ownership rules in `core/onboarding/project_env.go`.
-- [ ] T037 [US4] Implement init interactive confirmation and adjustment flow on top of the ownership seam in `cmd/stacklane/commands/init.go` and `core/onboarding/projection_tui.go`.
-- [ ] T038 [US4] Implement minimal `.env.stacklane` write, overwrite protection, and preservation semantics in `core/onboarding/project_env.go`.
-- [ ] T039 [US4] Route the silent fallback helper through the shared project-env ownership module in `cmd/stacklane/commands/project_env.go`.
-- [ ] T040 [US4] Implement init success summary and next-step projection in `cmd/stacklane/commands/init.go`.
+- [x] T035 [US4] Implement init command adapter and mode wiring in `cmd/stacklane/commands/init.go`.
+- [x] T036 [US4] Implement project-root resolution, validation, and ownership rules in `core/onboarding/project_env.go`.
+- [x] T037 [US4] Implement init interactive confirmation and adjustment flow on top of the ownership seam in `cmd/stacklane/commands/init.go` and `core/onboarding/projection_tui.go`.
+- [x] T038 [US4] Implement minimal `.env.stacklane` write, overwrite protection, and preservation semantics in `core/onboarding/project_env.go`.
+- [x] T039 [US4] Route the silent fallback helper through the shared project-env ownership module in `cmd/stacklane/commands/project_env.go`.
+- [x] T040 [US4] Implement init success summary and next-step projection in `cmd/stacklane/commands/init.go`.
 
 **Checkpoint**: Init flow is independently usable and safe for repeated runs.
 
@@ -135,18 +135,18 @@ Execute US4 in red-green-refactor slices: start with one failing ownership or va
 
 ### Tests for User Story 3
 
-- [ ] T041 [P] [US3] Add doctor command-adapter contract tests in `cmd/stacklane/commands/doctor_test.go`.
-- [ ] T042 [P] [US3] Add machine-readiness read-only policy tests in `core/onboarding/machine_readiness_test.go`.
+- [x] T041 [P] [US3] Add doctor command-adapter contract tests in `cmd/stacklane/commands/doctor_test.go`.
+- [x] T042 [P] [US3] Add machine-readiness read-only policy tests in `core/onboarding/machine_readiness_test.go`.
 
 ### Implementation for User Story 3
 
 Execute US3 in red-green-refactor slices: start with one failing read-only diagnostic behavior, pass it through the shared readiness seam, then add the next diagnostic projection.
 
-- [ ] T043 [US3] Implement doctor command adapter and mode wiring in `cmd/stacklane/commands/doctor.go`.
-- [ ] T044 [US3] Reuse shared machine-readiness rules in read-only mode for binary, Docker, DNS, state-dir, and port checks in `core/onboarding/machine_readiness.go`.
-- [ ] T045 [US3] Implement gateway-specific readiness adapter on top of the runtime seam in `cmd/stacklane/commands/doctor.go` and `infra/gateway/manager.go`.
-- [ ] T046 [US3] Implement doctor unsupported-platform policy on top of shared readiness results in `cmd/stacklane/commands/doctor.go`.
-- [ ] T047 [US3] Implement doctor plain-text and JSON projection usage in `cmd/stacklane/commands/doctor.go`.
+- [x] T043 [US3] Implement doctor command adapter and mode wiring in `cmd/stacklane/commands/doctor.go`.
+- [x] T044 [US3] Reuse shared machine-readiness rules in read-only mode for binary, Docker, DNS, state-dir, and port checks in `core/onboarding/machine_readiness.go`.
+- [x] T045 [US3] Implement gateway-specific readiness adapter on top of the runtime seam in `cmd/stacklane/commands/doctor.go` and `infra/gateway/manager.go`.
+- [x] T046 [US3] Implement doctor unsupported-platform policy on top of shared readiness results in `cmd/stacklane/commands/doctor.go`.
+- [x] T047 [US3] Implement doctor plain-text and JSON projection usage in `cmd/stacklane/commands/doctor.go`.
 
 **Checkpoint**: Doctor flow is independently usable and reports actionable drift diagnostics.
 
@@ -156,14 +156,14 @@ Execute US3 in red-green-refactor slices: start with one failing read-only diagn
 
 **Purpose**: Complete parity, validation, and operator documentation across all stories.
 
-- [ ] T048 [P] Align onboarding command-contract ownership and module seams in `docs/runtime-contract.md`.
-- [ ] T049 [P] Publish compatibility matrix, integrity verification guidance, and repo-to-deployed-stack sync guidance in `docs/installer-onboarding.md`.
-- [ ] T050 [P] Align first-run sequence, command examples, and repo-to-deployed-stack sync notes in `README.md`.
-- [ ] T051 Execute startup and setup validation protocol, record commands, expected statuses, and evidence in `specs/005-installer-and-onboarding/quickstart.md`.
-- [ ] T052 Execute doctor/status inspection and failure-path validation protocol, record commands and evidence in `specs/005-installer-and-onboarding/quickstart.md`.
-- [ ] T053 Execute config precedence, isolation boundary, and recovery validation protocol, record commands and evidence in `specs/005-installer-and-onboarding/quickstart.md`.
-- [ ] T054 Execute performance validation protocol for healthy-path `setup`, healthy-path `doctor`, and TUI overhead, then record measured results in `specs/005-installer-and-onboarding/quickstart.md`.
-- [ ] T055 Run focused `core/onboarding`, `cmd/stacklane/commands`, `core/config`, and `core/lifecycle` test suites and record outcomes in `specs/005-installer-and-onboarding/quickstart.md`.
+- [x] T048 [P] Align onboarding command-contract ownership and module seams in `docs/runtime-contract.md`.
+- [x] T049 [P] Publish compatibility matrix, integrity verification guidance, and repo-to-deployed-stack sync guidance in `docs/installer-onboarding.md`.
+- [x] T050 [P] Align first-run sequence, command examples, and repo-to-deployed-stack sync notes in `README.md`.
+- [x] T051 Execute startup and setup validation protocol, record commands, expected statuses, and evidence in `specs/005-installer-and-onboarding/quickstart.md`.
+- [x] T052 Execute doctor/status inspection and failure-path validation protocol, record commands and evidence in `specs/005-installer-and-onboarding/quickstart.md`.
+- [x] T053 Execute config precedence, isolation boundary, and recovery validation protocol, record commands and evidence in `specs/005-installer-and-onboarding/quickstart.md`.
+- [x] T054 Execute performance validation protocol for healthy-path `setup`, healthy-path `doctor`, and TUI overhead, then record measured results in `specs/005-installer-and-onboarding/quickstart.md`.
+- [x] T055 Run focused `core/onboarding`, `cmd/stacklane/commands`, `core/config`, and `core/lifecycle` test suites and record outcomes in `specs/005-installer-and-onboarding/quickstart.md`.
 
 ---
 
