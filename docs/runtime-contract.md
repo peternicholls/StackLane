@@ -66,6 +66,71 @@ This document locks the Stacklane command semantics and state model.
 - When `SITE_SUFFIX=dev`, generates a local wildcard TLS certificate via `mkcert` and configures the shared gateway HTTPS port (default `8443`).
 - Fails with a clear message when Homebrew is missing, `dnsmasq` is not installed, `mkcert` is required but absent, privileges are needed for `/etc/resolver`, or the resulting DNS health check is not ready.
 
+## Onboarding Command Contract
+
+### `stacklane setup`
+
+- Runs an ordered set of machine-readiness steps: Docker CLI, Docker daemon, state directory, port 80, port 443, local DNS resolver, and mkcert local CA.
+- Each step returns a `StepResult` with `id`, `label`, `status` (ready | needs_action | error), `message`, and optional `remediation`.
+- Exit codes: 0 = all ready, 1 = needs_action, 2 = error, 3 = unsupported-os (highest precedence).
+- `--suffix` accepts: `develop`, `dev`, `test`, or empty (stack default). Invalid values are rejected with an error.
+- `--recheck` forces a full check re-run even if the machine is already healthy.
+- `--json` emits a `CommandResult` JSON envelope and suppresses interactive output.
+- `--no-tui` forces plain-text output. `--tui` forces TUI mode.
+- `--non-interactive` suppresses prompts; implies `--no-tui`.
+- Does not mutate machine state on its own — flags state that is not ready and provides `remediation` strings.
+
+### `stacklane doctor`
+
+- Read-only diagnostics reusing the same readiness steps as `setup`.
+- Runs Docker binary, Docker daemon, state directory, port 80/443, DNS, and mkcert checks.
+- Does not attempt repairs or prompt for elevated privileges.
+- Exit codes follow the same 0-1-2-3 convention as `setup`.
+- `--json`, `--no-tui`, `--non-interactive` flags behave the same as `setup`.
+
+### `stacklane init`
+
+- Writes a starter `.env.stacklane` in the project root (or `--project-dir`).
+- Validates that the project root exists.
+- Validates `--docroot` is inside the project root when supplied.
+- Without `--force`, skips writing if `.env.stacklane` already exists.
+- With `--force`, overwrites the existing file.
+- `--site-name` sets `STACKLANE_SITE_NAME` in the generated file.
+- `--json`, `--no-tui`, `--non-interactive` flags behave the same as `setup`.
+- Emits a `CommandResult` envelope (step `init.env_file`) with action in the message.
+
+### Output modes
+
+All three onboarding commands resolve output mode using the same precedence:
+
+1. `--json` → JSON envelope (exit code still conveys overall status)
+2. `--no-tui` → plain text
+3. `--tui` → forced TUI
+4. `--non-interactive` → plain text
+5. TTY auto-detect → TUI on TTY, text otherwise
+
+### CommandResult envelope (JSON)
+
+```json
+{
+  "overall_status": "ready|needs_action|error",
+  "exit_code": 0,
+  "steps": [
+    {
+      "id": "docker.binary",
+      "label": "Docker CLI",
+      "status": "ready",
+      "message": "docker found at /usr/local/bin/docker",
+      "remediation": null,
+      "code": "",
+      "meta": null
+    }
+  ],
+  "result": null,
+  "next_steps": []
+}
+```
+
 ## Removed Wrappers
 
 Root-level `20i-*` wrappers are not part of the active runtime. Use `stacklane <subcommand>`.

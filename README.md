@@ -23,6 +23,36 @@ The command surface is implemented as a single Go binary (`stacklane-bin`, expos
 - Healthcheck-driven readiness: `stacklane up` blocks until nginx, apache/PHP-FPM, and MariaDB report healthy (default 120 s, override via `--wait-timeout` or `STACKLANE_WAIT_TIMEOUT`).
 - phpMyAdmin is opt-in via the `debug` compose profile.
 
+## Install
+
+The recommended install path — no source build required:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/peternicholls/StackLane/master/install.sh | bash
+```
+
+The installer detects your OS and architecture, downloads the matching signed binary from GitHub Releases, verifies the SHA-256 checksum, and places `stacklane` in `~/.local/bin`. After install it prints the exact next-step command to run.
+
+**Verify manually (fallback path)**:
+
+```bash
+# Download binary and checksum
+curl -fsSL https://github.com/peternicholls/StackLane/releases/latest/download/stacklane_<VERSION>_Darwin_arm64 -o stacklane
+curl -fsSL https://github.com/peternicholls/StackLane/releases/latest/download/stacklane_<VERSION>_Darwin_arm64.sha256 -o stacklane.sha256
+# Verify
+shasum -a 256 -c stacklane.sha256
+chmod +x stacklane && mv stacklane ~/.local/bin/
+```
+
+**Canonical first-run sequence** (after install):
+
+```bash
+stacklane setup     # machine-readiness checks + one-time DNS/mkcert setup
+stacklane init      # initialize project config in your repo root (optional)
+stacklane up        # bring the project stack online
+stacklane doctor    # diagnose drift at any time
+```
+
 ## Quick Start
 
 From the stack repo itself or a deployed copy of it, add the scripts to your shell path and run Stacklane from a project root:
