@@ -31,8 +31,8 @@ Bare `stage` should become a product surface, not just help output.
 - In a TTY: open the guided StageServe TUI.
 - Outside a TTY: print compact next-step guidance and exit successfully.
 - With `stage --help`: show standard Cobra help.
-- With `stage <subcommand>`: preserve direct command behavior.
-- Provide a disable path: `STAGESERVE_NO_TUI=1`, `--no-tui`, or equivalent global config.
+- With `stage <subcommand>`: use the direct CLI path instead of the root guided TUI.
+- Provide a disable path: `--notui` or `--cli` for the current invocation and `STAGESERVE_NO_TUI=1` for shell-level fallback.
 
 ### What Works
 
@@ -63,6 +63,8 @@ For example:
 - "This project has no `.env.stageserve`. Create one with these values?"
 - "Project is configured and stopped. Start it now?"
 - "Project is running. View status, logs, stop it, or open advanced commands?"
+- "Add this project to StageServe?" instead of "attach this project?"
+- "Remove this project from StageServe?" instead of "detach this project?"
 
 The user should see which `.env.stageserve` values will be written before writing, and which StageServe action will run before it changes runtime state.
 
@@ -121,7 +123,7 @@ The StageServe TUI should be progressive enhancement over the command layer.
 
 - Detect TTY before launching.
 - Respect `NO_COLOR`.
-- Provide `STAGESERVE_NO_TUI=1` and `--no-tui`.
+- Provide `STAGESERVE_NO_TUI=1`, `--notui`, and `--cli`.
 - Keep text output as a first-class mode.
 - Avoid relying on mouse-only interactions.
 - Include accessible form mode where Huh supports it.
@@ -211,3 +213,12 @@ Alternatives considered:
 
 - Use only Lip Gloss. Rejected because styled text cannot implement the required guided journey.
 - Replace all output modes with Bubble Tea. Rejected because JSON/text modes are necessary for automation and fallback.
+
+### Decision 6: Use User-Goal Labels In Easy Mode
+
+Rationale: Similar guided CLIs work best when prompts describe what the user is trying to accomplish before exposing command or implementation terms. For StageServe, `attach` and `detach` are useful direct command names, but easy-mode users are more likely to understand "add this project to StageServe" and "remove this project from StageServe".
+
+Alternatives considered:
+
+- Reuse command names as TUI labels. Rejected because it forces users to learn lifecycle vocabulary before choosing a safe next action.
+- Hide command names entirely. Rejected because "show commands" is important for learning, automation, and power-user control.

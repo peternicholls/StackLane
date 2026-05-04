@@ -4,6 +4,15 @@
 
 This document pulls together the product intention, specification research, and decisions found in spec 004, spec 005, the project constitution, and the current developer guidance for spec 007.
 
+## Reconciliation Note
+
+This document is historical and interpretive, but several points are now fully decided by spec 007 rather than left as inference:
+
+- spec 004's "TUI out of scope" note is treated as a sequencing boundary, not a product decision against guided TUI
+- spec 005's `stage setup --tui` handoff is superseded by bare `stage` as the interactive entrypoint
+- spec 005's narrower onboarding TUI projection is superseded by a root guided TUI model
+- plain-language easy-mode labels supersede raw command words as the first-level guided vocabulary
+
 The central product intention is not "a Docker CLI with some helper commands". The intended first-level experience is a simple guided StageServe surface that helps a normal user install, set up the machine, set up a project, run it, stop it, inspect it, and recover from problems without needing to understand the Docker implementation.
 
 Power users should still be able to use finer-grained command calls and inspect hidden artifacts, but those controls should sit behind the simple first-level path.
@@ -20,6 +29,7 @@ The intended operator model is:
 - Runtime artifacts remain hidden in StageServe-owned directories, mainly `.stageserve-state`, but remain inspectable and editable by power users.
 - A primary "simple" user is never left at a dead end; every non-ready state should have a specific next action.
 - A power user can bypass the guided path with direct commands such as `stage up`, `stage setup --json`, `stage init --force`, `stage status`, and `stage down --all`.
+- Easy-mode language should match the way the user describes their goal. For example, "add this project to StageServe" and "remove this project from StageServe" are clearer first-level labels than `attach` and `detach`; the command names remain available for power users.
 
 This matches the constitution:
 
@@ -83,8 +93,8 @@ The target product model should be:
 - The guided TUI is the normal first-level path for non-power users.
 - The TUI routes users through setup, init, up, status, logs, down, doctor, and recovery.
 - The TUI uses the same deep modules and command contracts as direct CLI commands.
-- Direct subcommands remain stable for power users and automation.
+- Direct subcommands remain available for power users and automation.
 - All user-editable config is expressed through `.env.stageserve`.
 - Docker concepts are hidden from normal project-facing language unless the user opens an advanced/troubleshooting path.
 - Hidden runtime artifacts stay available for inspection, but the simple path never requires manual editing of those artifacts.
-
+- The guided surface should describe actions in plain language first, then provide the direct command equivalent on request.

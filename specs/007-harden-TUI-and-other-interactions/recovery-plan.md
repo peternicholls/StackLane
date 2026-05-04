@@ -11,6 +11,17 @@ The current codebase has a stronger CLI and onboarding foundation than before sp
 
 This plan turns that conclusion into executable recovery work for spec 007.
 
+## Override Record
+
+Spec 007 is not merely a continuation of earlier spec 004 and spec 005 wording. It explicitly overrules the following prior positions:
+
+- help-first bare `stage` behavior
+- installer handoff that points interactive users to `stage setup --tui`
+- any unresolved `stage init` TUI/default question
+- any assumption that `--tui` remains part of the final command contract
+- any assumption that easy-mode users should learn `attach` / `detach` as first-level labels
+- the earlier TDD-first default used in prior spec runs
+
 ## Research-Backed Direction
 
 The research in [research.md](./research.md) supports four planning choices:
@@ -28,10 +39,12 @@ After spec 007:
 - `stage` in a non-interactive context prints concise guidance and exits.
 - `stage --help` remains standard help.
 - `stage <subcommand>` remains the power-user and automation path.
+- TUI is default easy-mode behavior; `--notui` and `--cli` are equivalent current-invocation opt-outs.
 - `stage setup --json` and `stage doctor --json` remain pure JSON.
 - The TUI uses the existing config, onboarding, lifecycle, state, status, and logs seams.
 - The TUI writes only `.env.stageserve` after preview and confirmation.
 - Primary docs explain StageServe actions and config, not Docker resource management.
+- Easy-mode labels describe user goals in plain language before showing command names or lifecycle terms.
 
 ## What Must Be Recovered
 
@@ -47,7 +60,7 @@ Recovery:
 - Add root no-args routing.
 - TTY launches guided TUI.
 - Non-TTY prints plain next-step guidance.
-- Direct subcommands remain unchanged.
+- Direct subcommands remain available, but unreleased developer-only flags may be cleaned up to match the final spec 007 contract.
 
 ### 2. Real TUI, Not Styled Projection
 
@@ -84,12 +97,15 @@ Recovery:
 Current state:
 
 - Primary docs and help expose Docker/gateway internals early.
+- Some precise command terms, especially attach and detach, are useful to implementation and power users but unclear as first-level action labels.
 
 Recovery:
 
 - Primary path uses StageServe concepts.
 - Docker/gateway names move to advanced/troubleshooting.
 - Remediation starts with StageServe commands.
+- Guided TUI labels use everyday project language: run this project, stop this project, add this project to StageServe, remove this project from StageServe, check project status, view logs, find issues.
+- Direct command names stay visible through "show commands" and CLI help.
 
 ### 5. Spec Trail Integrity
 
@@ -102,6 +118,7 @@ Recovery:
 
 - Spec 007 must include precise tasks and terminal verification evidence.
 - Any unrun real-daemon path must be recorded in `quickstart.md`.
+- Spec 004 carryover validation tasks T029/T031/T032 are not silently assumed complete. Spec 007 migrates the relevant concerns into its own terminal verification matrix: startup, attach, status/inspection, teardown, and failure/recovery. Any remaining spec 004-only real-daemon gap is explicitly deferred outside spec 007 closeout notes.
 
 ## Phased Recovery
 
@@ -142,10 +159,12 @@ Deliver:
 - quit/cancel
 - result screen
 - next-action refresh
+- plain-language copy pass over first-level labels and recovery messages
 
 Exit criteria:
 
 - a user can start from bare `stage`, understand context, and choose an action
+- a user can understand the first screen without knowing attach/detach, gateway, compose, container, registry, runtime, or state terminology
 
 ### Phase D: First-Run Actions
 
@@ -174,7 +193,7 @@ Exit criteria:
 
 - a running or down project can be managed from bare `stage`
 
-### Phase F: Power-User Compatibility
+### Phase F: Power-User Direct CLI Contract
 
 Deliver:
 
@@ -207,7 +226,7 @@ Do not close spec 007 until all of the following are true:
 
 - terminal planner/root-routing scenarios are recorded
 - setup/init/doctor JSON output remains parseable
-- direct subcommand help and behavior remain stable
+- direct subcommand help and behavior match the final spec 007 contract
 - manual TTY validation is recorded
 - non-TTY validation is recorded
 - at least one failure/recovery path is recorded
@@ -223,7 +242,7 @@ Do not close spec 007 until all of the following are true:
 - Hidden implementation detail may still leak through remediation text.
   - Mitigation: add docs/help grep checks and rewrite primary messages.
 - Terminal compatibility issues may appear late.
-  - Mitigation: provide no-TUI env/flag and text fallback from the start.
+  - Mitigation: provide `--notui`, `--cli`, shell-env no-TUI control, and text fallback from the start.
 
 ## Closeout Definition
 

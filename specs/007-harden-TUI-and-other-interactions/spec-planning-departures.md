@@ -106,6 +106,7 @@ Why this matters:
 
 - Power users need this information, but primary users should not have to parse it.
 - The docs still teach implementation concepts before the StageServe API abstraction is complete.
+- The same risk applies to lifecycle command words such as attach and detach when they are used as first-level guided labels; those should be command equivalents, not the plain-language goal.
 
 ## Departure 5: Spec 004 Validation Remained Partly Incomplete
 
@@ -159,4 +160,3 @@ Spec 007 should not discard the work from 004 and 005. It should correct the abs
 - Build the missing first-level guided experience on top of those foundations.
 - Move implementation details into advanced/troubleshooting material.
 - Keep direct commands as stable power-user and automation surfaces.
-
