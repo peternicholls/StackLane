@@ -54,10 +54,12 @@ func (p MacOSProvider) Bootstrap(s Settings) error {
 	if err := WritePreviewFiles(s); err != nil {
 		return err
 	}
-	managed, err := dnsmasqManagedFile(s.Suffix)
+	// Cache brew prefix for reuse across multiple path resolutions.
+	prefix, err := brewPrefix()
 	if err != nil {
 		return err
 	}
+	managed := dnsmasqManagedFileWithPrefix(s.Suffix, prefix)
 	if err := os.MkdirAll(filepath.Dir(managed), 0o755); err != nil {
 		return err
 	}
@@ -72,7 +74,7 @@ func (p MacOSProvider) Bootstrap(s Settings) error {
 	if err := copyFile(PreviewConfigPath(s.StateDir, s.Suffix), managed); err != nil {
 		return err
 	}
-	if err := ensureDnsmasqInclude(); err != nil {
+	if err := ensureDnsmasqIncludeWithPrefix(prefix); err != nil {
 		return err
 	}
 	if err := exec.Command("brew", "services", "restart", "dnsmasq").Run(); err != nil {
@@ -132,7 +134,12 @@ func dnsmasqManagedFile(suffix string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(prefix, "etc", "dnsmasq.d", "stacklane-"+suffix+".conf"), nil
+	return dnsmasqManagedFileWithPrefix(suffix, prefix), nil
+}
+
+// dnsmasqManagedFileWithPrefix returns the path to the dnsmasq-managed config file for the given suffix.
+func dnsmasqManagedFileWithPrefix(suffix, prefix string) string {
+	return filepath.Join(prefix, "etc", "dnsmasq.d", "stacklane-"+suffix+".conf")
 }
 
 func dnsmasqMainConf() (string, error) {
@@ -144,16 +151,18 @@ func dnsmasqMainConf() (string, error) {
 }
 
 func ensureDnsmasqInclude() error {
-	mainConf, err := dnsmasqMainConf()
-	if err != nil {
-		return err
-	}
-	if !fileExists(mainConf) {
-		return fmt.Errorf("dnsmasq main config not found: %s", mainConf)
-	}
 	prefix, err := brewPrefix()
 	if err != nil {
 		return err
+	}
+	return ensureDnsmasqIncludeWithPrefix(prefix)
+}
+
+// ensureDnsmasqIncludeWithPrefix ensures the dnsmasq main config includes the dnsmasq.d directory.
+func ensureDnsmasqIncludeWithPrefix(prefix string) error {
+	mainConf := filepath.Join(prefix, "etc", "dnsmasq.conf")
+	if !fileExists(mainConf) {
+		return fmt.Errorf("dnsmasq main config not found: %s", mainConf)
 	}
 	includeLine := fmt.Sprintf("conf-dir=%s/etc/dnsmasq.d,*.conf", prefix)
 	body, err := os.ReadFile(mainConf)
@@ -191,8 +200,12 @@ func installResolver(s Settings) error {
 	}
 	// Fall back to osascript privilege escalation.
 	if _, err := exec.LookPath("osascript"); err == nil {
-		cmd := fmt.Sprintf("mkdir -p %q && cp %q %q", filepath.Dir(resolverFile), previewResolver, resolverFile)
-		if err := exec.Command("osascript", "-e", "do shell script \""+cmd+"\" with administrator privileges").Run(); err != nil {
+		shScript := fmt.Sprintf("/bin/mkdir -p %s && /bin/cp %s %s",
+			shEscape(filepath.Dir(resolverFile)),
+			shEscape(previewResolver),
+			shEscape(resolverFile),
+		)
+		if err := exec.Command("osascript", "-e", `do shell script "`+shScript+`" with administrator privileges`).Run(); err != nil {
 			return fmt.Errorf("administrator approval was required to install %s", resolverFile)
 		}
 		return nil
@@ -206,6 +219,12 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, 0o644)
+}
+
+// shEscape escapes a string for use in a POSIX shell command by wrapping it in
+// single quotes and escaping any embedded single quotes.
+func shEscape(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
 func fileExists(path string) bool {

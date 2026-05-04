@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -21,6 +22,13 @@ func main() {
 
 	root := commands.NewRoot(version)
 	if err := root.ExecuteContext(ctx); err != nil {
+		var exitCoder commands.ExitCoder
+		if errors.As(err, &exitCoder) {
+			if !exitCoder.Silent() {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			os.Exit(exitCoder.ExitCode())
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

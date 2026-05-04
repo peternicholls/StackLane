@@ -1,0 +1,45 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          check-latest: false
+
+      - name: Set version from tag
+        run: echo "STACKLANE_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+
+      - name: Build release assets
+        run: |
+          mkdir -p dist
+          GOOS=darwin  GOARCH=arm64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Darwin_arm64   ./cmd/stacklane
+          GOOS=darwin  GOARCH=amd64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Darwin_x86_64  ./cmd/stacklane
+          GOOS=linux   GOARCH=arm64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Linux_arm64    ./cmd/stacklane
+          GOOS=linux   GOARCH=amd64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Linux_x86_64   ./cmd/stacklane
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          for f in stacklane_*; do
+            sha256sum "$f" > "${f}.sha256"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/stacklane_*
+            install.sh
+          generate_release_notes: true
