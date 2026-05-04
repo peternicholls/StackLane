@@ -2,7 +2,7 @@
 
 **Date**: 3 May 2026  
 **Reviewer**: GitHub Copilot  
-**Scope**: All implementation delivered for spec-005: `core/onboarding`, `cmd/stacklane/commands` (setup, doctor, init, onboarding_mode, project_env), `platform/dns`, and `install.sh`.  
+**Scope**: All implementation delivered for spec-005: `core/onboarding`, `cmd/stage/commands` (setup, doctor, init, onboarding_mode, project_env), `platform/dns`, and `install.sh`.  
 **Build status**: ✅ All tests pass · `go vet` clean · race detector clean
 
 ---
@@ -49,7 +49,7 @@ Code:   "unsupported-os",
 
 ---
 
-#### CR-002 · `renderEnv` writes unquoted, unsanitised values to `.env.stacklane`
+#### CR-002 · `renderEnv` writes unquoted, unsanitised values to `.env.stageserve`
 
 **File**: [core/onboarding/project_env.go](../../core/onboarding/project_env.go)  
 **Lines**: 82–91
@@ -62,9 +62,9 @@ b.WriteString("SITE_NAME=" + siteName + "\n")
 b.WriteString("DOCROOT=" + docroot + "\n")
 ```
 
-If either value contains spaces, `$`, a backtick, or a quote character, the resulting file will be unparseable by `source` / `export` (the shell contract for `.env` files). An adversarially crafted value (e.g. from a flag passed to `stacklane init`) could inject arbitrary env-var assignments.
+If either value contains spaces, `$`, a backtick, or a quote character, the resulting file will be unparseable by `source` / `export` (the shell contract for `.env` files). An adversarially crafted value (e.g. from a flag passed to `stage init`) could inject arbitrary env-var assignments.
 
-The parallel `renderEnvValue` + `shellDoubleQuote` pipeline in `cmd/stacklane/commands/project_env.go` already solves this problem correctly. It is not reused here.
+The parallel `renderEnvValue` + `shellDoubleQuote` pipeline in `cmd/stage/commands/project_env.go` already solves this problem correctly. It is not reused here.
 
 **Fix**  
 Mirror the quoting logic from the commands package, or move it to a shared utility and call it from both sites:
@@ -78,17 +78,17 @@ b.WriteString("DOCROOT=" + shellQuote(docroot) + "\n")
 
 #### CR-003 · `os.UserHomeDir()` error silently discarded in setup and doctor
 
-**Files**: [cmd/stacklane/commands/setup.go](../../cmd/stacklane/commands/setup.go) L48, [cmd/stacklane/commands/doctor.go](../../cmd/stacklane/commands/doctor.go) L31
+**Files**: [cmd/stage/commands/setup.go](../../cmd/stage/commands/setup.go) L48, [cmd/stage/commands/doctor.go](../../cmd/stage/commands/doctor.go) L31
 
 **Problem**  
 Both commands resolve the state directory with:
 
 ```go
 home, _ := os.UserHomeDir()
-stateDir = filepath.Join(home, ".stacklane-state")
+stateDir = filepath.Join(home, ".stageserve-state")
 ```
 
-`os.UserHomeDir` can fail in stripped or container environments where `$HOME` and the passwd database are both absent. When it does, `home` is `""` and `stateDir` silently becomes `/.stacklane-state`. The command then proceeds to stat or create a path at the filesystem root rather than surfacing a clear error.
+`os.UserHomeDir` can fail in stripped or container environments where `$HOME` and the passwd database are both absent. When it does, `home` is `""` and `stateDir` silently becomes `/.stageserve-state`. The command then proceeds to stat or create a path at the filesystem root rather than surfacing a clear error.
 
 **Fix**
 
@@ -97,7 +97,7 @@ home, err := os.UserHomeDir()
 if err != nil {
     return fmt.Errorf("cannot determine home directory: %w", err)
 }
-stateDir = filepath.Join(home, ".stacklane-state")
+stateDir = filepath.Join(home, ".stageserve-state")
 ```
 
 ---
@@ -121,7 +121,7 @@ exec.Command("osascript", "-e", "do shell script \""+cmd+"\" with administrator 
 
 `%q` produces Go string-literal quoting (e.g. `"path"`, with `\"` for embedded quotes), not POSIX shell quoting. A `previewResolver` path that contains `\"`, `$(...)`, `` `...` ``, or `\` can break out of the double-quoted region inside the `do shell script` string and inject arbitrary commands executed with administrator privileges.
 
-`previewResolver` is derived from `Settings.StateDir` and `Settings.Suffix`. `StateDir` ultimately comes from an environment variable (`STACKLANE_STATE_DIR`). A user or process that controls that variable on a shared machine could escalate to root.
+`previewResolver` is derived from `Settings.StateDir` and `Settings.Suffix`. `StateDir` ultimately comes from an environment variable (`STAGESERVE_STATE_DIR`). A user or process that controls that variable on a shared machine could escalate to root.
 
 **Fix**  
 Pass the paths as separate `argv` elements to `/bin/sh` rather than embedding them in a string:
@@ -147,7 +147,7 @@ Where `shEscape` single-quote-wraps the path (replacing `'` with `'\''`), which 
 
 #### CR-005 · `--recheck` flag accepted, stored, but never consulted
 
-**File**: [cmd/stacklane/commands/setup.go](../../cmd/stacklane/commands/setup.go)  
+**File**: [cmd/stage/commands/setup.go](../../cmd/stage/commands/setup.go)  
 **Lines**: 24, 85
 
 **Problem**  
@@ -166,7 +166,7 @@ The `RunE` closure never reads `f.Recheck`. The test `TestSetup_RecheckFlagAccep
 #### CR-006 · `setup_platform_test.go` marked complete in T031 but the file does not exist
 
 **Task**: T031 `[x]` in tasks.md  
-**Expected file**: `cmd/stacklane/commands/setup_platform_test.go`
+**Expected file**: `cmd/stage/commands/setup_platform_test.go`
 
 **Problem**  
 The task is checked off, but the file is absent from the filesystem. The unsupported-OS exit-code contract for `setup` is untested at the command adapter level. Any regression in `ReduceExitCode` or the platform stubs would be invisible.
@@ -252,7 +252,7 @@ The JSON branch returns its error; the other two discard theirs. This is a maint
 
 #### CR-010 · `buildSetupCmd` helper in `setup_test.go` is dead code
 
-**File**: [cmd/stacklane/commands/setup_test.go](../../cmd/stacklane/commands/setup_test.go)  
+**File**: [cmd/stage/commands/setup_test.go](../../cmd/stage/commands/setup_test.go)  
 **Lines**: 12–15
 
 `buildSetupCmd` is defined but never called. All tests in the file use `NewRoot("test")` directly. Remove it to avoid misleading future readers about an alternative construction pattern.
@@ -268,12 +268,12 @@ The TTY branch prints:
 
 ```
 ==> Launching first-run setup …
-  Run: stacklane setup --tui
+  Run: stage setup --tui
 
-  Or start setup now:  stacklane setup --tui
+  Or start setup now:  stage setup --tui
 ```
 
-The banner says "Launching" but immediately prints the command without executing it. This reads as a bug to users. Either exec `stacklane setup --tui` (subject to it being on PATH) or change the wording to "To complete setup, run:".
+The banner says "Launching" but immediately prints the command without executing it. This reads as a bug to users. Either exec `stage setup --tui` (subject to it being on PATH) or change the wording to "To complete setup, run:".
 
 ---
 
@@ -281,7 +281,7 @@ The banner says "Launching" but immediately prints the command without executing
 
 **File**: [core/onboarding/project_env.go](../../core/onboarding/project_env.go)
 
-`ValidateDocroot` verifies containment but not existence. `stacklane init --docroot nonexistent` will write a config that references a path that does not yet exist, with no warning. The current behaviour is technically documented (the function name says "validate", not "ensure"), but a note in the doc comment or an advisory `StepResult` in the init command would save operator confusion.
+`ValidateDocroot` verifies containment but not existence. `stage init --docroot nonexistent` will write a config that references a path that does not yet exist, with no warning. The current behaviour is technically documented (the function name says "validate", not "ensure"), but a note in the doc comment or an advisory `StepResult` in the init command would save operator confusion.
 
 ---
 

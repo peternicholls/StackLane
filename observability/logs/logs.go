@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/peternicholls/stacklane/infra/docker"
+	"github.com/peternicholls/stageserve/infra/docker"
 )
 
 // Streamer streams logs for one container by name (or compose service).

@@ -1,37 +1,37 @@
-# Phase 0 Research: Stacklane Rebrand And Unified Command Surface
+# Phase 0 Research: StageServe Rebrand And `stage` Command Cutover
 
-## Decision 1: Keep the current runtime engine and add a single dispatcher command
+## Decision 1: Keep the current Go runtime and thin root launcher
 
-- Decision: Implement `stacklane` as the new canonical entrypoint while continuing to route lifecycle behavior through the existing helper engine in `lib/stacklane-common.sh`.
-- Rationale: The current command family is already thin wrappers around `twentyi_main`. Reusing that runtime engine minimizes behavior drift and isolates the change to command dispatch, help text, migration messaging, and documentation.
-- Alternatives considered: Rewriting the runtime API around a new helper library was rejected because it adds avoidable risk to startup, state handling, gateway routing, and DNS behavior during what is primarily a rename and UX-surface change.
+- Decision: Use the current `stage` launcher and `stage-bin` binary as the active command path.
+- Rationale: The active product is already the Go CLI. Reusing that surface keeps the rename work focused on naming alignment rather than runtime churn.
+- Alternatives considered: Restoring archived shell dispatch as a migration layer was rejected because archived Bash behavior is not current functionality.
 
-## Decision 2: Use action flags on `stacklane` rather than subcommands
+## Decision 2: Use subcommands on `stage`
 
-- Decision: Express primary actions as flags such as `stacklane --up`, `stacklane --attach`, `stacklane --status`, and `stacklane --down`.
-- Rationale: The feature request explicitly calls for one central command with modifiers like `--up` and `--down`. This preserves the user's stated UX direction and makes the command model easy to scan from help output.
-- Alternatives considered: Subcommands such as `stacklane up` were rejected because they do not match the requested modifier-based interaction model.
+- Decision: Express primary actions as `stage up`, `stage attach`, `stage status`, `stage down`, and related subcommands.
+- Rationale: This is the implemented command surface and the supported operator contract.
+- Alternatives considered: Flag-driven action syntax was rejected because it no longer matches the active CLI.
 
-## Decision 3: Keep legacy `legacy wrapper commands` commands temporarily as wrappers with deprecation guidance
+## Decision 3: Ship no compatibility forwarding shim
 
-- Decision: Retain the existing command files as compatibility wrappers that forward to `stacklane` and tell users what the new syntax is.
-- Rationale: Existing operators, shell aliases, and local habits already depend on the current command names. Temporary wrappers reduce migration shock while still making `stacklane` the only primary documented interface.
-- Alternatives considered: Removing the legacy commands immediately was rejected because it would create unnecessary breakage in operator workflows and support docs. Keeping both command families as equal first-class interfaces was rejected because it would fail the simplicity goal.
+- Decision: Treat `stage` as the only supported executable path.
+- Rationale: The current rename contract explicitly rejects forwarding shims so machine-readable output and help text stay clean.
+- Alternatives considered: Temporary old-command wrappers were rejected because they prolong stale naming in active docs and runtime expectations.
 
-## Decision 4: Do not rename configuration keys unless strictly necessary
+## Decision 4: Use current StageServe config and state names
 
-- Decision: Keep `.20i-local`, `.env`, and current runtime variable names intact unless a rename is necessary to make the new CLI understandable.
-- Rationale: The spec requires the underlying runtime model and precedence order to remain familiar. Renaming environment keys in the same feature would increase migration cost without materially improving the central command UX.
-- Alternatives considered: Renaming variables and state paths to match Stacklane was rejected for this feature because it mixes identity cleanup with operational contract changes.
+- Decision: Standardize on project `.env.stageserve`, stack-home `.env.stageserve`, and `.stageserve-state`.
+- Rationale: These are the implemented human-owned and runtime-owned paths and match the active operator docs.
+- Alternatives considered: Keeping prior config/state names in maintained specs was rejected because that would leave active contract drift behind after the rename.
 
-## Decision 5: Treat documentation and GUI-facing text as same-change surfaces
+## Decision 5: Treat docs and older specs as same-change surfaces
 
-- Decision: Update repository docs, migration docs, runtime contract wording, shell integration examples, AppleScript/workflow labels, and GUI help in the same implementation phase as the CLI rename.
-- Rationale: The constitution requires affected operator surfaces to stay aligned. Mixed branding or mixed command vocabulary would directly violate the spec's clarity and migration goals.
-- Alternatives considered: Deferring GUI/help wording until later was rejected because it would leave conflicting names and instructions in operator-visible surfaces.
+- Decision: Update repository docs, migration docs, runtime contract wording, and older spec text in the same pass as the command/name cleanup.
+- Rationale: Mixed naming across active docs and specs makes the contract harder to trust.
+- Alternatives considered: Deferring older spec cleanup was rejected because it leaves stale references searchable in maintained material.
 
 ## Decision 6: Make deployed-copy sync explicit in migration guidance
 
-- Decision: Document that changes in this repository may still need to be synced to the deployed stack copy under `$HOME/docker/20i-stack` for live local usage.
-- Rationale: The repository already has an explicit divergence risk between the dev workspace and the deployed copy. The rebrand changes command names and docs, so the sync boundary must be made explicit to avoid silent mismatch.
-- Alternatives considered: Ignoring the deployed-copy divergence was rejected because it would leave a known friction point undocumented.
+- Decision: Document that changes in this repository may still need to be synced to the stack copy an operator actually runs.
+- Rationale: A rename sweep is only useful if operators can distinguish workspace edits from their live install.
+- Alternatives considered: Ignoring deployed-copy drift was rejected because it leaves a known operator trap undocumented.

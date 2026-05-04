@@ -15,7 +15,7 @@ The runtime-facing code changes are mostly correct and well-covered by tests. Th
 - Compared the branch delta against `master` with `git diff master...HEAD`.
 - Re-ran the existing validation already performed on the branch:
   - `go test ./...`
-  - `go build -o stacklane-bin ./cmd/stacklane`
+  - `go build -o stage-bin ./cmd/stage`
   - CLI help spot-check for `up`, `status`, `down`, `attach`, `logs`
   - `go vet ./...`
   - `gofmt`
@@ -27,7 +27,7 @@ The runtime-facing code changes are mostly correct and well-covered by tests. Th
 
 Severity: high
 
-The repository now contains [`.env.stacklane.example`](../../../.env.stacklane.example), and [README.md](../../../README.md#L194) still tells operators there is also a project-local `.env.example` to copy into a project as `.stacklane-local` at [README.md](../../../README.md#L195). Per the current constraint, `.env.example` is intentionally redundant and should remain deleted; the bug is that the docs and task wording still describe it as a live surface.
+The repository now contains [`.env.stageserve.example`](../../../.env.stageserve.example), and [README.md](../../../README.md#L194) still tells operators there is also a project-local `.env.example` to copy into a project as `.stage-local` at [README.md](../../../README.md#L195). Per the current constraint, `.env.example` is intentionally redundant and should remain deleted; the bug is that the docs and task wording still describe it as a live surface.
 
 Impact:
 
@@ -36,18 +36,18 @@ Impact:
 
 Recommendation:
 
-- Remove the stale `.env.example` references from the operator docs and update the task wording so the deliverable is explicit: keep `.env.stacklane.example`, delete `.stackenv.example`, and do not carry a redundant project-local compatibility template.
+- Remove the stale `.env.example` references from the operator docs and update the task wording so the deliverable is explicit: keep `.env.stageserve.example`, delete `.stackenv.example`, and do not carry a redundant project-local compatibility template.
 
 ### 2. README does not clearly describe the central stack authority model
 
 Severity: medium
 
-[README.md](../../../README.md) correctly documents `.env.stacklane`, `stln-<slug>`, and the `.stacklane-local` restriction for `STACKLANE_POST_UP_COMMAND`. But it still does not clearly explain the intended operating model: there is one central Stacklane-managed 20i-style stack authority, and individual projects are expected to tap into that shared authority rather than define their own stack shape.
+[README.md](../../../README.md) correctly documents `.env.stageserve`, `stage-<slug>`, and the `.stage-local` restriction for `STAGESERVE_POST_UP_COMMAND`. But it still does not clearly explain the intended operating model: there is one central StageServe-managed 20i-style stack authority, and individual projects are expected to tap into that shared authority rather than define their own stack shape.
 
-That missing explanation matters because Stacklane has a real operator split between:
+That missing explanation matters because StageServe has a real operator split between:
 
 - the repository working copy where code and docs are edited
-- the live Stacklane installation on `PATH` that embodies the shared 20i-style stack contract projects plug into
+- the live StageServe installation on `PATH` that embodies the shared 20i-style stack contract projects plug into
 
 Without that explanation, an operator can misread the product model in two ways:
 
@@ -65,25 +65,25 @@ Impact:
 
 Recommendation:
 
-- Add one short note near the validation or command semantics section stating that Stacklane is the central authority for the 20i-style local stack contract, while projects contribute only project-local configuration and content. Then add a follow-on note that if this repository checkout is not the live Stacklane install on `PATH`, operators must sync the changed files and rebuild `stacklane-bin` in that live copy before treating manual runtime results as evidence for or against spec 004. `$HOME/docker/20i-stack` can be mentioned as the known local example, not as a universal product path.
+- Add one short note near the validation or command semantics section stating that StageServe is the central authority for the 20i-style local stack contract, while projects contribute only project-local configuration and content. Then add a follow-on note that if this repository checkout is not the live StageServe install on `PATH`, operators must sync the changed files and rebuild `stage-bin` in that live copy before treating manual runtime results as evidence for or against spec 004. `$HOME/docker/20i-stack` can be mentioned as the known local example, not as a universal product path.
 
 ### 3. Operator-facing docs expose too much gateway implementation detail
 
 Severity: medium
 
-[docs/runtime-contract.md](../../../docs/runtime-contract.md#L133) and [README.md](../../../README.md#L151) currently expose shared gateway naming details such as `stacklane-shared` and `stacklane-gateway` directly to operators. That may be correct as an internal implementation contract, but it does not match the intended product model: Stacklane should detect whether the shared gateway layer is running, start or reconcile it when needed, and keep ordinary operators focused on projects and routes rather than on gateway internals.
+[docs/runtime-contract.md](../../../docs/runtime-contract.md#L133) and [README.md](../../../README.md#L151) currently expose shared gateway naming details such as `stage-shared` and `stage-gateway` directly to operators. That may be correct as an internal implementation contract, but it does not match the intended product model: StageServe should detect whether the shared gateway layer is running, start or reconcile it when needed, and keep ordinary operators focused on projects and routes rather than on gateway internals.
 
 Impact:
 
 - Operator-facing docs are carrying implementation detail that most users should not need to reason about.
-- The current wording risks teaching users to manage the gateway directly instead of treating it as a Stacklane-owned subsystem.
+- The current wording risks teaching users to manage the gateway directly instead of treating it as a StageServe-owned subsystem.
 - T030 parity is still incomplete, but the bigger issue is abstraction level, not just naming completeness.
 
 Recommendation:
 
 - Split the documentation surface by audience.
-- In operator-facing docs such as [README.md](../../../README.md) and the main sections of [docs/runtime-contract.md](../../../docs/runtime-contract.md), describe behavior in user terms: Stacklane ensures shared routing is available, reuses it when already running, and heals it when missing.
-- Keep names like `stacklane-shared` and `stacklane-gateway` in lower-level contract or troubleshooting sections only, where advanced users may need them.
+- In operator-facing docs such as [README.md](../../../README.md) and the main sections of [docs/runtime-contract.md](../../../docs/runtime-contract.md), describe behavior in user terms: StageServe ensures shared routing is available, reuses it when already running, and heals it when missing.
+- Keep names like `stage-shared` and `stage-gateway` in lower-level contract or troubleshooting sections only, where advanced users may need them.
 
 ### 4. Task bookkeeping was not updated
 
@@ -104,14 +104,14 @@ Recommendation:
 
 ### Runtime and config
 
-- [core/config/loader.go](../../../core/config/loader.go): pass. Root-cause fix is in the correct layer. Removing legacy stack-default fallbacks and excluding `STACKLANE_POST_UP_COMMAND` from shell/stack merges matches the contract and avoids a shim.
+- [core/config/loader.go](../../../core/config/loader.go): pass. Root-cause fix is in the correct layer. Removing legacy stack-default fallbacks and excluding `STAGESERVE_POST_UP_COMMAND` from shell/stack merges matches the contract and avoids a shim.
 - [core/config/types.go](../../../core/config/types.go): pass. The docstring now matches the actual precedence chain.
 - [core/config/loader_test.go](../../../core/config/loader_test.go): pass. Strong coverage added for negative legacy-path behavior and for the project-local-only post-up hook rule.
 
 ### Lifecycle and rollback coverage
 
 - [core/lifecycle/errors_test.go](../../../core/lifecycle/errors_test.go): pass. Useful focused coverage for step classification, especially `post-up-hook`.
-- [core/lifecycle/orchestrator_internal_test.go](../../../core/lifecycle/orchestrator_internal_test.go): pass. Straight rename alignment to the new `stln-` defaults.
+- [core/lifecycle/orchestrator_internal_test.go](../../../core/lifecycle/orchestrator_internal_test.go): pass. Straight rename alignment to the new `stage-` defaults.
 - [core/lifecycle/orchestrator_test.go](../../../core/lifecycle/orchestrator_test.go): pass with a note. The new rollback-isolation and attach tests are valuable and scoped correctly. I re-checked the current file state because it had been reformatted after the earlier edits; no behavioral issue stands out.
 
 ### State, status, and gateway
@@ -119,15 +119,15 @@ Recommendation:
 - [core/state/store_test.go](../../../core/state/store_test.go): pass. Naming updates are consistent with the loader default change.
 - [observability/status/status_test.go](../../../observability/status/status_test.go): pass. The new tests cover the exact phantom-state risk that matters after rollback.
 - [infra/gateway/manager_test.go](../../../infra/gateway/manager_test.go): pass. The route alias rename is correctly reflected in tests.
-- [infra/gateway/testdata/multi-route-no-tls.conf](../../../infra/gateway/testdata/multi-route-no-tls.conf): pass. Golden data is aligned with the `stln-` rename.
-- [infra/gateway/testdata/single-route-tls.conf](../../../infra/gateway/testdata/single-route-tls.conf): pass. Golden data is aligned with the `stln-` rename.
+- [infra/gateway/testdata/multi-route-no-tls.conf](../../../infra/gateway/testdata/multi-route-no-tls.conf): pass. Golden data is aligned with the `stage-` rename.
+- [infra/gateway/testdata/single-route-tls.conf](../../../infra/gateway/testdata/single-route-tls.conf): pass. Golden data is aligned with the `stage-` rename.
 
 ### Operator docs and examples
 
-- [README.md](../../../README.md): partial. Good on naming and bootstrap restriction; still missing a clear statement that Stacklane centrally defines the 20i-style stack contract that projects tap into, plus the deployed-copy sync note, and it still references a redundant project-local example file that should stay deleted.
-- [docs/runtime-contract.md](../../../docs/runtime-contract.md): partial. Good on `stln-` and rollback semantics, but it should present the shared gateway as a Stacklane-managed internal subsystem for normal operators and reserve explicit `stacklane-shared` / `stacklane-gateway` naming for contract or troubleshooting depth.
+- [README.md](../../../README.md): partial. Good on naming and bootstrap restriction; still missing a clear statement that StageServe centrally defines the 20i-style stack contract that projects tap into, plus the deployed-copy sync note, and it still references a redundant project-local example file that should stay deleted.
+- [docs/runtime-contract.md](../../../docs/runtime-contract.md): partial. Good on `stage-` and rollback semantics, but it should present the shared gateway as a StageServe-managed internal subsystem for normal operators and reserve explicit `stage-shared` / `stage-gateway` naming for contract or troubleshooting depth.
 - [docs/migration.md](../../../docs/migration.md): pass. The rename note is explicit and historically framed.
-- [`.env.stacklane.example`](../../../.env.stacklane.example): pass. Good explanation of scope and the FR-016 restriction.
+- [`.env.stageserve.example`](../../../.env.stageserve.example): pass. Good explanation of scope and the FR-016 restriction.
 - `.env.example`: intentionally absent. No action needed to restore it; action is needed to stop advertising it.
 - `.stackenv.example`: pass. Removal is correct.
 
@@ -146,7 +146,7 @@ Recommendation:
 ## Recommendations
 
 1. Remove all stale `.env.example` references from docs and task wording; do not restore the file if the intended contract is to avoid the redundant project-local template.
-2. Update [README.md](../../../README.md) to state explicitly that Stacklane is the central authority for the 20i-style stack contract and that projects tap into it via project-local config. Then add the deployed-copy sync note so the top-level operator guide matches [quickstart.md](./quickstart.md).
-3. Refactor the shared-routing docs so operator-facing guidance talks about Stacklane automatically ensuring routing is available, while explicit gateway resource names are moved to advanced contract or troubleshooting material.
+2. Update [README.md](../../../README.md) to state explicitly that StageServe is the central authority for the 20i-style stack contract and that projects tap into it via project-local config. Then add the deployed-copy sync note so the top-level operator guide matches [quickstart.md](./quickstart.md).
+3. Refactor the shared-routing docs so operator-facing guidance talks about StageServe automatically ensuring routing is available, while explicit gateway resource names are moved to advanced contract or troubleshooting material.
 4. Mark completed tasks in [tasks.md](./tasks.md) after the file/example/doc cleanup is finished.
 5. Keep the current test additions. They cover the most failure-prone parts of the spec and are worth preserving even if the docs/example cleanup lands separately.

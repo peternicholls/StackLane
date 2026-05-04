@@ -1,7 +1,7 @@
-# Specification Quality Checklist: Stacklane Rebrand And Unified Command Surface
+# Specification Quality Checklist: StageServe Rebrand And `stage` Command Cutover
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-04-01
+**Purpose**: Validate specification completeness and quality before proceeding to planning  
+**Created**: 2026-04-01  
 **Feature**: [specs/002-project-rebrand/spec.md](../spec.md)
 
 ## Content Quality
@@ -32,5 +32,5 @@
 ## Notes
 
 - Validated on 2026-04-01 against the completed spec.
-- Clarified decisions are fixed in the spec: brand name `Stacklane`, primary CLI command `stacklane`, and temporary `legacy wrapper commands` migration wrappers with deprecation guidance.
-- Scope explicitly includes repo rename propagation, documentation updates, unified command UX, and migration guidance, while excluding automation of the local containing-folder rename.
+- Clarified decisions are fixed in the spec: brand name `StageServe`, primary CLI command `stage`, and the current config/state names `.env.stageserve` and `.stageserve-state`.
+- Scope explicitly includes repo rename propagation, documentation updates, canonical command UX, and migration guidance, while excluding automation of the local containing-folder rename.

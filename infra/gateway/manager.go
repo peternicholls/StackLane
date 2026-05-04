@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/peternicholls/stacklane/core/project"
+	"github.com/peternicholls/stageserve/core/project"
 )
 
 // Manager is the default GatewayManager.
@@ -101,10 +101,10 @@ func (m *Manager) RemoveRoute(slug string, current []Route) (string, string, err
 }
 
 // probeFor selects the upstream + hostname pair the orchestrator should wait
-// for after a reload (mirrors stacklane_write_gateway_config probe selection).
+// for after a reload (mirrors stageserve_write_gateway_config probe selection).
 func probeFor(input RenderInput) (target, host string, err error) {
 	if len(input.Routes) == 0 {
-		return "stacklane-no-route", "localhost", nil
+		return "stageserve-no-route", "localhost", nil
 	}
 	for _, r := range input.Routes {
 		if r.Slug == input.PreferredSlug {

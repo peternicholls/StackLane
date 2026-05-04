@@ -16,14 +16,14 @@ FAIL=0
 pass() { printf 'PASS: %s\n' "$1"; PASS=$((PASS+1)); }
 fail() { printf 'FAIL: %s\n' "$1"; FAIL=$((FAIL+1)); }
 
-# Test 1: NONINTERACTIVE=1 path prints next-step guidance containing "stacklane setup".
+# Test 1: NONINTERACTIVE=1 path prints next-step guidance containing "stage setup".
 tmpdir=$(mktemp -d)
 out=$(NONINTERACTIVE=1 \
-  STACKLANE_INSTALL_DIR="$tmpdir" \
-  STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
   bash "$INSTALL_SH" --test-mode 2>&1) && true
 rm -rf "$tmpdir"
-if echo "$out" | grep -q "stacklane setup"; then
+if echo "$out" | grep -q "stage setup"; then
   pass "noninteractive_handoff"
 else
   fail "noninteractive_handoff"
@@ -32,11 +32,11 @@ fi
 
 # Test 2: Non-TTY path prints next-step guidance.
 tmpdir=$(mktemp -d)
-out=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-  STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
   bash "$INSTALL_SH" --test-mode --no-tty 2>&1) && true
 rm -rf "$tmpdir"
-if echo "$out" | grep -qE "stacklane setup|stacklane setup --tui"; then
+if echo "$out" | grep -qE "stage setup|stage setup --tui"; then
   pass "nontty_handoff"
 else
   fail "nontty_handoff"

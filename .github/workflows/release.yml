@@ -19,20 +19,20 @@ jobs:
           check-latest: false
 
       - name: Set version from tag
-        run: echo "STACKLANE_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+        run: echo "STAGESERVE_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
 
       - name: Build release assets
         run: |
           mkdir -p dist
-          GOOS=darwin  GOARCH=arm64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Darwin_arm64   ./cmd/stacklane
-          GOOS=darwin  GOARCH=amd64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Darwin_x86_64  ./cmd/stacklane
-          GOOS=linux   GOARCH=arm64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Linux_arm64    ./cmd/stacklane
-          GOOS=linux   GOARCH=amd64  go build -ldflags "-X main.version=${STACKLANE_VERSION}" -o dist/stacklane_${STACKLANE_VERSION}_Linux_x86_64   ./cmd/stacklane
+          GOOS=darwin  GOARCH=arm64  go build -ldflags "-X main.version=${STAGESERVE_VERSION}" -o dist/stage_${STAGESERVE_VERSION}_Darwin_arm64   ./cmd/stage
+          GOOS=darwin  GOARCH=amd64  go build -ldflags "-X main.version=${STAGESERVE_VERSION}" -o dist/stage_${STAGESERVE_VERSION}_Darwin_x86_64  ./cmd/stage
+          GOOS=linux   GOARCH=arm64  go build -ldflags "-X main.version=${STAGESERVE_VERSION}" -o dist/stage_${STAGESERVE_VERSION}_Linux_arm64    ./cmd/stage
+          GOOS=linux   GOARCH=amd64  go build -ldflags "-X main.version=${STAGESERVE_VERSION}" -o dist/stage_${STAGESERVE_VERSION}_Linux_x86_64   ./cmd/stage
 
       - name: Generate checksums
         run: |
           cd dist
-          for f in stacklane_*; do
+          for f in stage_*; do
             sha256sum "$f" > "${f}.sha256"
           done
 
@@ -40,6 +40,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/stacklane_*
+            dist/stage_*
             install.sh
           generate_release_notes: true

@@ -1,4 +1,4 @@
-// stacklane logs: stream logs for one service.
+// stage logs: stream logs for one service.
 package commands
 
 import (
@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/observability/logs"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/observability/logs"
 )
 
 func NewLogs(flags *SharedFlags) *cobra.Command {

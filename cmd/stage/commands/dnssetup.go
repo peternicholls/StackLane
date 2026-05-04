@@ -1,4 +1,4 @@
-// stacklane dns-setup: bootstrap the local DNS so .test hostnames resolve.
+// stage dns-setup: bootstrap the local DNS so .test hostnames resolve.
 // Returns a typed message on platforms where the
 // flow is unsupported (FR-012).
 package commands
@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/peternicholls/stacklane/platform/dns"
+	"github.com/peternicholls/stageserve/platform/dns"
 )
 
 func NewDNSSetup(flags *SharedFlags) *cobra.Command {

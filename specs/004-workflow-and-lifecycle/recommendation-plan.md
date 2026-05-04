@@ -16,9 +16,9 @@ This plan assumes the code-level behavior introduced for spec 004 is largely cor
 ## Working Assumptions
 
 - `.env.example` stays deleted. It is considered redundant and is not being restored for backward compatibility.
-- Stacklane is the central authority for the 20i-style local stack model.
+- StageServe is the central authority for the 20i-style local stack model.
 - Projects are expected to tap into that shared model through project-local inputs rather than define their own stack shape.
-- Shared gateway behavior is a Stacklane-managed internal subsystem for normal operators.
+- Shared gateway behavior is a StageServe-managed internal subsystem for normal operators.
 - Explicit gateway resource names remain useful, but only in advanced contract or troubleshooting material.
 
 ## Scope
@@ -43,7 +43,7 @@ This plan assumes the code-level behavior introduced for spec 004 is largely cor
 
 Goal:
 
-Make the docs and tasks consistent with the intended contract: `.env.stacklane.example` remains, `.stackenv.example` is deleted, `.env.example` is not part of the supported surface.
+Make the docs and tasks consistent with the intended contract: `.env.stageserve.example` remains, `.stackenv.example` is deleted, `.env.example` is not part of the supported surface.
 
 Target files:
 
@@ -66,7 +66,7 @@ Acceptance criteria:
 
 Goal:
 
-Make the README communicate the product model clearly: Stacklane defines the shared 20i-style stack contract, and projects plug into it.
+Make the README communicate the product model clearly: StageServe defines the shared 20i-style stack contract, and projects plug into it.
 
 Target files:
 
@@ -75,10 +75,10 @@ Target files:
 
 Actions:
 
-1. Add a short statement near the early conceptual sections or command semantics explaining that Stacklane centrally owns the stack shape.
+1. Add a short statement near the early conceptual sections or command semantics explaining that StageServe centrally owns the stack shape.
 2. Make clear that project-local configuration customizes a project within that shared contract instead of redefining the stack.
 3. Add the deployed-copy validation note in generic terms:
-   the live Stacklane installation on `PATH` is the authoritative runtime surface.
+   the live StageServe installation on `PATH` is the authoritative runtime surface.
 4. Mention `$HOME/docker/20i-stack` only as a known local example if that helps this repository's operators, not as a universal product rule.
 
 Acceptance criteria:
@@ -101,8 +101,8 @@ Target files:
 
 Actions:
 
-1. Rewrite operator-facing wording so it says Stacklane ensures shared routing is running, reuses it when present, and repairs it when missing.
-2. Move or confine explicit names like `stln-shared` and `stln-gateway` to advanced contract or troubleshooting depth where needed.
+1. Rewrite operator-facing wording so it says StageServe ensures shared routing is running, reuses it when present, and repairs it when missing.
+2. Move or confine explicit names like `stage-shared` and `stage-gateway` to advanced contract or troubleshooting depth where needed.
 3. Preserve correctness of the internal contract, but stop teaching it as a first-class operator workflow.
 
 Acceptance criteria:
@@ -153,15 +153,15 @@ After the follow-up edits:
 1. Run a targeted grep for stale references:
    - `.env.example`
    - `.stackenv`
-   - `stln-shared`
-   - `stln-gateway`
+   - `stage-shared`
+   - `stage-gateway`
 2. Manually review each remaining hit to confirm it is either:
    - intentional advanced/internal documentation
    - historical artifact explicitly marked as such
    - actual operator-facing content that still needs revision
 3. Rebuild and re-run the lightweight validation already used for this branch:
    - `go test ./...`
-   - `go build -o stacklane-bin ./cmd/stacklane`
+   - `go build -o stage-bin ./cmd/stage`
 4. Spot-check operator-facing help and docs for wording drift.
 
 ## Done Definition

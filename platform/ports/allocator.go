@@ -1,6 +1,6 @@
 // Port allocator. Bind-checks via net.Listen with an lsof fallback, never
 // returns a port already reserved by another project, and serialises
-// concurrent stacklane up invocations with an exclusive file lock (FR-007 / SC-008).
+// concurrent stage up invocations with an exclusive file lock (FR-007 / SC-008).
 package ports
 
 import (
@@ -12,12 +12,12 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/peternicholls/stacklane/core/state"
+	"github.com/peternicholls/stageserve/core/state"
 	"golang.org/x/sys/unix"
 )
 
 // LockFileName is the name of the on-disk lock the allocator takes during
-// Allocate to serialise concurrent stacklane up invocations.
+// Allocate to serialise concurrent stage up invocations.
 const LockFileName = ".port-allocation.lock"
 
 // Allocator is the default PortAllocator implementation.
@@ -35,7 +35,7 @@ func NewAllocator(stateDir string) *Allocator {
 // Allocate satisfies req. The flow:
 //
 //  1. Take an exclusive flock on <stateDir>/.port-allocation.lock so two
-//     concurrent stacklane up invocations cannot race (SC-008).
+//     concurrent stage up invocations cannot race (SC-008).
 //  2. For each port requested explicitly, validate it is not in use locally
 //     and is not reserved by a different slug in the registry.
 //  3. For each port left at zero, scan upward from the documented start port

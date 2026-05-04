@@ -32,7 +32,7 @@ func WritePreviewFiles(s Settings) error {
 }
 
 // MessageFor returns the operator-friendly description for code (mirrors
-// stacklane_dns_status_message).
+// stageserve_dns_status_message).
 func MessageFor(s Settings, code Code) string {
 	switch code {
 	case CodeReady:

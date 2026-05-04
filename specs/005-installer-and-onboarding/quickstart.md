@@ -7,15 +7,15 @@ Implement and validate installer + onboarding command surfaces in this order:
 1. installer handoff
 2. shared onboarding runtime and projection adapters
 3. machine readiness and project env ownership modules
-4. `stacklane setup`, `stacklane doctor`, and `stacklane init` command adapters
+4. `stage setup`, `stage doctor`, and `stage init` command adapters
 5. docs and contract alignment
 
 ## Prerequisites
 
 - Go 1.26 toolchain available.
 - Docker Desktop installed on macOS.
-- Writable local checkout of StackLane.
-- If validating against a deployed stack copy under `$HOME/docker/20i-stack`, sync the repo changes into that deployed copy before running operator-facing checks.
+- Writable local checkout of StageServe.
+- If validating against a deployed stack copy under `$HOME/docker/stageserve-stack`, sync the repo changes into that deployed copy before running operator-facing checks.
 
 ## TDD Loop
 
@@ -39,9 +39,9 @@ Start implementation with these concrete red-green-refactor slices, in order.
 | 1 | Exit code reducer prefers `unsupported-os` over lower severities | `core/onboarding/runtime_test.go` | `TestReduceExitCode_PrefersUnsupportedOS` | `go test ./core/onboarding -run TestReduceExitCode_PrefersUnsupportedOS` |
 | 2 | Overall status becomes `needs_action` when any step needs action and none error | `core/onboarding/runtime_test.go` | `TestOverallStatus_NeedsActionWithoutError` | `go test ./core/onboarding -run TestOverallStatus_NeedsActionWithoutError` |
 | 3 | Docker binary readiness returns actionable non-ready result when binary is missing | `core/onboarding/machine_readiness_test.go` | `TestDockerBinaryCheck_MissingBinary` | `go test ./core/onboarding -run TestDockerBinaryCheck_MissingBinary` |
-| 4 | Setup reports `config.dns_suffix=needs_action` in non-interactive mode when suffix is absent | `cmd/stacklane/commands/setup_test.go` or `core/onboarding/runtime_test.go` | `TestSetup_NonInteractiveMissingSuffix` | `go test ./cmd/stacklane/commands -run TestSetup_NonInteractiveMissingSuffix` |
+| 4 | Setup reports `config.dns_suffix=needs_action` in non-interactive mode when suffix is absent | `cmd/stage/commands/setup_test.go` or `core/onboarding/runtime_test.go` | `TestSetup_NonInteractiveMissingSuffix` | `go test ./cmd/stage/commands -run TestSetup_NonInteractiveMissingSuffix` |
 | 5 | Project env validation rejects docroot outside project root and writes no file | `core/onboarding/project_env_test.go` | `TestValidateProjectEnv_RejectsDocrootOutsideProjectRoot` | `go test ./core/onboarding -run TestValidateProjectEnv_RejectsDocrootOutsideProjectRoot` |
-| 6 | Doctor reports unhealthy gateway with exact remediation and stays read-only | `cmd/stacklane/commands/doctor_test.go` or `core/onboarding/machine_readiness_test.go` | `TestDoctor_UnhealthyGateway` | `go test ./cmd/stacklane/commands -run TestDoctor_UnhealthyGateway` |
+| 6 | Doctor reports unhealthy gateway with exact remediation and stays read-only | `cmd/stage/commands/doctor_test.go` or `core/onboarding/machine_readiness_test.go` | `TestDoctor_UnhealthyGateway` | `go test ./cmd/stage/commands -run TestDoctor_UnhealthyGateway` |
 
 For each slice:
 
@@ -53,7 +53,7 @@ For each slice:
 
 ## Step 1: Add command entrypoints
 
-1. Add command constructors in `cmd/stacklane/commands`:
+1. Add command constructors in `cmd/stage/commands`:
 - `NewSetup(flags *SharedFlags)`
 - `NewDoctor(flags *SharedFlags)`
 - `NewInit(flags *SharedFlags)`
@@ -90,11 +90,11 @@ Start with `core/onboarding/runtime_test.go` and one failing behavior test for e
 Open each new module with a failing behavior test before adding implementation.
 
 1. Implement a machine readiness module that owns Docker, DNS, state-dir, port, mkcert, and unsupported-os behavior.
-2. Implement a project env ownership module that owns `.env.stacklane` validation, overwrite, preservation, and allowed-key rules.
-3. Route both `stacklane init` and the silent `ensureProjectEnvFile` helper through the same project-env ownership module.
+2. Implement a project env ownership module that owns `.env.stageserve` validation, overwrite, preservation, and allowed-key rules.
+3. Route both `stage init` and the silent `ensureProjectEnvFile` helper through the same project-env ownership module.
 4. Keep these as deep modules used by command adapters rather than duplicating their implementation per command.
 
-## Step 5: Implement `stacklane setup`
+## Step 5: Implement `stage setup`
 
 Begin with the smallest failing setup behavior test, preferably in `core/onboarding/machine_readiness_test.go` or `core/onboarding/runtime_test.go`, and only then wire the command adapter.
 
@@ -107,7 +107,7 @@ Begin with the smallest failing setup behavior test, preferably in `core/onboard
 4. Add mkcert check + optional install confirmation when suffix is `dev`.
 5. Enforce non-interactive and JSON prompt suppression semantics.
 
-## Step 6: Implement `stacklane doctor`
+## Step 6: Implement `stage doctor`
 
 Begin with the smallest failing read-only diagnostic behavior test in `core/onboarding/machine_readiness_test.go`, then add the doctor adapter code needed for that behavior.
 
@@ -117,7 +117,7 @@ Begin with the smallest failing read-only diagnostic behavior test in `core/onbo
 4. Ensure no writes and no privilege escalation paths.
 5. Emit `code=unsupported-os` for platform-specific checks on unsupported platforms while still running portable checks.
 
-## Step 7: Implement `stacklane init`
+## Step 7: Implement `stage init`
 
 Begin with the smallest failing ownership or validation test in `core/onboarding/project_env_test.go`, then add the init adapter code needed for that behavior.
 
@@ -126,7 +126,7 @@ Begin with the smallest failing ownership or validation test in `core/onboarding
 3. Derive defaults for site name/docroot/hostname.
 4. Add confirmation + adjustment flow in interactive mode.
 5. Enforce FR-018 docroot validation rules and ownership rules through the shared module.
-6. Write minimal `.env.stacklane` content with required generated header.
+6. Write minimal `.env.stageserve` content with required generated header.
 7. Enforce overwrite guard unless `--force` is passed.
 
 ## Step 8: Add TUI integration
@@ -144,7 +144,7 @@ Begin with the smallest failing ownership or validation test in `core/onboarding
 1. Add/update release `install.sh` behavior per contract.
 2. Resolve OS/arch asset naming with dash-separated format.
 3. Verify checksums before install.
-4. Launch `stacklane setup --tui` only when interactive and allowed.
+4. Launch `stage setup --tui` only when interactive and allowed.
 5. Print deterministic plain next-step guidance when not interactive.
 
 ## Step 10: Validate behavior
@@ -152,14 +152,14 @@ Begin with the smallest failing ownership or validation test in `core/onboarding
 If operator validation uses a deployed stack copy, sync first:
 
 ```bash
-rsync -a --delete ./ "$HOME/docker/20i-stack/"
+rsync -a --delete ./ "$HOME/docker/stageserve-stack/"
 ```
 
 Run focused tests first:
 
 ```bash
 go test ./core/onboarding
-go test ./cmd/stacklane/commands
+go test ./cmd/stage/commands
 go test ./core/config
 go test ./core/lifecycle
 ```
@@ -173,36 +173,36 @@ Then execute the scenario protocol below and record actual command, exit code, a
 3. Setup with invalid `--suffix` -> exit `2` + clear error message.
 4. Setup on unsupported OS path simulation -> platform step `code=unsupported-os`, exit `3`.
 5. Doctor with DNS drift -> `dns.bootstrap=error` + exact fix command.
-6. Doctor with unhealthy shared gateway -> gateway-specific failure and `stacklane up --shared` remediation.
+6. Doctor with unhealthy shared gateway -> gateway-specific failure and `stage up --shared` remediation.
 7. Init with invalid docroot -> exit `2`, no file writes.
-8. Init existing `.env.stacklane` without `--force` -> skipped outcome.
+8. Init existing `.env.stageserve` without `--force` -> skipped outcome.
 9. JSON output from setup/doctor/init validates against `contracts/json-envelope.schema.json`.
 
 Use this evidence table during validation:
 
 | Scenario | Command | Expected exit | Evidence to capture |
 |----------|---------|---------------|---------------------|
-| setup daemon stopped | `stacklane setup` | `1` | step status, remediation text |
-| setup missing suffix non-interactive | `stacklane setup --non-interactive` | `1` | `config.dns_suffix` result |
-| setup invalid suffix | `stacklane setup --suffix nope` | `2` | validation error text |
+| setup daemon stopped | `stage setup` | `1` | step status, remediation text |
+| setup missing suffix non-interactive | `stage setup --non-interactive` | `1` | `config.dns_suffix` result |
+| setup invalid suffix | `stage setup --suffix nope` | `2` | validation error text |
 | setup unsupported-os simulation | targeted test harness | `3` | `code=unsupported-os` in result |
-| doctor dns drift | `stacklane doctor` | `2` or `3` per platform state | exact remediation command |
-| doctor gateway unhealthy | `stacklane doctor` | `2` | gateway-specific remediation |
-| init invalid docroot | `stacklane init --docroot missing` | `2` | no file write |
-| init existing file | `stacklane init` | `0` | skipped outcome |
+| doctor dns drift | `stage doctor` | `2` or `3` per platform state | exact remediation command |
+| doctor gateway unhealthy | `stage doctor` | `2` | gateway-specific remediation |
+| init invalid docroot | `stage init --docroot missing` | `2` | no file write |
+| init existing file | `stage init` | `0` | skipped outcome |
 
 Measure performance explicitly:
 
 ```bash
-time stacklane setup --non-interactive --no-tui
-time stacklane doctor --no-tui
+time stage setup --non-interactive --no-tui
+time stage doctor --no-tui
 ```
 
 For TUI overhead, compare healthy-path runtime between:
 
 ```bash
-time stacklane setup --no-tui
-time stacklane setup --tui
+time stage setup --no-tui
+time stage setup --tui
 ```
 
 Record whether `setup <= 10s`, `doctor <= 5s`, and `tui overhead <= 300ms` on the same machine.
@@ -216,7 +216,7 @@ Update in same change set:
 - `README.md` onboarding sequence (`install -> setup -> init -> up`)
 - `docs/runtime-contract.md` command ownership and output semantics
 - install/onboarding compatibility + integrity verification docs
-- repo-to-deployed-stack sync guidance when operators validate against `$HOME/docker/20i-stack`
+- repo-to-deployed-stack sync guidance when operators validate against `$HOME/docker/stageserve-stack`
 
 ## Completion Criteria
 
@@ -234,14 +234,14 @@ Update in same change set:
 Commands run and expected outcomes:
 
 ```
-stacklane setup --json
+stage setup --json
 ```
 
 Expected: exits 0 when machine is fully ready; exits 1 when Docker is not running (needs_action).  
 JSON envelope includes `overall_status`, `exit_code`, and `steps` array with `docker.binary`, `docker.daemon`, `state.dir`, `port.80`, `port.443`, `dns.resolver`, `mkcert.binary`.
 
 ```
-stacklane setup --non-interactive --no-tui
+stage setup --non-interactive --no-tui
 ```
 
 Expected: plain-text output containing each step label (Docker CLI, Docker daemon, etc.) with a ✓/!/✗ prefix.
@@ -249,13 +249,13 @@ Expected: plain-text output containing each step label (Docker CLI, Docker daemo
 ### T052 — Doctor and failure-path validation
 
 ```
-stacklane doctor --json
+stage doctor --json
 ```
 
 Expected: same JSON envelope shape as `setup`. All steps read-only — no mutation.
 
 ```
-stacklane doctor --no-tui
+stage doctor --no-tui
 ```
 
 Expected: plain-text per-step status. Exit code reflects worst-case step.
@@ -263,17 +263,17 @@ Expected: plain-text per-step status. Exit code reflects worst-case step.
 ### T053 — Config precedence and isolation
 
 ```
-cd <project-dir> && stacklane init --non-interactive --no-tui
+cd <project-dir> && stage init --non-interactive --no-tui
 ```
-Expected: creates `.env.stacklane` in project dir. Exit 0.
+Expected: creates `.env.stageserve` in project dir. Exit 0.
 
 ```
-cd <project-dir> && stacklane init --non-interactive --no-tui
+cd <project-dir> && stage init --non-interactive --no-tui
 ```
 Expected (second run, no --force): output says "already exists", file unchanged. Exit 0.
 
 ```
-cd <project-dir> && stacklane init --force --non-interactive --no-tui
+cd <project-dir> && stage init --force --non-interactive --no-tui
 ```
 Expected: file overwritten. Exit 0.
 
@@ -281,9 +281,9 @@ Expected: file overwritten. Exit 0.
 
 | Scenario                         | Measured | Threshold |
 |----------------------------------|----------|-----------|
-| `stacklane setup --json` (ready) | < 500 ms | 2 s       |
-| `stacklane doctor --json` (ready)| < 500 ms | 2 s       |
-| `stacklane init --no-tui`        | < 100 ms | 500 ms    |
+| `stage setup --json` (ready) | < 500 ms | 2 s       |
+| `stage doctor --json` (ready)| < 500 ms | 2 s       |
+| `stage init --no-tui`        | < 100 ms | 500 ms    |
 
 *Note: Docker daemon check takes ~50 ms when daemon is running. DNS/mkcert checks are file-system + process probes and typically finish under 200 ms each.*
 
@@ -292,14 +292,14 @@ Expected: file overwritten. Exit 0.
 | Package                              | Result | Tests |
 |--------------------------------------|--------|-------|
 | `core/onboarding`                    | PASS   | 21    |
-| `cmd/stacklane/commands`             | PASS   | 13    |
+| `cmd/stage/commands`                 | PASS   | 13    |
 | `core/config`                        | PASS   | —     |
 | `core/lifecycle`                     | PASS   | —     |
 
 Command:
 
 ```bash
-go test ./core/onboarding/... ./cmd/stacklane/commands/... ./core/config/... ./core/lifecycle/...
+go test ./core/onboarding/... ./cmd/stage/commands/... ./core/config/... ./core/lifecycle/...
 ```
 
 All four packages PASS as of implementation completion.

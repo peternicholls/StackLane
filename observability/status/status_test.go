@@ -1,5 +1,5 @@
 // Status reporter rollback assertions for spec 004 / US2 (FR-006). When a
-// project is rolled back during `stacklane up`, the status reporter MUST NOT
+// project is rolled back during `stage up`, the status reporter MUST NOT
 // claim it is still attached or running, and unrelated attached projects MUST
 // remain visible and untouched.
 package status
@@ -8,10 +8,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/config"
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/internal/mocks"
+	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/internal/mocks"
 )
 
 func attachedProject(slug string) config.ProjectConfig {
@@ -19,10 +19,10 @@ func attachedProject(slug string) config.ProjectConfig {
 		Slug:               slug,
 		Name:               slug,
 		Hostname:           slug + ".test",
-		ComposeProjectName: "stln-" + slug,
-		WebNetworkAlias:    "stln-" + slug + "-web",
-		RuntimeNetwork:     "stln-" + slug + "-runtime",
-		DatabaseVolume:     "stln-" + slug + "-db-data",
+		ComposeProjectName: "stage-" + slug,
+		WebNetworkAlias:    "stage-" + slug + "-web",
+		RuntimeNetwork:     "stage-" + slug + "-runtime",
+		DatabaseVolume:     "stage-" + slug + "-db-data",
 	}
 }
 
@@ -55,7 +55,7 @@ func TestReporter_RollbackPreservesUnrelatedAttachedProject(t *testing.T) {
 	}
 	dc := mocks.NewDocker()
 	dc.Containers = []docker.Container{{
-		ID: "beta-apache-1", Name: "stln-beta-apache", Service: "apache", Status: "running",
+		ID: "beta-apache-1", Name: "stage-beta-apache", Service: "apache", Status: "running",
 		Labels: map[string]string{"com.docker.compose.project": other.ComposeProjectName, "com.docker.compose.service": "apache"},
 	}}
 

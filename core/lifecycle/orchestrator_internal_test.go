@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/config"
+	"github.com/peternicholls/stageserve/core/config"
 )
 
 type noopListener struct{}
@@ -65,12 +65,12 @@ func TestWriteEnvFileIncludesAppDBSettings(t *testing.T) {
 		DocRoot:            "/tmp/demo/public_html",
 		ContainerSiteRoot:  "/home/sites/demo",
 		ContainerDocRoot:   "/home/sites/demo/public_html",
-		ComposeProjectName: "stln-demo",
+		ComposeProjectName: "stage-demo",
 		PHPVersion:         "8.5",
 		StateDir:           stateDir,
-		RuntimeNetwork:     "stln-demo-runtime",
-		DatabaseVolume:     "stln-demo-db-data",
-		WebNetworkAlias:    "stln-demo-web",
+		RuntimeNetwork:     "stage-demo-runtime",
+		DatabaseVolume:     "stage-demo-db-data",
+		WebNetworkAlias:    "stage-demo-web",
 		MySQL: config.MySQL{
 			Version:      "10.6",
 			Database:     "appdb",
@@ -80,7 +80,7 @@ func TestWriteEnvFileIncludesAppDBSettings(t *testing.T) {
 			Port:         3307,
 			PMAPort:      8082,
 		},
-		SharedGateway: config.SharedGateway{Network: "stln-shared"},
+		SharedGateway: config.SharedGateway{Network: "stage-shared"},
 	}
 
 	path, err := writeEnvFile(cfg)

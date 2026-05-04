@@ -1,11 +1,11 @@
-// stacklane init: generate a starter .env.stacklane in the project root.
+// stage init: generate a starter .env.stageserve in the project root.
 package commands
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +24,8 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	f := &initFlags{}
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Initialize a project for StackLane",
-		Long:  "Creates a starter .env.stacklane with documented defaults. Validates docroot/site settings and protects existing config from accidental overwrite.",
+		Short: "Initialize a project for StageServe",
+		Long:  "Creates a starter .env.stageserve with documented defaults. Validates docroot/site settings and protects existing config from accidental overwrite.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := resolveOutputMode(f.JSON, f.NoTUI, false, f.NonInteractive)
 
@@ -61,27 +61,27 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 			case writeErr != nil:
 				step = onboarding.StepResult{
 					ID:      "init.env_file",
-					Label:   ".env.stacklane",
+					Label:   ".env.stageserve",
 					Status:  onboarding.StatusError,
 					Message: writeErr.Error(),
 				}
 			case action == onboarding.InitActionSkipped:
 				step = onboarding.StepResult{
 					ID:      "init.env_file",
-					Label:   ".env.stacklane",
+					Label:   ".env.stageserve",
 					Status:  onboarding.StatusReady,
-					Message: ".env.stacklane already exists (use --force to overwrite)",
+					Message: ".env.stageserve already exists (use --force to overwrite)",
 				}
 			default:
 				step = onboarding.StepResult{
 					ID:      "init.env_file",
-					Label:   ".env.stacklane",
+					Label:   ".env.stageserve",
 					Status:  onboarding.StatusReady,
-					Message: fmt.Sprintf(".env.stacklane %s in %s", action, root),
+					Message: fmt.Sprintf(".env.stageserve %s in %s", action, root),
 				}
 			}
 
-			result := onboarding.BuildResult([]onboarding.StepResult{step}, nil, []string{"stacklane up"})
+			result := onboarding.BuildResult([]onboarding.StepResult{step}, nil, []string{"stage up"})
 
 			switch mode {
 			case onboarding.OutputModeJSON:
@@ -106,7 +106,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	cmd.Flags().StringVar(&f.DocRoot, "docroot", "", "Document root inside the project")
 	cmd.Flags().StringVar(&f.SiteName, "site-name", "", "Site name override")
 	cmd.Flags().StringVar(&f.ProjectDir, "project-dir", "", "Project directory (defaults to cwd)")
-	cmd.Flags().BoolVar(&f.Force, "force", false, "Overwrite existing .env.stacklane")
+	cmd.Flags().BoolVar(&f.Force, "force", false, "Overwrite existing .env.stageserve")
 	cmd.Flags().BoolVar(&f.NonInteractive, "non-interactive", false, "Suppress interactive prompts")
 	cmd.Flags().BoolVar(&f.NoTUI, "no-tui", false, "Force plain-text output")
 	cmd.Flags().BoolVar(&f.JSON, "json", false, "Emit JSON envelope only")

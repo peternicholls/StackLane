@@ -17,7 +17,7 @@ const (
 	InitActionSkipped     InitAction = "skipped"
 )
 
-const projectEnvFile = ".env.stacklane"
+const projectEnvFile = ".env.stageserve"
 
 // ValidateProjectRoot verifies that root is a non-empty, existing directory
 // and returns its clean absolute path.
@@ -46,6 +46,9 @@ func ValidateDocroot(projectRoot, docroot string) error {
 	if err != nil {
 		return fmt.Errorf("resolve project root: %w", err)
 	}
+	if !filepath.IsAbs(docroot) {
+		docroot = filepath.Join(absRoot, docroot)
+	}
 	absDoc, err := filepath.Abs(docroot)
 	if err != nil {
 		return fmt.Errorf("resolve docroot: %w", err)
@@ -58,7 +61,7 @@ func ValidateDocroot(projectRoot, docroot string) error {
 	return nil
 }
 
-// WriteProjectEnv writes a starter .env.stacklane in projectRoot.
+// WriteProjectEnv writes a starter .env.stageserve in projectRoot.
 // If the file already exists and force is false, it returns InitActionSkipped.
 // Returns the action taken or an error.
 func WriteProjectEnv(projectRoot, siteName, docroot string, force bool) (InitAction, error) {
@@ -82,9 +85,9 @@ func WriteProjectEnv(projectRoot, siteName, docroot string, force bool) (InitAct
 
 func renderEnv(siteName, docroot string) string {
 	var b strings.Builder
-	b.WriteString("# StackLane project config — created by `stacklane init`\n")
+	b.WriteString("# StageServe project config — created by `stage init`\n")
 	b.WriteString("# Keep project-specific overrides here.\n\n")
-	b.WriteString("STACKLANE_STACK=20i\n\n")
+	b.WriteString("STAGESERVE_STACK=20i\n\n")
 	if siteName != "" {
 		b.WriteString("SITE_NAME=" + shellDoubleQuote(siteName) + "\n")
 	}

@@ -8,7 +8,7 @@ server {
     root ${CONTAINER_DOCROOT};
     index index.php index.html index.htm;
 
-    location = /__stacklane_health {
+    location = /__stageserve_health {
         access_log off;
         default_type text/plain;
         return 200 'ok';

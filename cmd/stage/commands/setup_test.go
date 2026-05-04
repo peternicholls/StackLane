@@ -94,7 +94,7 @@ func TestSetup_UsesConfigResolvedStateDir(t *testing.T) {
 	root.SetArgs([]string{"--stack-home", stackHome, "setup", "--json"})
 	_ = root.Execute()
 
-	want := filepath.Join(stackHome, ".stacklane-state")
+	want := filepath.Join(stackHome, ".stageserve-state")
 	if !strings.Contains(buf.String(), want) {
 		t.Fatalf("expected setup output to reference config-resolved state dir %q, got: %s", want, buf.String())
 	}

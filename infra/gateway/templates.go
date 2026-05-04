@@ -1,6 +1,6 @@
 // Templated nginx config for the shared gateway. Replaces the heredoc
-// string-interpolation in stacklane_gateway_block_for_route /
-// stacklane_write_gateway_config with a typed text/template.
+// string-interpolation in stageserve_gateway_block_for_route /
+// stageserve_write_gateway_config with a typed text/template.
 package gateway
 
 import (
@@ -23,10 +23,10 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-Stacklane-Gateway "shared" always;
-    add_header X-Stacklane-Route-Target "{{ if eq (len .Routes) 0 }}stacklane-no-route{{ else }}unmatched-host{{ end }}" always;
+    add_header X-StageServe-Gateway "shared" always;
+    add_header X-StageServe-Route-Target "{{ if eq (len .Routes) 0 }}stageserve-no-route{{ else }}unmatched-host{{ end }}" always;
 
-    location = /__stacklane_gateway_health {
+    location = /__stageserve_gateway_health {
         default_type text/plain;
         return 200 "gateway ok\n";
     }
@@ -34,10 +34,10 @@ server {
     location / {
         default_type text/plain;
 {{- if eq (len .Routes) 0 }}
-        return 503 "Stacklane shared gateway has no hostname routes.\n";
+        return 503 "StageServe shared gateway has no hostname routes.\n";
 {{- else }}
-        add_header X-Stacklane-Route-State "unmatched-host" always;
-        return 404 "Stacklane shared gateway has no route for host '$host'.\n";
+        add_header X-StageServe-Route-State "unmatched-host" always;
+        return 404 "StageServe shared gateway has no route for host '$host'.\n";
 {{- end }}
     }
 }
@@ -50,10 +50,10 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-Stacklane-Gateway "shared" always;
-    add_header X-Stacklane-Route-Target "{{ if eq (len .Routes) 0 }}stacklane-no-route{{ else }}unmatched-host{{ end }}" always;
+    add_header X-StageServe-Gateway "shared" always;
+    add_header X-StageServe-Route-Target "{{ if eq (len .Routes) 0 }}stageserve-no-route{{ else }}unmatched-host{{ end }}" always;
 
-    location = /__stacklane_gateway_health {
+    location = /__stageserve_gateway_health {
         default_type text/plain;
         return 200 "gateway ok\n";
     }
@@ -61,10 +61,10 @@ server {
     location / {
         default_type text/plain;
 {{- if eq (len .Routes) 0 }}
-        return 503 "Stacklane shared gateway has no hostname routes.\n";
+        return 503 "StageServe shared gateway has no hostname routes.\n";
 {{- else }}
-        add_header X-Stacklane-Route-State "unmatched-host" always;
-        return 404 "Stacklane shared gateway has no route for host '$host'.\n";
+        add_header X-StageServe-Route-State "unmatched-host" always;
+        return 404 "StageServe shared gateway has no route for host '$host'.\n";
 {{- end }}
     }
 }
@@ -88,9 +88,9 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-Stacklane-Gateway "shared" always;
-    add_header X-Stacklane-Route-Target "{{ .WebNetworkAlias }}" always;
-    add_header X-Stacklane-Hostname "{{ .Hostname }}" always;
+    add_header X-StageServe-Gateway "shared" always;
+    add_header X-StageServe-Route-Target "{{ .WebNetworkAlias }}" always;
+    add_header X-StageServe-Hostname "{{ .Hostname }}" always;
 
     location / {
         resolver 127.0.0.11 valid=5s;
@@ -116,9 +116,9 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log warn;
 
-    add_header X-Stacklane-Gateway "shared" always;
-    add_header X-Stacklane-Route-Target "{{ .WebNetworkAlias }}" always;
-    add_header X-Stacklane-Hostname "{{ .Hostname }}" always;
+    add_header X-StageServe-Gateway "shared" always;
+    add_header X-StageServe-Route-Target "{{ .WebNetworkAlias }}" always;
+    add_header X-StageServe-Hostname "{{ .Hostname }}" always;
 
     location / {
         resolver 127.0.0.11 valid=5s;

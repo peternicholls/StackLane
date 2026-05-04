@@ -7,10 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/peternicholls/stacklane/core/config"
+	"github.com/peternicholls/stageserve/core/config"
 )
 
-const projectEnvFileName = ".env.stacklane"
+const projectEnvFileName = ".env.stageserve"
 
 var safeEnvValue = regexp.MustCompile(`^[A-Za-z0-9_./:-]+$`)
 
@@ -34,12 +34,12 @@ func renderProjectEnvFile(cfg config.ProjectConfig, flags *SharedFlags) string {
 	if stackKind == "" {
 		stackKind = "20i"
 	}
-	b.WriteString("# Stacklane project config\n")
-	b.WriteString("# Created automatically on first `stacklane up` or `stacklane attach`.\n")
+	b.WriteString("# StageServe project config\n")
+	b.WriteString("# Created automatically on first `stage up` or `stage attach`.\n")
 	b.WriteString("# Keep project-specific overrides here.\n")
-	b.WriteString("# Shared defaults stay in <stack-home>/.env.stacklane.\n")
+	b.WriteString("# Shared defaults stay in <stack-home>/.env.stageserve.\n")
 	b.WriteString("# Project .env remains application-owned.\n\n")
-	b.WriteString("STACKLANE_STACK=")
+	b.WriteString("STAGESERVE_STACK=")
 	b.WriteString(renderEnvValue(stackKind))
 	b.WriteString("\n\n")
 
@@ -84,7 +84,7 @@ func renderProjectEnvFile(cfg config.ProjectConfig, flags *SharedFlags) string {
 	b.WriteByte('\n')
 	b.WriteString("# MYSQL_PORT=33060\n")
 	b.WriteString("# PMA_PORT=33061\n")
-	b.WriteString("# STACKLANE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
+	b.WriteString("# STAGESERVE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
 	return b.String()
 }
 
@@ -111,10 +111,10 @@ func explicitProjectOverrides(cfg config.ProjectConfig, flags *SharedFlags) []st
 	add("PMA_PORT", flags.PMAPort)
 	add("HOST_PORT", flags.HostPort)
 	if flags.WaitTimeoutSecs > 0 {
-		lines = append(lines, fmt.Sprintf("STACKLANE_WAIT_TIMEOUT=%d", flags.WaitTimeoutSecs))
+		lines = append(lines, fmt.Sprintf("STAGESERVE_WAIT_TIMEOUT=%d", flags.WaitTimeoutSecs))
 	}
 	if cfg.PostUpCommand != "" {
-		add("STACKLANE_POST_UP_COMMAND", cfg.PostUpCommand)
+		add("STAGESERVE_POST_UP_COMMAND", cfg.PostUpCommand)
 	}
 	return lines
 }

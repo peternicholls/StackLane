@@ -51,7 +51,7 @@ func TestStepError_NamedStepsAreDistinct(t *testing.T) {
 // TestStepError_PostUpHookIsNotMisreported asserts that bootstrap failure does
 // not collapse into gateway, DNS, or readiness step names.
 func TestStepError_PostUpHookIsNotMisreported(t *testing.T) {
-	err := Wrap("post-up-hook", "demo", errors.New("hook exited 1"), "Check STACKLANE_POST_UP_COMMAND")
+	err := Wrap("post-up-hook", "demo", errors.New("hook exited 1"), "Check STAGESERVE_POST_UP_COMMAND")
 	se, _ := AsStepError(err)
 	if se == nil {
 		t.Fatalf("expected StepError")

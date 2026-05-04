@@ -1,4 +1,4 @@
-// stacklane up: bring the project's stack online and attach it to the
+// stage up: bring the project's stack online and attach it to the
 // shared gateway.
 package commands
 

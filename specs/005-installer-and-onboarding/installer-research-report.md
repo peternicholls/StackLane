@@ -1,16 +1,16 @@
-# StackLane Installer Research Report (April 2026)
+# StageServe Installer Research Report (April 2026)
 
 ## Goal
 > Detailed implementation specification: `specs/005-installer-and-onboarding/spec.md`
 
-Define best-practice installer patterns, runtime setup behavior, and first-run onboarding for StackLane (a Docker-based local development CLI for shared-hosting emulation).
+Define best-practice installer patterns, runtime setup behavior, and first-run onboarding for StageServe (a Docker-based local development CLI for shared-hosting emulation).
 
-## Current StackLane Context
-StackLane currently expects users to:
+## Current StageServe Context
+StageServe currently expects users to:
 - install Docker Desktop,
-- build or download `stacklane-bin`,
-- put `stacklane` on `PATH`, and
-- run `stacklane dns-setup` once on macOS.
+- build or download `stage-bin`,
+- put `stage` on `PATH`, and
+- run `stage dns-setup` once on macOS.
 
 This is simple for power users, but still leaves friction around prerequisites, permissions, and first-run confidence.
 
@@ -49,7 +49,7 @@ Source:
 ### 3) Use least-privilege by default and isolate privileged actions
 **Observed:**
 - Docker documents unprivileged run behavior with only limited privileged configuration points.
-- StackLane’s current DNS flow already prints explicit `sudo` follow-up where needed.
+- StageServe’s current DNS flow already prints explicit `sudo` follow-up where needed.
 
 **Pattern:**
 - Keep install/start flow non-root whenever possible.
@@ -64,7 +64,7 @@ Source:
 - GitHub CLI guides users through `gh auth login` flow and handles storage fallback behavior.
 
 **Pattern:**
-- Provide a guided `stacklane setup` wizard with deterministic steps.
+- Provide a guided `stage setup` wizard with deterministic steps.
 - Persist setup state and allow safe reruns.
 
 Sources:
@@ -104,27 +104,27 @@ Source:
 
 ---
 
-## Recommended Installer Behavior for StackLane
+## Recommended Installer Behavior for StageServe
 
 ### A. Add first-class setup and project initialization commands
 Introduce:
 ```bash
-stacklane setup
-stacklane init   # optional, run inside a project root
+stage setup
+stage init   # optional, run inside a project root
 ```
 
 Proposed flow:
 1. **Preflight**: detect OS/arch, Docker availability, Docker daemon readiness, and version constraints.
 2. **Path/installation check**: validate executable location and active version.
-3. **Project init handoff**: if in a repo without `.env.stacklane`, recommend `stacklane init`.
+3. **Project init handoff**: if in a repo without `.env.stageserve`, recommend `stage init`.
 4. **DNS step**: run/check `dns-setup` for supported platforms.
 5. **Optional TLS step (future `.dev`)**: mkcert presence + CA install checks.
 6. **Health probes**: shared network/gateway prereq checks.
-7. **Summary + next command**: print exactly what to run next (`stacklane init` if needed, then `stacklane up`).
+7. **Summary + next command**: print exactly what to run next (`stage init` if needed, then `stage up`).
 
 ### B. Make setup idempotent and resumable
 - Every step should return one of: `ready`, `needs_action`, `error`.
-- Re-running `stacklane setup` should skip already-complete steps.
+- Re-running `stage setup` should skip already-complete steps.
 - Add `--json` for automation and GUI integration.
 
 ### C. Package strategy
@@ -142,9 +142,9 @@ For each failed check, print:
 Example:
 ```text
 ✖ Docker daemon not reachable
-  Why: StackLane requires a running Docker provider.
+  Why: StageServe requires a running Docker provider.
   Fix: Open Docker Desktop (or start your configured provider), then run:
-       stacklane setup --recheck docker
+       stage setup
 ```
 
 ### E. Align privileges with principle of least astonishment
@@ -162,7 +162,7 @@ Publish in README/docs and enforce in preflight:
 ### G. Add post-install verification contract
 Ship:
 ```bash
-stacklane doctor
+stage doctor
 ```
 Checks should include:
 - binary + version,
@@ -177,31 +177,31 @@ Checks should include:
 ## Suggested Onboarding Design (User Journey)
 
 ### Stage 0: Install
-- `brew install stacklane` (or signed binary script).
-- Installer caveat: “Run `stacklane setup` next”.
+- `brew install stage` (or signed binary script).
+- Installer caveat: “Run `stage setup` next”.
 
 ### Stage 1: Machine setup
-- `stacklane setup` runs full wizard.
+- `stage setup` runs full wizard.
 - Outputs pass/fail per step.
 
 ### Stage 2: Project initialization and first attach
-- From repo root (optional but recommended): `stacklane init` to generate/validate project `.env.stacklane`.
-- Then run: `stacklane up`.
+- From repo root (optional but recommended): `stage init` to generate/validate project `.env.stageserve`.
+- Then run: `stage up`.
 - `init` should avoid overwriting existing project config unless explicitly requested.
 
 ### Stage 3: Confidence checks
 - Auto-run quick checks and print route URL.
-- Offer `stacklane status` and `stacklane logs` tips.
+- Offer `stage status` and `stage logs` tips.
 
 ### Stage 4: Recovery/repair
-- `stacklane doctor` identifies drift and suggests one-command remediations.
+- `stage doctor` identifies drift and suggests one-command remediations.
 
 ---
 
 ## Prioritized Implementation Roadmap
 
 ### Phase 1 (High impact, low complexity)
-1. `stacklane setup` command with preflight + DNS status.
+1. `stage setup` command with preflight + DNS status.
 2. Structured step results (`ready/needs_action/error`).
 3. Better remediation messaging in setup and `dns-setup`.
 
@@ -211,7 +211,7 @@ Checks should include:
 3. Install-time caveat text and docs alignment.
 
 ### Phase 3 (Operational maturity)
-1. `stacklane doctor` diagnostics.
+1. `stage doctor` diagnostics.
 2. `--json` output for setup/doctor.
 3. Optional non-interactive mode for CI/bootstrap scripts.
 
@@ -224,11 +224,11 @@ Checks should include:
 
 ## Concrete Recommendations for This Repo (Next 2 Sprints)
 
-1. Add `stacklane setup` and reuse existing DNS provider status/bootstrap calls.
-2. Add optional `stacklane init` for project-root scaffolding and app-to-stack connection defaults.
+1. Add `stage setup` and reuse existing DNS provider status/bootstrap calls.
+2. Add optional `stage init` for project-root scaffolding and app-to-stack connection defaults.
 3. Add a `setup/init` section in README as the canonical first-run path (`install -> setup -> init -> up`).
 4. Define and document a minimum support matrix (OS + Docker provider versions).
 5. Add a structured diagnostics command (`doctor`) before expanding feature surface.
 6. Add release integrity docs: checksums, optional signature verification script.
 
-If StackLane does only one installer improvement now, it should be **`stacklane setup` with idempotent checks + targeted remediation**. That closes the largest onboarding gap while fitting the current CLI-first architecture.
+If StageServe does only one installer improvement now, it should be **`stage setup` with idempotent checks + targeted remediation**. That closes the largest onboarding gap while fitting the current CLI-first architecture.

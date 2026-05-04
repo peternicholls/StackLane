@@ -1,10 +1,10 @@
-// stacklane setup: run ordered machine-readiness checks and one-time setup.
+// stage setup: run ordered machine-readiness checks and one-time setup.
 package commands
 
 import (
 	"fmt"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/spf13/cobra"
 )
 

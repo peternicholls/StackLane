@@ -1,4 +1,4 @@
-# Stacklane Architecture (Go rewrite)
+# StageServe Architecture (Go rewrite)
 
 Spec: [specs/003-rewrite-language-choices](../specs/003-rewrite-language-choices/spec.md).
 
@@ -9,8 +9,8 @@ reference for "where should code X live?" questions.
 
 | Module | Lives in | Owns |
 |---|---|---|
-| CLI surface | `cmd/stacklane`, `cmd/stacklane/commands` | Cobra root + every subcommand. The CLI may only call `core/lifecycle`, `core/state`, `core/config`, `observability/*`, and `platform/dns`. It must NOT touch Docker or compose directly. |
-| Configuration precedence | `core/config` | `Loader.Load` resolves CLI flags → project `.env.stacklane` → shell env → stack `.env.stacklane` → defaults. Tests own the precedence chain and the location-based ownership split. |
+| CLI surface | `cmd/stage`, `cmd/stage/commands` | Cobra root + every subcommand. The CLI may only call `core/lifecycle`, `core/state`, `core/config`, `observability/*`, and `platform/dns`. It must NOT touch Docker or compose directly. |
+| Configuration precedence | `core/config` | `Loader.Load` resolves CLI flags → project `.env.stageserve` → shell env → stack `.env.stageserve` → defaults. Tests own the precedence chain and the location-based ownership split. |
 | Project identity | `core/project` | Pure helpers for slug/hostname/docroot. No I/O beyond stat. |
 | State persistence | `core/state` | JSON-per-project store, atomic writes, registry projection. |
 | Lifecycle orchestration | `core/lifecycle` | Sequences the 11 steps of `up`, plus down/attach/detach. Wraps every operator-visible failure in `StepError`. |
@@ -26,10 +26,10 @@ reference for "where should code X live?" questions.
 
 ## Adding a new subcommand
 
-1. Create `cmd/stacklane/commands/<verb>.go`.
+1. Create `cmd/stage/commands/<verb>.go`.
 2. Build a `*cobra.Command` and have its `RunE` call `loadConfig(flags)` then drive the orchestrator (or a more specific reporter for read-only verbs).
 3. Register it in `NewRoot` in `root.go`.
-4. Add an integration test under `cmd/stacklane/commands/<verb>_test.go` (use the mocks package).
+4. Add an integration test under `cmd/stage/commands/<verb>_test.go` (use the mocks package).
 
 Subcommands MUST NOT call docker, compose, or the gateway directly.
 

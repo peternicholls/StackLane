@@ -3,7 +3,7 @@
 package dns
 
 // Code captures the discrete states of the local DNS bootstrap. Mirrors the
-// values returned by bash stacklane_dns_status.
+// values returned by bash stageserve_dns_status.
 type Code string
 
 const (

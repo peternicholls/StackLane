@@ -2,7 +2,7 @@
 package ports
 
 import (
-	"github.com/peternicholls/stacklane/core/state"
+	"github.com/peternicholls/stageserve/core/state"
 )
 
 // Allocation is the resolved set of ports for a single project.
@@ -18,12 +18,12 @@ type Request struct {
 	MySQLPort    int
 	PMAPort      int
 	ProjectCount int    // determines whether canonical defaults (80/3306/8081) are tried
-	IsUp         bool   // only stacklane up may claim port 80
+	IsUp         bool   // only stage up may claim port 80
 	OwnSlug      string // permits a project to keep its previously assigned ports
 }
 
 // PortAllocator hands out non-conflicting host ports. Allocate must be
-// race-safe across concurrent stacklane up invocations on the same machine
+// race-safe across concurrent stage up invocations on the same machine
 // (FR-007 / SC-008): implementations take an exclusive file lock.
 type PortAllocator interface {
 	// Allocate returns ports that satisfy req over the supplied registry view

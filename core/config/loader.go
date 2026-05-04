@@ -1,15 +1,15 @@
 // Loader implements ConfigLoader. It resolves the configuration precedence
-// chain as defined by the active Stacklane config contract:
+// chain as defined by the active StageServe config contract:
 //
 //  1. CLI flags (highest)
-//  2. .env.stacklane in the project directory
+//  2. .env.stageserve in the project directory
 //  3. shell environment
-//  4. .env.stacklane in the stack home (canonical stack-owned defaults file)
+//  4. .env.stageserve in the stack home (canonical stack-owned defaults file)
 //  5. built-in defaults (lowest)
 //
-// STACKLANE_POST_UP_COMMAND is a special-case bootstrap setting that is only
-// honored when set in the project's .env.stacklane file. It is intentionally
-// ignored if set via shell environment, stack-home .env.stacklane, or project .env.
+// STAGESERVE_POST_UP_COMMAND is a special-case bootstrap setting that is only
+// honored when set in the project's .env.stageserve file. It is intentionally
+// ignored if set via shell environment, stack-home .env.stageserve, or project .env.
 package config
 
 import (
@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/peternicholls/stacklane/core/project"
+	"github.com/peternicholls/stageserve/core/project"
 )
 
 // Loader is the default ConfigLoader implementation.
@@ -48,7 +48,7 @@ func (l *Loader) envOrDefault(key, fallback string) string {
 }
 
 // loadEnvFile reads a KEY=VALUE file (POSIX-shell quoting) into a map.
-// Mirrors stacklane_load_env_file: blank lines and # comments skipped, optional
+// Mirrors stageserve_load_env_file: blank lines and # comments skipped, optional
 // leading "export ", surrounding " or ' stripped.
 func loadEnvFile(path string) (map[string]string, error) {
 	out := map[string]string{}
@@ -110,27 +110,27 @@ func validEnvKey(k string) bool {
 }
 
 func defaultStateDir(stackHome string) string {
-	return filepath.Join(stackHome, ".stacklane-state")
+	return filepath.Join(stackHome, ".stageserve-state")
 }
 
-func loadProjectStacklaneEnv(projectDir string) (map[string]string, error) {
-	return loadEnvFile(filepath.Join(projectDir, ".env.stacklane"))
+func loadProjectStageserveEnv(projectDir string) (map[string]string, error) {
+	return loadEnvFile(filepath.Join(projectDir, ".env.stageserve"))
 }
 
 func loadProjectRuntimeEnv(projectDir string) (map[string]string, error) {
 	return loadEnvFile(filepath.Join(projectDir, ".env"))
 }
 
-// loadStackEnv reads the canonical stack-owned defaults file. .env.stacklane is
+// loadStackEnv reads the canonical stack-owned defaults file. .env.stageserve is
 // the only supported file; legacy <stackHome>/.stackenv and <stackHome>/.env
 // are intentionally NOT consulted (workspace legacy policy: no compat shims).
 func loadStackEnv(stackHome string) (map[string]string, error) {
-	return loadEnvFile(filepath.Join(stackHome, ".env.stacklane"))
+	return loadEnvFile(filepath.Join(stackHome, ".env.stageserve"))
 }
 
 func applyProjectRuntimeDBFallback(merged, runtimeEnv map[string]string) {
 	defaults := defaults()
-	for projectKey, stacklaneKey := range map[string]string{
+	for projectKey, stageserveKey := range map[string]string{
 		"DB_DATABASE": "MYSQL_DATABASE",
 		"DB_USERNAME": "MYSQL_USER",
 		"DB_PASSWORD": "MYSQL_PASSWORD",
@@ -139,14 +139,14 @@ func applyProjectRuntimeDBFallback(merged, runtimeEnv map[string]string) {
 		if value == "" {
 			continue
 		}
-		if merged[stacklaneKey] == defaults[stacklaneKey] {
-			merged[stacklaneKey] = value
-			merged["STACKLANE_PROJECT_ENV_"+stacklaneKey] = "1"
+		if merged[stageserveKey] == defaults[stageserveKey] {
+			merged[stageserveKey] = value
+			merged["STAGESERVE_PROJECT_ENV_"+stageserveKey] = "1"
 		}
 	}
 }
 
-// resolveStackHome reproduces stacklane_default_stack_home.
+// resolveStackHome reproduces stageserve_default_stack_home.
 func (l *Loader) resolveStackHome() (string, error) {
 	if l.StackHomeOverride != "" {
 		return project.AbsDir(l.StackHomeOverride)
@@ -171,7 +171,7 @@ func (l *Loader) resolveStackHome() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, "docker", "stacklane"), nil
+	return filepath.Join(home, "docker", "stageserve"), nil
 }
 
 // Load implements ConfigLoader.
@@ -202,28 +202,28 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 		return cfg, fmt.Errorf("resolve stack home: %w", err)
 	}
 	cfg.StackHome = stackHome
-	stateDir := l.envOrDefault("STACK_STATE_DIR", defaultStateDir(stackHome))
+	stateDir := l.envOrDefault("STAGESERVE_STATE_DIR", defaultStateDir(stackHome))
 	cfg.StateDir = project.AbsPathFromBase(stackHome, stateDir)
 	cfg.SharedFile = filepath.Join(stackHome, "docker-compose.shared.yml")
 
 	// 3. Build the precedence-merged map. Lower precedence first; higher
-	// precedence overwrites by key. Order: defaults -> stacklane .env ->
-	// project runtime .env DB fallback -> shell env -> project .env.stacklane ->
+	// precedence overwrites by key. Order: defaults -> stageserve .env ->
+	// project runtime .env DB fallback -> shell env -> project .env.stageserve ->
 	// CLI flags.
 	merged := defaults()
 
-	// .env.stacklane in the stack home applies just above built-in defaults.
-	// STACKLANE_POST_UP_COMMAND is excluded from this merge: bootstrap is a
-	// project-scoped declaration sourced only from project .env.stacklane.
+	// .env.stageserve in the stack home applies just above built-in defaults.
+	// STAGESERVE_POST_UP_COMMAND is excluded from this merge: bootstrap is a
+	// project-scoped declaration sourced only from project .env.stageserve.
 	if envMap, err := loadStackEnv(stackHome); err == nil {
 		for k, v := range envMap {
-			if k == "STACKLANE_POST_UP_COMMAND" {
+			if k == "STAGESERVE_POST_UP_COMMAND" {
 				continue
 			}
 			merged[k] = v
 		}
 	}
-	// Project runtime .env stays separate from Stacklane config. We only use it
+	// Project runtime .env stays separate from StageServe config. We only use it
 	// as a fallback source for the app's DB identity so the provisioned MariaDB
 	// service can match the mounted project.
 	if envMap, err := loadProjectRuntimeEnv(pdAbs); err == nil {
@@ -235,8 +235,8 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 			merged[k] = v
 		}
 	}
-	// Project .env.stacklane
-	if envMap, err := loadProjectStacklaneEnv(pdAbs); err == nil {
+	// Project .env.stageserve
+	if envMap, err := loadProjectStageserveEnv(pdAbs); err == nil {
 		for k, v := range envMap {
 			if projectEnvDisallowedKeys[k] {
 				continue
@@ -280,12 +280,12 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	}
 
 	// 4. Materialise ProjectConfig from the merged map.
-	stackKind := normalizeStackKind(merged["STACKLANE_STACK"])
+	stackKind := normalizeStackKind(merged["STAGESERVE_STACK"])
 	if stackKind == "" {
 		stackKind = "20i"
 	}
 	if stackKind != "20i" {
-		return cfg, fmt.Errorf("unsupported STACKLANE_STACK %q: only 20i is implemented today", stackKind)
+		return cfg, fmt.Errorf("unsupported STAGESERVE_STACK %q: only 20i is implemented today", stackKind)
 	}
 	cfg.StackKind = stackKind
 	cfg.StackFile = filepath.Join(stackHome, stackComposeFileName(stackKind))
@@ -293,9 +293,12 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.Slug = project.Slugify(cfg.Name)
 	cfg.SiteSuffix = strOr(merged["SITE_SUFFIX"], "test")
 	cfg.Hostname, cfg.SiteSuffix = project.ResolveHostname(cfg.Slug, merged["SITE_HOSTNAME"], cfg.SiteSuffix)
+	if !project.HostnameValid(cfg.Hostname) {
+		return cfg, fmt.Errorf("invalid site hostname %q: use a dotted hostname such as %s.%s", cfg.Hostname, cfg.Slug, cfg.SiteSuffix)
+	}
 
-	cfg.ComposeProjectName = strOr(merged["COMPOSE_PROJECT_NAME"], "stln-"+cfg.Slug)
-	cfg.WebNetworkAlias = strOr(merged["WEB_NETWORK_ALIAS"], "stln-"+cfg.Slug+"-web")
+	cfg.ComposeProjectName = strOr(merged["COMPOSE_PROJECT_NAME"], "stage-"+cfg.Slug)
+	cfg.WebNetworkAlias = strOr(merged["WEB_NETWORK_ALIAS"], "stage-"+cfg.Slug+"-web")
 	cfg.ContainerSiteRoot = "/home/sites/" + cfg.Slug
 	cfg.RuntimeNetwork = cfg.ComposeProjectName + "-runtime"
 	cfg.DatabaseVolume = cfg.ComposeProjectName + "-db-data"
@@ -318,20 +321,20 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.MySQL.Version = strOr(merged["MYSQL_VERSION"], "10.6")
 	cfg.MySQL.RootPassword = strOr(merged["MYSQL_ROOT_PASSWORD"], "root")
 	cfg.MySQL.Database = strOr(merged["MYSQL_DATABASE"], "devdb")
-	if cfg.MySQL.Database == "devdb" && merged["STACKLANE_PROJECT_ENV_MYSQL_DATABASE"] != "1" {
+	if cfg.MySQL.Database == "devdb" && merged["STAGESERVE_PROJECT_ENV_MYSQL_DATABASE"] != "1" {
 		cfg.MySQL.Database = cfg.Slug
 	}
 	cfg.MySQL.User = strOr(merged["MYSQL_USER"], "devuser")
-	if cfg.MySQL.User == "devuser" && merged["STACKLANE_PROJECT_ENV_MYSQL_USER"] != "1" {
+	if cfg.MySQL.User == "devuser" && merged["STAGESERVE_PROJECT_ENV_MYSQL_USER"] != "1" {
 		cfg.MySQL.User = cfg.Slug
 	}
 	cfg.MySQL.Password = strOr(merged["MYSQL_PASSWORD"], "devpass")
 
 	// Shared gateway settings are runtime-owned, not env-configurable.
-	cfg.SharedGateway.Network = "stln-shared"
+	cfg.SharedGateway.Network = "stage-shared"
 	cfg.SharedGateway.HTTPPort = 80
 	cfg.SharedGateway.HTTPSPort = 443
-	cfg.SharedGateway.ComposeProjectName = "stln-shared"
+	cfg.SharedGateway.ComposeProjectName = "stage-shared"
 	cfg.SharedGateway.ConfigFile = filepath.Join(cfg.StateDir, "shared", "gateway.conf")
 
 	// Local DNS.
@@ -350,27 +353,27 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	switch {
 	case flags.WaitTimeoutSecs > 0:
 		cfg.WaitTimeoutSecs = flags.WaitTimeoutSecs
-	case merged["STACKLANE_WAIT_TIMEOUT"] != "":
-		cfg.WaitTimeoutSecs = atoiOr(merged["STACKLANE_WAIT_TIMEOUT"], 120)
+	case merged["STAGESERVE_WAIT_TIMEOUT"] != "":
+		cfg.WaitTimeoutSecs = atoiOr(merged["STAGESERVE_WAIT_TIMEOUT"], 120)
 	default:
 		cfg.WaitTimeoutSecs = 120
 	}
-	cfg.PostUpCommand = merged["STACKLANE_POST_UP_COMMAND"]
+	cfg.PostUpCommand = merged["STAGESERVE_POST_UP_COMMAND"]
 
 	return cfg, nil
 }
 
 // trackedEnvKeys is the closed set of shell variables ConfigLoader honours.
-// STACKLANE_POST_UP_COMMAND is intentionally absent: bootstrap is sourced
-// only from project .env.stacklane (FR-016).
+// STAGESERVE_POST_UP_COMMAND is intentionally absent: bootstrap is sourced
+// only from project .env.stageserve (FR-016).
 var trackedEnvKeys = []string{
-	"STACKLANE_STACK",
+	"STAGESERVE_STACK",
 	"SITE_NAME", "SITE_HOSTNAME", "SITE_SUFFIX", "DOCROOT", "CODE_DIR",
 	"PHP_VERSION", "MYSQL_VERSION", "MYSQL_ROOT_PASSWORD",
 	"MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_PORT", "PMA_PORT",
 	"HOST_PORT", "COMPOSE_PROJECT_NAME", "WEB_NETWORK_ALIAS",
 	"LOCAL_DNS_PROVIDER", "LOCAL_DNS_IP", "LOCAL_DNS_PORT", "LOCAL_DNS_SUFFIX",
-	"STACK_HOME", "STACK_STATE_DIR", "STACKLANE_WAIT_TIMEOUT",
+	"STACK_HOME", "STAGESERVE_STATE_DIR", "STAGESERVE_WAIT_TIMEOUT",
 }
 
 var projectEnvDisallowedKeys = map[string]bool{}
@@ -385,7 +388,7 @@ func (l *Loader) lookupEnv(k string) (string, bool) {
 
 func defaults() map[string]string {
 	return map[string]string{
-		"STACKLANE_STACK":     "20i",
+		"STAGESERVE_STACK":    "20i",
 		"MYSQL_VERSION":       "10.6",
 		"MYSQL_ROOT_PASSWORD": "root",
 		"MYSQL_DATABASE":      "devdb",

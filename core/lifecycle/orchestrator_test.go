@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/config"
-	"github.com/peternicholls/stacklane/core/lifecycle"
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/internal/mocks"
-	"github.com/peternicholls/stacklane/platform/ports"
+	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/lifecycle"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/internal/mocks"
+	"github.com/peternicholls/stageserve/platform/ports"
 )
 
 func newCfg(t *testing.T) config.ProjectConfig {
@@ -32,8 +32,8 @@ func newCfg(t *testing.T) config.ProjectConfig {
 		StackFile:          stack + "/docker-compose.20i.yml",
 		SharedFile:         stack + "/docker-compose.shared.yml",
 		Hostname:           "demo.test",
-		ComposeProjectName: "stln-demo",
-		WebNetworkAlias:    "stln-demo-web",
+		ComposeProjectName: "stage-demo",
+		WebNetworkAlias:    "stage-demo-web",
 		ContainerSiteRoot:  "/home/sites/demo", ContainerDocRoot: "/home/sites/demo",
 		PHPVersion:      "8.5",
 		WaitTimeoutSecs: 5,
@@ -41,8 +41,8 @@ func newCfg(t *testing.T) config.ProjectConfig {
 			Version: "10.6", Database: "demo", User: "demo", Password: "demo", RootPassword: "root",
 		},
 		SharedGateway: config.SharedGateway{
-			Network:            "stln-shared",
-			ComposeProjectName: "stln-shared",
+			Network:            "stage-shared",
+			ComposeProjectName: "stage-shared",
 			HTTPPort:           80,
 			HTTPSPort:          443,
 			ConfigFile:         stateDir + "/shared/gateway.conf",
@@ -54,7 +54,7 @@ func TestOrchestrator_UpHappyPath(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()
 	dc.Containers = []docker.Container{{
-		ID: "c1", Name: "stln-demo-nginx", Service: "nginx", Status: "running",
+		ID: "c1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
 		Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "nginx"},
 	}}
 	composer := mocks.NewComposer()
@@ -69,7 +69,7 @@ func TestOrchestrator_UpHappyPath(t *testing.T) {
 	if err := orch.Up(context.Background(), cfg); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	if !dc.Networks["stln-shared"] {
+	if !dc.Networks["stage-shared"] {
 		t.Errorf("shared network was not ensured")
 	}
 	if len(composer.UpCalls) < 2 {
@@ -134,11 +134,11 @@ func TestOrchestrator_UpRunsPostUpHook(t *testing.T) {
 	dc := mocks.NewDocker()
 	dc.Containers = []docker.Container{
 		{
-			ID: "nginx-1", Name: "stln-demo-nginx", Service: "nginx", Status: "running",
+			ID: "nginx-1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
 			Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "nginx"},
 		},
 		{
-			ID: "apache-1", Name: "stln-demo-apache", Service: "apache", Status: "running",
+			ID: "apache-1", Name: "stage-demo-apache", Service: "apache", Status: "running",
 			Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "apache"},
 		},
 	}
@@ -175,11 +175,11 @@ func TestOrchestrator_UpRollbackOnPostUpHookFailure(t *testing.T) {
 	dc.ExecErr = errors.New("hook failed")
 	dc.Containers = []docker.Container{
 		{
-			ID: "nginx-1", Name: "stln-demo-nginx", Service: "nginx", Status: "running",
+			ID: "nginx-1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
 			Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "nginx"},
 		},
 		{
-			ID: "apache-1", Name: "stln-demo-apache", Service: "apache", Status: "running",
+			ID: "apache-1", Name: "stage-demo-apache", Service: "apache", Status: "running",
 			Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "apache"},
 		},
 	}
@@ -337,8 +337,8 @@ func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 	other.Slug = "beta"
 	other.Name = "beta"
 	other.Hostname = "beta.test"
-	other.ComposeProjectName = "stln-beta"
-	other.WebNetworkAlias = "stln-beta-web"
+	other.ComposeProjectName = "stage-beta"
+	other.WebNetworkAlias = "stage-beta-web"
 
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
@@ -388,14 +388,14 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 	other.Slug = "beta"
 	other.Name = "beta"
 	other.Hostname = "beta.test"
-	other.ComposeProjectName = "stln-beta"
-	other.WebNetworkAlias = "stln-beta-web"
+	other.ComposeProjectName = "stage-beta"
+	other.WebNetworkAlias = "stage-beta-web"
 
 	dc := mocks.NewDocker()
 	dc.ExecErr = errors.New("hook failed")
 	dc.Containers = []docker.Container{
 		{
-			ID: "apache-1", Name: "stln-demo-apache", Service: "apache", Status: "running",
+			ID: "apache-1", Name: "stage-demo-apache", Service: "apache", Status: "running",
 			Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "apache"},
 		},
 	}
@@ -439,11 +439,12 @@ func TestOrchestrator_PostUpHookFailure_RollbackIsolation(t *testing.T) {
 	}
 }
 
-// TestOrchestrator_AttachAddsRouteAndMarksAttached covers US3's attach slice:
-// the orchestrator marks the project attached, requests a gateway route using
-// the stln-<slug>-web alias, and reloads the shared gateway.
-func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
+// TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning covers the
+// documented attach-or-bootstrap path: when no project containers are running,
+// attach falls back to the full Up flow.
+func TestOrchestrator_AttachBootstrapsWhenRuntimeIsNotRunning(t *testing.T) {
 	cfg := newCfg(t)
+	dc := mocks.NewDocker()
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
@@ -453,7 +454,7 @@ func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
 	}
 
 	orch := lifecycle.New(lifecycle.Deps{
-		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
 	})
 
 	if err := orch.Attach(context.Background(), cfg); err != nil {
@@ -476,8 +477,90 @@ func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
 	if foundAlias == "" {
 		t.Fatalf("attach route for %q missing from %+v", cfg.Slug, gw.Routes)
 	}
-	if foundAlias != "stln-demo-web" {
-		t.Fatalf("attach route alias=%q want stln-demo-web", foundAlias)
+	if foundAlias != "stage-demo-web" {
+		t.Fatalf("attach route alias=%q want stage-demo-web", foundAlias)
+	}
+	if len(composer.UpCalls) < 3 {
+		t.Fatalf("attach should bootstrap via Up, got compose up calls %+v", composer.UpCalls)
+	}
+	if composer.UpCalls[1].ProjectName != cfg.ComposeProjectName {
+		t.Fatalf("project compose up was not invoked during attach bootstrap: %+v", composer.UpCalls)
+	}
+	if len(composer.DownCalls) != 0 {
+		t.Fatalf("attach bootstrap should not roll back on success: %+v", composer.DownCalls)
+	}
+	if len(dc.WaitCalled) != 1 || dc.WaitCalled[0] != cfg.ComposeProjectName {
+		t.Fatalf("attach bootstrap did not wait for project health: %+v", dc.WaitCalled)
+	}
+	if !dc.Networks[cfg.SharedGateway.Network] {
+		t.Fatalf("attach bootstrap did not ensure shared network %q", cfg.SharedGateway.Network)
+	}
+	if len(composer.UpCalls) < 3 || !composer.UpCalls[2].ForceRecreate {
+		t.Fatalf("attach bootstrap did not reload the gateway: %+v", composer.UpCalls)
+	}
+	if len(gw.Routes) == 0 {
+		t.Fatalf("attach bootstrap did not populate gateway routes")
+	}
+	if len(composer.UpCalls) > 0 {
+		got := composer.UpCalls[0].Env
+		if !slices.Contains(got, "SHARED_GATEWAY_CONFIG_FILE="+cfg.SharedGateway.ConfigFile) {
+			t.Fatalf("shared gateway config env missing from attach bootstrap: %+v", got)
+		}
+	}
+	if rec.AttachmentState != state.StateAttached {
+		t.Fatalf("attachment state=%s want attached", rec.AttachmentState)
+	}
+	if len(gw.Routes) == 0 {
+		t.Fatalf("attach bootstrap did not add a gateway route")
+	}
+	if foundAlias != "stage-demo-web" {
+		t.Fatalf("attach route alias=%q want stage-demo-web", foundAlias)
+	}
+}
+
+// TestOrchestrator_AttachAddsRouteAndMarksAttached keeps the route-only attach
+// behavior for already-running project containers.
+func TestOrchestrator_AttachAddsRouteAndMarksAttached(t *testing.T) {
+	cfg := newCfg(t)
+	dc := mocks.NewDocker()
+	dc.Containers = []docker.Container{{
+		ID: "nginx-1", Name: "stage-demo-nginx", Service: "nginx", Status: "running",
+		Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName, "com.docker.compose.service": "nginx"},
+	}}
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{})
+	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
+		t.Fatalf("seed state: %v", err)
+	}
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	if err := orch.Attach(context.Background(), cfg); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+	rec, err := st.Load(cfg.Slug)
+	if err != nil {
+		t.Fatalf("load after attach: %v", err)
+	}
+	if rec.AttachmentState != state.StateAttached {
+		t.Fatalf("attachment state=%s want attached", rec.AttachmentState)
+	}
+	var foundAlias string
+	for _, r := range gw.Routes {
+		if r.Slug == cfg.Slug {
+			foundAlias = r.WebNetworkAlias
+			break
+		}
+	}
+	if foundAlias == "" {
+		t.Fatalf("attach route for %q missing from %+v", cfg.Slug, gw.Routes)
+	}
+	if foundAlias != "stage-demo-web" {
+		t.Fatalf("attach route alias=%q want stage-demo-web", foundAlias)
 	}
 	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
 		t.Fatalf("attach did not request gateway reload with force recreate: %+v", composer.UpCalls)

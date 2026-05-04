@@ -40,14 +40,14 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 ### T1.2 — CR-002: Add shell quoting to env value rendering
 
-**Issue**: `renderEnv` writes unquoted `siteName` and `docroot` to `.env.stacklane`, allowing injection if values contain special characters or quotes.
+**Issue**: `renderEnv` writes unquoted `siteName` and `docroot` to `.env.stageserve`, allowing injection if values contain special characters or quotes.
 
 **Files**: 
 - `core/onboarding/project_env.go` (renderEnv)
-- `cmd/stacklane/commands/project_env.go` (reference implementation for shellQuote)
+- `cmd/stage/commands/project_env.go` (reference implementation for shellQuote)
 
 **Changes**:
-- Extract or copy the `shellDoubleQuote` logic from `cmd/stacklane/commands/project_env.go` into a shared utility (e.g., `core/onboarding/shell_quote.go` or add to `project_env.go`)
+- Extract or copy the `shellDoubleQuote` logic from `cmd/stage/commands/project_env.go` into a shared utility (e.g., `core/onboarding/shell_quote.go` or add to `project_env.go`)
 - Update lines 82–91 in `core/onboarding/project_env.go` to quote both values:
   ```go
   b.WriteString("SITE_NAME=" + shellQuote(siteName) + "\n")
@@ -67,8 +67,8 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 **Issue**: `os.UserHomeDir()` errors are silently discarded in `setup.go` and `doctor.go`, leading to state paths under `/` if HOME is unavailable.
 
 **Files**:
-- `cmd/stacklane/commands/setup.go` (line 48)
-- `cmd/stacklane/commands/doctor.go` (line 31)
+- `cmd/stage/commands/setup.go` (line 48)
+- `cmd/stage/commands/doctor.go` (line 31)
 
 **Changes**:
 - Replace `home, _ := os.UserHomeDir()` with proper error handling in both files
@@ -86,7 +86,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 ### T2.1 — CR-004: Fix osascript shell injection vulnerability
 
-**Issue**: `platform/dns/macos.go` uses Go `%q` formatting (not POSIX shell quoting) to build paths for `osascript ... with administrator privileges`. A crafted `STACKLANE_STATE_DIR` can inject arbitrary commands executed as root.
+**Issue**: `platform/dns/macos.go` uses Go `%q` formatting (not POSIX shell quoting) to build paths for `osascript ... with administrator privileges`. A crafted `STAGESERVE_STATE_DIR` can inject arbitrary commands executed as root.
 
 **File**: `platform/dns/macos.go` lines 192–196 (`installResolver`)
 
@@ -123,7 +123,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Issue**: `setup.go` accepts `--recheck` flag but never reads it; test only checks parsing, not behaviour.
 
-**Files**: `cmd/stacklane/commands/setup.go`
+**Files**: `cmd/stage/commands/setup.go`
 
 **Options**:
 - **Option A (Defer)**: Remove flag, test, and any documentation references. Re-add when feature is planned.
@@ -137,7 +137,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 - Remove `TestSetup_RecheckFlagAccepted` test
 - Search codebase for any other references and remove
 
-**Acceptance**: No `--recheck` flag exists; `stacklane setup --recheck` produces "unknown flag" error
+**Acceptance**: No `--recheck` flag exists; `stage setup --recheck` produces "unknown flag" error
 
 ---
 
@@ -145,7 +145,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Issue**: Task T031 is checked off, but `setup_platform_test.go` does not exist. Unsupported-OS exit-code contract is untested at command level.
 
-**File**: `cmd/stacklane/commands/setup_platform_test.go` (new)
+**File**: `cmd/stage/commands/setup_platform_test.go` (new)
 
 **Changes**:
 - Create test file with platform-specific build tags (e.g., `//go:build !darwin && !linux`)
@@ -205,9 +205,9 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 **Issue**: Switch-on-mode dispatch block is copy-pasted verbatim into `setup.go`, `doctor.go`, `init.go`.
 
 **Files**:
-- `cmd/stacklane/commands/setup.go`
-- `cmd/stacklane/commands/doctor.go`
-- `cmd/stacklane/commands/init.go`
+- `cmd/stage/commands/setup.go`
+- `cmd/stage/commands/doctor.go`
+- `cmd/stage/commands/init.go`
 
 **Changes**:
 - Replace all three dispatch blocks with a single call to the factory:
@@ -251,7 +251,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Issue**: `buildSetupCmd` helper in `setup_test.go` is defined but never called.
 
-**File**: `cmd/stacklane/commands/setup_test.go`
+**File**: `cmd/stage/commands/setup_test.go`
 
 **Changes**:
 - Delete the `buildSetupCmd` function (lines 12–15)
@@ -270,7 +270,7 @@ All three issues are isolated, small changes with clear acceptance criteria. Eac
 
 **Changes**:
 - Change wording from "Launching first-run setup …" to "To complete setup, run:"
-- Or optionally: exec `stacklane setup --tui` (if it's guaranteed to be on PATH)
+- Or optionally: exec `stage setup --tui` (if it's guaranteed to be on PATH)
 
 **Recommendation**: Change wording (safer, no PATH dependency).
 

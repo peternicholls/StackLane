@@ -1,4 +1,4 @@
-# CLI Command Name Analysis: Is `stacklane` the right name?
+# CLI Command Name Analysis: Is `stage` the right name?
 
 > A research-based analysis of the current command name and alternatives.  
 > Updated to include the project-rename scenario: because the tool has no public release yet, renaming the project itself carries zero migration cost and opens up verb-first names that a binary rename alone cannot cleanly achieve.
@@ -7,11 +7,11 @@
 
 ## 1. The question
 
-Homebrew ships as `brew`. Docker ships as `docker`. Git ships as `git`. Bun ships as `bun`. The current Stacklane binary is invoked as `stacklane` — nine keystrokes, a noun-compound, and no verb energy.
+Homebrew ships as `brew`. Docker ships as `docker`. Git ships as `git`. Bun ships as `bun`. The current StageServe binary is invoked as `stage` — nine keystrokes, a noun-compound, and no verb energy.
 
 Two distinct options exist:
 
-1. **Binary rename only** — keep the project name "Stacklane" but ship the CLI under a shorter name.
+1. **Binary rename only** — keep the project name "StageServe" but ship the CLI under a shorter name.
 2. **Full project rename** — rename the project and CLI together, freeing up verb-first names that read naturally as commands (`hoist up`, `stage up`, `berth up`).
 
 Because there is no public release yet, option 2 costs nothing today. This document evaluates both paths.
@@ -59,21 +59,21 @@ Carl Tashian's essay — referenced directly by the CLIG guidelines — offers a
 
 ---
 
-## 3. Assessing `stacklane` against those criteria
+## 3. Assessing `stage` against those criteria
 
 | Criterion | Score | Notes |
 |-----------|-------|-------|
 | Lowercase only | ✅ | No issues |
 | No version number | ✅ | |
-| Not generic | ✅ | "stacklane" is specific enough |
+| Not generic | ✅ | "stage" is specific enough |
 | Memorable | ⚠️ | Descriptive but long; two concepts fused |
 | Easy to type | ⚠️ | 9 keystrokes; both hands required but no awkward combos |
-| No major conflicts | ✅ | No well-known `stacklane` command exists |
-| Future-proof | ⚠️ | "stack" implies the current 20i-style hosting stack; if Stacklane supports other runtimes (`laravel`, `node`), the name implies more than it should |
+| No major conflicts | ✅ | No well-known `stage` command exists |
+| Future-proof | ⚠️ | "stack" implies the current 20i-style hosting stack; if StageServe supports other runtimes (`laravel`, `node`), the name implies more than it should |
 | Tab-completion friendly | ✅ | Unique enough prefix that `sta<tab>` likely resolves |
 | Script-stable | ✅ | Already in use; changing costs real migration effort |
 
-**Summary**: `stacklane` is not a *bad* name. It's unambiguous, lowercase, has no known conflicts, and is currently in use. The main weaknesses are **length** (9 chars is on the long side for a daily-use tool) and a mild **future-proofing concern** if the "stack" concept evolves.
+**Summary**: `stage` is not a *bad* name. It's unambiguous, lowercase, has no known conflicts, and is currently in use. The main weaknesses are **length** (9 chars is on the long side for a daily-use tool) and a mild **future-proofing concern** if the "stack" concept evolves.
 
 ---
 
@@ -81,7 +81,7 @@ Carl Tashian's essay — referenced directly by the CLIG guidelines — offers a
 
 Proposals are grouped into two tracks.
 
-**Track A — Binary rename, keep "Stacklane" as the project name.** Lower disruption; the brand stays. CLI gets shorter.
+**Track A — Binary rename, keep "StageServe" as the project name.** Lower disruption; the brand stays. CLI gets shorter.
 
 **Track B — Full project rename.** Unlocks verb-first names that read as natural commands. Zero migration cost at pre-release.
 
@@ -89,9 +89,9 @@ Proposals are grouped into two tracks.
 
 ### Track A: Binary rename only
 
-#### A0 — `stacklane` (status quo)
+#### A0 — `stage` (status quo)
 
-**Command**: `stacklane` | **Length**: 9  
+**Command**: `stage` | **Length**: 9  
 **Risk**: None | **Cost**: None
 
 Already in use. Unambiguous, lowercase, no conflicts. The 9-character length is a minor ergonomic inconvenience, not a blocking problem.
@@ -104,7 +104,7 @@ Already in use. Unambiguous, lowercase, no conflicts. The 9-character length is 
 
 **Command**: `lane` | **Length**: 4
 
-Derived from the second half of "Stacklane." A _lane_ is a channel through which traffic flows — an accurate metaphor for a routed, named local dev environment.
+Derived from the second half of "StageServe." A _lane_ is a channel through which traffic flows — an accurate metaphor for a routed, named local dev environment.
 
 **Typing feel**: Very good. `l-a-n-e` — natural left-to-right roll.
 
@@ -120,7 +120,7 @@ Derived from the second half of "Stacklane." A _lane_ is a channel through which
 
 **Command**: `stln` | **Length**: 4
 
-The Docker resource prefix already used internally (`stln-<slug>`, `stln-<slug>-runtime`). Adopting it as the CLI name unifies the internal and external identity.
+The Docker resource prefix already used internally (`stage-<slug>`, `stage-<slug>-runtime`). Adopting it as the CLI name unifies the internal and external identity.
 
 **Typing feel**: Acceptable. `s-t-l-n` — all left-hand, somewhat awkward.
 
@@ -136,7 +136,7 @@ The Docker resource prefix already used internally (`stln-<slug>`, `stln-<slug>-
 
 A verb-first name changes both the project identity and the CLI command together. The command then reads as a natural action: `hoist up`, `stage up`, `berth up`. This is the model used by `step` (Smallstep), `spin` was considered (see conflicts below), and many other tools.
 
-Key constraint from the research: **verbs are future-proof**. A noun-based name like "Stacklane" describes the current scope (a hosting stack, a lane); a verb describes what you _do_ with the tool regardless of what hosting stacks it later supports.
+Key constraint from the research: **verbs are future-proof**. A noun-based name like "StageServe" describes the current scope (a hosting stack, a lane); a verb describes what you _do_ with the tool regardless of what hosting stacks it later supports.
 
 ---
 
@@ -168,7 +168,7 @@ hoist doctor   ✅ fine
 - Clean namespace
 
 **Weaknesses**:
-- No continuity with "Stacklane" — requires committing to the new identity
+- No continuity with "StageServe" — requires committing to the new identity
 - Slightly less self-describing on first encounter
 
 ---
@@ -245,7 +245,7 @@ Evokes elevation (up/down), craft space, and lightness. Pairs naturally with `lo
 
 **Typing feel**: Very good. `l-o-f-t` — clean one-syllable roll.
 
-**Conflicts**: No Homebrew formula. Loft.sh (a Kubernetes/vcluster SaaS) ships a CLI companion named `loft` — low overlap with the Stacklane audience but worth checking on target machines with `which loft`.
+**Conflicts**: No Homebrew formula. Loft.sh (a Kubernetes/vcluster SaaS) ships a CLI companion named `loft` — low overlap with the StageServe audience but worth checking on target machines with `which loft`.
 
 **Weaknesses**: The Loft.sh CLI is a real, if low-prevalence, conflict risk; less verbally action-oriented than `hoist`.
 
@@ -267,7 +267,7 @@ Evokes elevation (up/down), craft space, and lightness. Pairs naturally with `lo
 
 | Name | Track | Length | Verb? | Typeable | Conflicts | Project rename needed |
 |------|-------|--------|-------|----------|-----------|----------------------|
-| `stacklane` | A0 | 9 | ❌ | ✅ | none | no |
+| `stage` | A0 | 9 | ❌ | ✅ | none | no |
 | `lane` | A1 | 4 | ❌ | ✅✅ | none | no |
 | `stln` | A2 | 4 | ❌ | ⚠️ | none | no |
 | `hoist` | B1 | 5 | ✅✅ | ✅✅ | none | yes |
@@ -281,13 +281,13 @@ Evokes elevation (up/down), craft space, and lightness. Pairs naturally with `lo
 
 ## 6. Migration cost
 
-**Before any public release**: cost is essentially zero. The binary name, GitHub repo name, env var prefix, and all docs can change in a single commit batch. The Docker resource prefix (`stln-*`) is independent of the CLI name and need not change.
+**Before any public release**: cost is essentially zero. The binary name, GitHub repo name, env var prefix, and all docs can change in a single commit batch. The Docker resource prefix (`stage-*`) is independent of the CLI name and need not change.
 
 **After a public release** (for reference):
 - Installer (`install.sh`) and binary name on disk must change
-- `STACKLANE_*` env vars are independent of the binary — keep them or rename with a deprecation period
-- Docker resource names (`stln-*`) are independent — no change needed
-- Any `stacklane up` in CI configs or scripts needs a find-and-replace
+- `STAGESERVE_*` env vars are independent of the binary — keep them or rename with a deprecation period
+- Docker resource names (`stage-*`) are independent — no change needed
+- Any `stage up` in CI configs or scripts needs a find-and-replace
 - Transition path: ship both names, deprecate the old one over 1–2 releases
 
 The current pre-release state means **now is the lowest-cost moment to rename**.
@@ -311,7 +311,7 @@ This keeps the strongest benefits of the verb-first track while using the name y
 
 `stage` is familiar to developers, easy to remember, and immediately action-oriented. Pairing it with **StageServe** preserves a product-style project name while keeping the command short and verb-like.
 
-### If keeping "Stacklane" as the project name
+### If keeping "StageServe" as the project name
 
 Use **`lane`** as the CLI command. It's short (4 chars), conflict-free, preserves half the brand identity, and the routing metaphor is accurate. It does not feel like a verb, but it is crisp and memorable.
 
@@ -371,39 +371,39 @@ This checklist assumes the selected direction is:
 ### A. Naming contract decisions (lock before editing files)
 
 1. Decide whether internal prefixes remain stable:
-- Keep `STACKLANE_*` env vars for now, or rename to `STAGESERVE_*`.
-- Keep `.env.stacklane` filename contract, or rename to `.env.stageserve`.
-- Keep Docker prefixes (`stln-*`) unchanged unless there is explicit value in renaming.
+- Keep `STAGESERVE_*` env vars for now, or rename to `STAGESERVE_*`.
+- Keep `.env.stageserve` filename contract, or rename to `.env.stageserve`.
+- Keep Docker prefixes (`stage-*`) unchanged unless there is explicit value in renaming.
 
 2. Decide compatibility posture:
 - **Hard switch** (pre-release clean break): only `stage` shipped.
-- **Soft transition** (recommended even pre-release): ship `stacklane` shim for 1–2 milestones.
+- No compatibility shim or secondary command path should remain.
 
 3. Decide brand surfaces:
-- GitHub repo name (`stacklane` vs `stageserve`).
+- GitHub repo name (`stage` vs `stageserve`).
 - Binary artifact names in releases (tarballs, checksums, install script labels).
 
 ### B. Code and build system changes
 
 1. CLI binary and entrypoint:
 - Update build/install targets so installed binary is `stage`.
-- Keep optional `stacklane` symlink shim if soft transition is chosen.
+- Do not keep any compatibility symlink or alternate command path.
 
 2. Command help/version strings:
 - Update usage banners, examples, and command synopsis to `stage`.
 - Ensure `stage version` prints StageServe branding consistently.
 
 3. Error/help output grep traps:
-- Search for literal `stacklane` in user-facing errors.
+- Search for literal `stage` in user-facing errors.
 - Replace references that users copy/paste directly.
 
 4. Shell completion scripts:
 - Regenerate completion for bash/zsh/fish under `stage`.
-- If keeping shim, either generate separate completion for `stacklane` or document it as unsupported.
+- Do not generate or document completions for any retired command name.
 
 5. Makefile and installer:
 - Update install destination filename and any chmod/symlink lines.
-- Validate uninstall paths do not orphan stale `stacklane` binaries.
+- Validate uninstall paths do not orphan stale `stage` binaries.
 
 ### C. Documentation and spec contract changes
 
@@ -414,19 +414,19 @@ This checklist assumes the selected direction is:
 - migration notes
 
 2. Update examples and snippets:
-- Any `stacklane up/down/status/logs` examples
+- Any `stage up/down/status/logs` examples
 - CI snippets, automation docs, troubleshooting sections
 
 3. Keep archive boundaries explicit:
 - Do not present `previous-version-archive/` wrappers as active behavior.
 
-4. Add rename note:
-- Add a short "formerly Stacklane" note in README for searchability.
+4. Keep branding singular:
+- Do not add a "formerly Stacklane" tagline to active README branding.
 
 ### D. CI/CD and release pipeline niches
 
 1. Pipeline command invocations:
-- Replace `stacklane` command in CI jobs and smoke scripts.
+- Replace `stage` command in CI jobs and smoke scripts.
 
 2. Cache and artifact keys:
 - Update cache keys that include command/repo name.
@@ -445,7 +445,7 @@ This checklist assumes the selected direction is:
 - zsh/bash may cache command path; validate after rename with `hash -r`/new shell.
 
 2. PATH shadowing:
-- Ensure old `stacklane` in `/usr/local/bin`, `~/.local/bin`, or custom toolchains does not shadow `stage` tests.
+- Ensure old `stage` in `/usr/local/bin`, `~/.local/bin`, or custom toolchains does not shadow `stage` tests.
 
 3. Case sensitivity:
 - Verify scripts do not assume `StageServe`/`stageserve` path casing incorrectly on case-sensitive filesystems.
@@ -459,7 +459,7 @@ This checklist assumes the selected direction is:
 ### F. User data and state safety
 
 1. Runtime state folder policy:
-- Decide whether `.stacklane-state` stays unchanged.
+- Decide whether `.stageserve-state` stays unchanged.
 - If renamed later, require explicit migration logic, never silent destructive moves.
 
 2. Config-file discovery:
@@ -479,22 +479,22 @@ This checklist assumes the selected direction is:
 - spot-check npm/pip/cargo registry CLI name collisions
 
 2. Searchability and discoverability:
-- Add keywords in README/repo description: "StageServe (formerly Stacklane)".
+- Use StageServe-only branding in active README and repo description.
 
 3. Future Homebrew formula reservation:
 - If planning formula publication, verify `stage` naming strategy early to avoid future formula conflict surprises.
 
-### H. Compatibility shim plan (if chosen)
+### H. Compatibility posture
 
-1. `stacklane` shim behavior:
-- Print short deprecation note to stderr.
-- Exec `stage` with identical args and exit code passthrough.
+1. No shim:
+- Do not ship any `stacklane` forwarding path.
+- Keep `stage` as the only supported executable.
 
-2. Sunset policy:
-- Publish exact removal milestone (for example: remove after N minor releases).
+2. Completion policy:
+- Generate completions only for `stage`.
 
-3. Test parity:
-- Ensure `stacklane <cmd>` and `stage <cmd>` produce equivalent behavior during shim window.
+3. Validation:
+- Verify no active docs, scripts, or build targets still rely on `stacklane`.
 
 ### I. Validation plan (must-pass before merge)
 
@@ -509,7 +509,7 @@ This checklist assumes the selected direction is:
 - `stage down`
 
 3. Fresh-machine install test:
-- New shell, clean PATH, no prior Stacklane binary, install and run success.
+- New shell, clean PATH, no prior StageServe binary, install and run success.
 
 4. Dirty-machine upgrade test:
 - Existing old binary present, run installer, verify expected precedence and no ambiguous behavior.

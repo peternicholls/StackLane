@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/config"
+	"github.com/peternicholls/stageserve/core/config"
 )
 
 func TestEnsureProjectEnvFileCreatesStarterWhenMissing(t *testing.T) {
@@ -43,10 +43,10 @@ func TestEnsureProjectEnvFileCreatesStarterWhenMissing(t *testing.T) {
 		t.Fatalf("read created env: %v", err)
 	}
 	text := string(body)
-	if !strings.Contains(text, "Created automatically on first `stacklane up` or `stacklane attach`.") {
+	if !strings.Contains(text, "Created automatically on first `stage up` or `stage attach`.") {
 		t.Fatalf("starter header missing: %s", text)
 	}
-	if !strings.Contains(text, "STACKLANE_STACK=20i") {
+	if !strings.Contains(text, "STAGESERVE_STACK=20i") {
 		t.Fatalf("expected explicit stack kind in starter file: %s", text)
 	}
 	if !strings.Contains(text, "SITE_NAME=custom-site") {

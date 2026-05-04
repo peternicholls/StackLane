@@ -6,7 +6,7 @@ package config
 
 // CLIFlags carries the highest-precedence configuration source: command-line flags
 // the operator passed in. Empty fields fall through to the next layer
-// (project .env.stacklane -> shell env -> stack .env.stacklane -> defaults).
+// (project .env.stageserve -> shell env -> stack .env.stageserve -> defaults).
 type CLIFlags struct {
 	ProjectDir      string
 	SiteName        string
@@ -65,7 +65,7 @@ type PortAllocation struct {
 // values for the current project.
 type ProjectConfig struct {
 	// Identity
-	StackKind          string // STACKLANE_STACK
+	StackKind          string // STAGESERVE_STACK
 	Name               string // PROJECT_NAME
 	Slug               string // PROJECT_SLUG
 	Dir                string // PROJECT_DIR (absolute)
@@ -82,9 +82,9 @@ type ProjectConfig struct {
 
 	// Stack home / state dir
 	StackHome  string // STACK_HOME (absolute)
-	StateDir   string // STACKLANE_STATE_DIR (absolute)
-	StackFile  string // STACKLANE_STACK_FILE (absolute)
-	SharedFile string // STACKLANE_SHARED_STACK_FILE (absolute)
+	StateDir   string // STAGESERVE_STATE_DIR (absolute)
+	StackFile  string // STAGESERVE_STACK_FILE (absolute)
+	SharedFile string // STAGESERVE_SHARED_STACK_FILE (absolute)
 
 	// Runtime
 	PHPVersion      string // PHP_VERSION
@@ -95,7 +95,7 @@ type ProjectConfig struct {
 	SharedGateway   SharedGateway
 	LocalDNS        LocalDNS
 	WaitTimeoutSecs int    // FR-009: default 120
-	PostUpCommand   string // STACKLANE_POST_UP_COMMAND
+	PostUpCommand   string // STAGESERVE_POST_UP_COMMAND
 
 	// Operator-visible flags
 	DryRun  bool
@@ -107,10 +107,10 @@ type ProjectConfig struct {
 }
 
 // ConfigLoader resolves the full precedence chain (CLI flags -> project
-// .env.stacklane -> shell env -> stack .env.stacklane -> defaults) and returns
+// .env.stageserve -> shell env -> stack .env.stageserve -> defaults) and returns
 // a populated ProjectConfig.
-// STACKLANE_POST_UP_COMMAND is the one project-scoped exception: it is honored
-// only when set in project .env.stacklane.
+// STAGESERVE_POST_UP_COMMAND is the one project-scoped exception: it is honored
+// only when set in project .env.stageserve.
 //
 // Implementations must NOT depend on Docker, the network, or any subsystem
 // outside the local filesystem.

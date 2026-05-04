@@ -2,7 +2,7 @@
 // state and registry projection.
 package state
 
-import "github.com/peternicholls/stacklane/core/config"
+import "github.com/peternicholls/stageserve/core/config"
 
 // AttachmentState records the intended lifecycle state for a project.
 type AttachmentState string

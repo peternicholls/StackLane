@@ -10,10 +10,10 @@ services:
     networks:
       shared-gateway:
         aliases:
-          - stln-gateway
+          - stage-gateway
     restart: unless-stopped
 
 networks:
   shared-gateway:
-    name: ${SHARED_GATEWAY_NETWORK:-stln-shared}
+    name: ${SHARED_GATEWAY_NETWORK:-stage-shared}
     external: true

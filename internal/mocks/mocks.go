@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/compose"
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/infra/gateway"
-	"github.com/peternicholls/stacklane/platform/ports"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/compose"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/gateway"
+	"github.com/peternicholls/stageserve/platform/ports"
 )
 
 // --- DockerClient ---
@@ -146,7 +146,7 @@ type Gateway struct {
 	WriteErr error
 }
 
-func NewGateway() *Gateway { return &Gateway{Probe: "stacklane-no-route", Host: "localhost"} }
+func NewGateway() *Gateway { return &Gateway{Probe: "stageserve-no-route", Host: "localhost"} }
 
 func (m *Gateway) ConfigPath() string { return "/tmp/mock-gateway.conf" }
 
@@ -185,7 +185,7 @@ type State struct {
 }
 
 func NewState() *State {
-	return &State{Records: map[string]state.Record{}, StateDirVal: "/tmp/stacklane-test-state"}
+	return &State{Records: map[string]state.Record{}, StateDirVal: "/tmp/stageserve-test-state"}
 }
 
 func (m *State) Save(rec state.Record) error {

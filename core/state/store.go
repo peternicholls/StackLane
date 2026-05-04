@@ -143,7 +143,7 @@ func (s *Store) listFiles() ([]string, error) {
 
 // StateFileForSelector resolves a selector against the recorded projects.
 // Selectors match against slug, name, hostname, or project dir (mirrors
-// stacklane_state_file_for_selector).
+// stageserve_state_file_for_selector).
 func (s *Store) StateFileForSelector(selector string) (Record, string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

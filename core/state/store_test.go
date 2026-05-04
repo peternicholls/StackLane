@@ -4,7 +4,7 @@ package state
 import (
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/config"
+	"github.com/peternicholls/stageserve/core/config"
 )
 
 func TestStore_SaveLoadRoundTrip(t *testing.T) {
@@ -19,7 +19,7 @@ func TestStore_SaveLoadRoundTrip(t *testing.T) {
 			Name:               "demo",
 			Dir:                "/tmp/demo",
 			Hostname:           "demo.test",
-			ComposeProjectName: "stln-demo",
+			ComposeProjectName: "stage-demo",
 			MySQL:              config.MySQL{Port: 33060, PMAPort: 8082},
 		},
 		AttachmentState: StateAttached,
@@ -49,7 +49,7 @@ func TestStore_RegistryProjection(t *testing.T) {
 		rec := Record{
 			Project: config.ProjectConfig{
 				Slug: slug, Name: slug, Hostname: slug + ".test",
-				ComposeProjectName: "stln-" + slug,
+				ComposeProjectName: "stage-" + slug,
 			},
 			AttachmentState: StateAttached,
 		}

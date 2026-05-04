@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/docker"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/docker"
 )
 
 // ProjectStatus is the typed status of a single project.

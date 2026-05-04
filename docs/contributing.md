@@ -1,4 +1,4 @@
-# Contributing to stacklane
+# Contributing to stage
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ make fmt        # gofmt
 make vet        # go vet
 make test-short # unit tests, no Docker required
 make test       # full test suite (currently equivalent to test-short)
-make build      # builds ./stacklane-bin
+make build      # builds ./stage-bin
 make tidy       # go mod tidy
 ```
 

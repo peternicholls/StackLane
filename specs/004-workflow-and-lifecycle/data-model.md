@@ -2,10 +2,10 @@
 
 ## Bootstrap Contract
 
-- Purpose: Represents the project-scoped declaration of whether Stacklane runs a post-up bootstrap command and how that command participates in lifecycle success or failure.
+- Purpose: Represents the project-scoped declaration of whether StageServe runs a post-up bootstrap command and how that command participates in lifecycle success or failure.
 - Fields:
-  - `source`: fixed to project-root `.env.stacklane` (silently ignored if set via shell env, stack-home `.env.stacklane`, or project `.env`)
-  - `command`: string value from `STACKLANE_POST_UP_COMMAND`
+  - `source`: fixed to project-root `.env.stageserve` (silently ignored if set via shell env, stack-home `.env.stageserve`, or project `.env`)
+  - `command`: string value from `STAGESERVE_POST_UP_COMMAND`
   - `phase`: fixed to `post-up`
   - `execution_target`: fixed to the `apache` service container
   - `working_directory`: fixed to the container site root (`/home/sites/<project-slug>`) via the orchestrator's docker exec invocation
@@ -14,7 +14,7 @@
   - `cancellation_behavior`: operator `Ctrl-C` during bootstrap aborts the hook and triggers rollback under the same step name
 - Relationships:
   - Belongs to one project runtime.
-  - Depends on Stacklane-owned readiness succeeding first.
+  - Depends on StageServe-owned readiness succeeding first.
   - Produces either a successful post-bootstrap runtime or a rollback outcome.
 - Validation rules:
   - The contract must not be sourced from stack-wide config.
@@ -25,36 +25,36 @@
 
 - Purpose: Represents stack-owned defaults that apply across projects without taking ownership of project application config.
 - Fields:
-  - `file_name`: `.env.stacklane`
+  - `file_name`: `.env.stageserve`
   - `scope`: location-defined: stack-home defaults or project-local overrides
   - `precedence_rank`: below shell environment, above built-in defaults
   - `allowed_keys`: stack runtime defaults such as shared gateway, DNS, and runtime defaults
 - Relationships:
   - Feeds the config loader.
-  - Must remain distinct from project `.env` and from machine-generated envfiles under `.stacklane-state/envfiles/`.
+  - Must remain distinct from project `.env` and from machine-generated envfiles under `.stageserve-state/envfiles/`.
 - Validation rules:
   - The file must be the only stack-owned defaults file in the supported contract.
   - It must not be documented as application config.
 
 ## Runtime Naming Contract
 
-- Purpose: Represents the names Stacklane derives for project-scoped runtime resources.
+- Purpose: Represents the names StageServe derives for project-scoped runtime resources.
 - Fields:
-  - `project_prefix`: `stln-`
-  - `compose_project_name`: `stln-<slug>` by default (config field `ComposeProjectName`)
-  - `web_network_alias`: `stln-<slug>-web` by default (config field `WebNetworkAlias`)
+  - `project_prefix`: `stage-`
+  - `compose_project_name`: `stage-<slug>` by default (config field `ComposeProjectName`)
+  - `web_network_alias`: `stage-<slug>-web` by default (config field `WebNetworkAlias`)
   - `runtime_network`: `<compose-project>-runtime` (derived; config field `RuntimeNetwork`)
   - `database_volume`: `<compose-project>-db-data` (derived; config field `DatabaseVolume`)
 - Shared-resource fields (separate naming rule, not project-scoped):
-  - `shared_compose_project`: `stln-shared`
-  - `shared_network`: `stln-shared`
-  - `gateway_service_alias`: `stln-gateway`
+  - `shared_compose_project`: `stage-shared`
+  - `shared_network`: `stage-shared`
+  - `gateway_service_alias`: `stage-gateway`
 - Relationships:
   - Derived from the project slug and config loader defaults.
   - Used by compose invocations, gateway upstream routing, Docker label lookup, and operator-facing status output.
 - Validation rules:
-  - Every project-scoped default field listed above must use the `stln-` prefix consistently.
-  - Shared-resource fields must stay aligned with the same `stln-` prefix family and must remain distinguishable from per-project names by their fixed `shared` / `gateway` suffixes.
+  - Every project-scoped default field listed above must use the `stage-` prefix consistently.
+  - Shared-resource fields must stay aligned with the same `stage-` prefix family and must remain distinguishable from per-project names by their fixed `shared` / `gateway` suffixes.
 
 ## Validation Scenario
 
@@ -76,15 +76,15 @@
 
 ## Failure Classification
 
-- Purpose: Represents the operator-facing boundary between Stacklane infrastructure failures and application-owned failures.
+- Purpose: Represents the operator-facing boundary between StageServe infrastructure failures and application-owned failures.
 - Fields:
-  - `class`: gateway, DNS, readiness, bootstrap (Stacklane lifecycle classes); `application-follow-up` is a documentation-only label used in operator guidance and is never emitted by Stacklane lifecycle code
-  - `owner`: Stacklane or application
+  - `class`: gateway, DNS, readiness, bootstrap (StageServe lifecycle classes); `application-follow-up` is a documentation-only label used in operator guidance and is never emitted by StageServe lifecycle code
+  - `owner`: StageServe or application
   - `recovery_path`: rerun, inspect logs, fix app, or reroute through documented workflow
   - `status_effect`: whether runtime remains up or is rolled back
 - Relationships:
   - Attached to lifecycle step errors and validation notes.
   - Determines how docs and status output explain what failed.
 - Validation rules:
-  - Bootstrap failure must be a Stacklane lifecycle class with rollback.
+  - Bootstrap failure must be a StageServe lifecycle class with rollback.
   - Application route defects after readiness must not be misreported as gateway or DNS failures.

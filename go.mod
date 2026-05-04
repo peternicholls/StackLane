@@ -1,4 +1,4 @@
-module github.com/peternicholls/stacklane
+module github.com/peternicholls/stageserve
 
 go 1.26
 

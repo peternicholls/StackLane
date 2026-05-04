@@ -5,13 +5,13 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/peternicholls/stacklane/core/config"
-	"github.com/peternicholls/stacklane/core/lifecycle"
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/compose"
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/infra/gateway"
-	"github.com/peternicholls/stacklane/platform/ports"
+	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/lifecycle"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/compose"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/gateway"
+	"github.com/peternicholls/stageserve/platform/ports"
 )
 
 // SharedFlags is bound to the root command and inherited by every subcommand.
@@ -39,9 +39,9 @@ type SharedFlags struct {
 func NewRoot(version string) *cobra.Command {
 	flags := &SharedFlags{}
 	root := &cobra.Command{
-		Use:           "stacklane",
-		Short:         "Manage Stacklane shared-hosting stacks",
-		Long:          "stacklane orchestrates per-project containers behind a shared nginx gateway.",
+		Use:           "stage",
+		Short:         "Manage StageServe shared-hosting stacks",
+		Long:          "stage orchestrates per-project containers behind a shared nginx gateway.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
@@ -63,7 +63,7 @@ func NewRoot(version string) *cobra.Command {
 	pf.BoolVar(&flags.DryRun, "dry-run", false, "Print planned actions without executing")
 	pf.StringSliceVar(&flags.Profile, "profile", nil, "docker compose profile (repeatable)")
 	pf.BoolVar(&flags.All, "all", false, "Apply to every recorded project")
-	pf.StringVar(&flags.StackHome, "stack-home", "", "Path to the stacklane install (default: auto)")
+	pf.StringVar(&flags.StackHome, "stack-home", "", "Path to the stageserve install (default: auto)")
 
 	root.AddCommand(NewUp(flags))
 	root.AddCommand(NewDown(flags))

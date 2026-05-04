@@ -1,23 +1,25 @@
-# CLI Contract: Stacklane
+# CLI Contract: StageServe
 
 ## Primary Entry Point
 
-- Command name: `stacklane`
-- Responsibility: provide one canonical operator-facing command surface for all current lifecycle actions.
+- Command name: `stage`
+- Responsibility: provide one canonical operator-facing command surface for current lifecycle actions.
 
-## Action Selection Rules
+## Subcommand Rules
 
-- Exactly one primary action flag must be supplied per invocation.
-- Supported primary action flags:
-  - `--up`
-  - `--attach`
-  - `--down`
-  - `--detach`
-  - `--status`
-  - `--logs`
-  - `--dns-setup`
-- If zero primary action flags are provided, the command must exit non-zero and print concise usage guidance.
-- If more than one primary action flag is provided, the command must exit non-zero and explain that actions are mutually exclusive.
+- Supported primary subcommands include:
+  - `up`
+  - `attach`
+  - `down`
+  - `detach`
+  - `status`
+  - `logs`
+  - `dns-setup`
+  - `doctor`
+  - `init`
+  - `setup`
+- Unknown subcommands must fail non-zero with concise usage guidance.
+- The root command help must make the subcommand model obvious.
 
 ## Shared Options
 
@@ -36,40 +38,39 @@
 - `--all`
 - `--dry-run`
 - `--help`
-- Compatibility alias support such as `version=8.4` remains available during migration unless explicitly removed in implementation.
 
-## Action Mapping
+## Command Mapping
 
-| Primary action | Internal runtime action | Legacy wrapper | Notes |
-|---|---|---|---|
-| `--up` | `up` | `deprecated --up wrapper` | Starts current project and ensures shared infrastructure |
-| `--attach` | `attach` | `deprecated --attach wrapper` | Attaches an additional project |
-| `--down` | `down` | `deprecated --down wrapper` | Stops current project; `--all` keeps global teardown behavior |
-| `--detach` | `detach` | `deprecated --detach wrapper` | Stops current project and removes its record |
-| `--status` | `status` | `deprecated --status wrapper` | Reports gateway, DNS, registry, and project state |
-| `--logs` | `logs` | `deprecated --logs wrapper` | Supports optional service selection |
-| `--dns-setup` | `dns-setup` | `deprecated --dns-setup wrapper` | Bootstraps local DNS on macOS |
+| Subcommand | Responsibility | Notes |
+|---|---|---|
+| `up` | Starts the current project and ensures shared infrastructure | Canonical runtime bring-up path |
+| `attach` | Attaches an additional project | Reuses the shared gateway when healthy |
+| `down` | Stops the current project | `--all` preserves global teardown behavior |
+| `detach` | Stops the current project and removes its attachment record | |
+| `status` | Reports gateway, DNS, registry, and project state | |
+| `logs` | Follows logs for a selected project runtime | Supports optional service selection |
+| `dns-setup` | Bootstraps local DNS on macOS | |
+| `doctor` | Diagnoses drift and readiness issues | |
+| `init` | Writes project-local starter config | |
+| `setup` | Performs machine-readiness checks and one-time setup | |
 
-## Legacy Wrapper Contract
+## Compatibility Contract
 
-- Existing `legacy wrapper commands` scripts remain temporarily available only as deprecated migration wrappers.
-- Each wrapper must forward to the equivalent `stacklane` action.
-- Each wrapper must emit deprecation guidance that shows the preferred `stacklane` syntax and warns that the wrapper will be removed in a future update.
-- Wrappers must not be the primary path in help text or top-level docs.
+- `stage` is the only supported active executable path.
+- Compatibility forwarding shims are not part of the supported contract.
+- Historical command names may appear only in migration or archival notes.
 
 ## Help Contract
 
-- `stacklane --help` must present:
-  - the Stacklane brand name
+- `stage --help` must present:
+  - the StageServe brand name
   - the one-command mental model
-  - supported primary action flags
+  - supported subcommands
   - shared options
   - at least one representative usage example
-  - legacy migration note pointing from `legacy wrapper commands` commands to `stacklane`
 
 ## Error Contract
 
-- Invalid action combinations must fail clearly.
+- Invalid subcommands must fail clearly.
 - Unsupported arguments must identify the offending token.
-- Migration guidance must remain concise and actionable.
-- Failure output must not obscure existing runtime diagnostics from the helper engine.
+- Failure output must not obscure current runtime diagnostics.

@@ -23,7 +23,7 @@ type Container struct {
 	ID      string
 	Name    string
 	Status  string
-	Service string // io.stacklane.service / com.docker.compose.service label
+	Service string // io.stageserve.service / com.docker.compose.service label
 	Project string // com.docker.compose.project label
 	Labels  map[string]string
 }

@@ -1,8 +1,8 @@
-# Quickstart: Stacklane Rebrand Validation
+# Quickstart: StageServe Rename Validation
 
 ## Goal
 
-Validate the Stacklane rename and unified command surface without changing the underlying runtime contract.
+Validate the StageServe rename and canonical `stage` command surface without widening runtime behavior.
 
 ## Preconditions
 
@@ -13,40 +13,37 @@ Validate the Stacklane rename and unified command surface without changing the u
 ## Happy-Path Validation
 
 1. Add the repo root to `PATH` or invoke the command by absolute path.
-2. Run `stacklane --help`.
-3. Confirm help text uses Stacklane branding and shows the primary action flags.
-4. From a sample project directory, run `stacklane --up`.
+2. Run `stage --help`.
+3. Confirm help text uses StageServe branding and shows the current subcommands.
+4. From a sample project directory, run `stage up`.
 5. Confirm the project starts and reports the expected hostname route and gateway probe.
-6. Run `stacklane --status` and confirm state, route, and runtime details appear.
-7. Run `stacklane --down` and confirm the project stops cleanly.
+6. Run `stage status` and confirm state, route, and runtime details appear.
+7. Run `stage down` and confirm the project stops cleanly.
 
 ## Migration Validation
 
-1. Invoke one retained wrapper such as `deprecated --up wrapper` from a sample project.
-2. Confirm the command still works or forwards correctly during the migration window.
-3. Confirm the wrapper surfaces deprecation guidance toward `stacklane --up`.
-4. Review the top-level docs and migration guide to confirm they describe `stacklane` as the primary interface and `legacy wrapper commands` as migration-only wrappers.
+1. Review the top-level docs and migration guide.
+2. Confirm they describe `stage` as the only supported root command.
+3. Confirm they use `.env.stageserve` and `.stageserve-state` as the current directory names.
+4. Confirm any prior names are explicitly labeled as historical or archival.
 
 ## Failure-Path Validation
 
-1. Run `stacklane` with no primary action flag.
+1. Run `stage` with an invalid subcommand such as `stage not-a-command`.
 2. Confirm the command exits non-zero and prints concise usage guidance.
-3. Run `stacklane --up --down`.
-4. Confirm the command exits non-zero and reports that primary actions are mutually exclusive.
+3. Run `stage up --help`.
+4. Confirm the subcommand help renders current terminology and examples.
 
 ## Documentation Validation
 
-1. Review `README.md`, `AUTOMATION-README.md`, `GUI-HELP.md`, `docs/migration.md`, and `docs/runtime-contract.md`.
-2. Confirm Stacklane is the active project name across those surfaces.
-3. Confirm the repo rename and manual containing-folder rename are described separately.
-4. Confirm examples use `stacklane --up`, `stacklane --down`, and related action-flag syntax.
+1. Review `README.md`, `docs/migration.md`, `docs/runtime-contract.md`, and the maintained older specs.
+2. Confirm StageServe is the active project name across those surfaces.
+3. Confirm the repo rename and manual local-folder handling are described separately.
+4. Confirm examples use `stage up`, `stage down`, and related subcommand syntax.
 
 ## Validation Notes
 
-- 2026-04-01: Validated `stacklane --help`, `stacklane --status`, `stacklane --status --project 20i-stack`, `stacklane --up --dry-run`, and `stacklane --down --dry-run` from the repository root.
-- 2026-04-01: Validated failure handling for `stacklane` with no primary action and with conflicting primary actions (`--up --down`).
-- 2026-04-01: Validated `deprecated --up wrapper --dry-run` forwards to `stacklane --up` and prints deprecation guidance.
-- 2026-04-01: Recompiled `Stacklane Manager.app/Contents/Resources/Scripts/main.scpt` from the updated AppleScript source.
-- 2026-04-01: Untested caveat: the macOS app and workflow packaging were not exercised through Finder or Services UI during this implementation pass.
-- 2026-04-01: Untested caveat: `shellcheck` was not available in the current environment.
-- 2026-04-01: GitHub repository rename completed to `StackLane`; clone URL guidance was updated while keeping the local containing-folder rename manual.
+- 2026-04-01: Validated `stage --help`, `stage status`, `stage up --dry-run`, and `stage down --dry-run` from the repository root.
+- 2026-04-01: Validated invalid-subcommand handling from the root command.
+- 2026-04-01: Untested caveat: macOS app and workflow packaging were not exercised through Finder or Services UI during this pass.
+- 2026-04-01: GitHub repository rename completed to `StageServe`; local folder naming remains an operator-managed concern.

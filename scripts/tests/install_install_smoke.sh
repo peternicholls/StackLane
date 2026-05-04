@@ -23,8 +23,8 @@ fail() { printf 'FAIL: %s — %s\n' "$1" "$2"; FAIL=$((FAIL+1)); }
 run_installer() {
   local tmpdir
   tmpdir=$(mktemp -d)
-  out=$(env STACKLANE_INSTALL_DIR="$tmpdir" \
-             STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+  out=$(env STAGESERVE_INSTALL_DIR="$tmpdir" \
+             STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
              NONINTERACTIVE=1 \
              "$@" \
              bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
@@ -34,8 +34,8 @@ run_installer() {
 # ── Test 1: Install dir is created when it does not exist ─────────────────────
 tmpdir=$(mktemp -d)
 install_target="$tmpdir/nested/install"
-out=$(STACKLANE_INSTALL_DIR="$install_target" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$install_target" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 && -d "$install_target" ]]; then
@@ -45,41 +45,41 @@ else
 fi
 rm -rf "$tmpdir"
 
-# ── Test 2: Binary is placed at STACKLANE_INSTALL_DIR/stacklane ───────────────
+# ── Test 2: Binary is placed at STAGESERVE_INSTALL_DIR/stage ───────────────
 tmpdir=$(mktemp -d)
-out=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
-if [[ $rc -eq 0 && -f "$tmpdir/stacklane" ]]; then
+if [[ $rc -eq 0 && -f "$tmpdir/stage" ]]; then
   pass "install_places_binary"
 else
-  fail "install_places_binary" "exit=$rc, file exists=$(test -f "$tmpdir/stacklane" && echo yes || echo no)"
+  fail "install_places_binary" "exit=$rc, file exists=$(test -f "$tmpdir/stage" && echo yes || echo no)"
 fi
 rm -rf "$tmpdir"
 
 # ── Test 3: Installed binary has execute permission ───────────────────────────
 tmpdir=$(mktemp -d)
-out=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
-if [[ $rc -eq 0 && -x "$tmpdir/stacklane" ]]; then
+if [[ $rc -eq 0 && -x "$tmpdir/stage" ]]; then
   pass "install_binary_executable"
 else
-  fail "install_binary_executable" "exit=$rc, executable=$(test -x "$tmpdir/stacklane" && echo yes || echo no)"
+  fail "install_binary_executable" "exit=$rc, executable=$(test -x "$tmpdir/stage" && echo yes || echo no)"
 fi
 rm -rf "$tmpdir"
 
-# ── Test 4: STACKLANE_INSTALL_DIR override is respected ───────────────────────
+# ── Test 4: STAGESERVE_INSTALL_DIR override is respected ───────────────────────
 tmpdir=$(mktemp -d)
 custom="$tmpdir/custom-bin"
 mkdir -p "$custom"
-out=$(STACKLANE_INSTALL_DIR="$custom" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$custom" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
-if [[ $rc -eq 0 && -f "$custom/stacklane" ]]; then
+if [[ $rc -eq 0 && -f "$custom/stage" ]]; then
   pass "install_custom_dir_respected"
 else
   fail "install_custom_dir_respected" "exit=$rc, file=$(ls "$custom" 2>/dev/null || echo empty)"
@@ -88,8 +88,8 @@ rm -rf "$tmpdir"
 
 # ── Test 5: Installer exits 0 on successful install ──────────────────────────
 tmpdir=$(mktemp -d)
-out=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 ]]; then
@@ -101,15 +101,15 @@ rm -rf "$tmpdir"
 
 # ── Test 6: Installer is idempotent — running twice succeeds ─────────────────
 tmpdir=$(mktemp -d)
-out1=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-       STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out1=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
        NONINTERACTIVE=1 \
        bash "$INSTALL_SH" --test-mode 2>&1) && rc1=0 || rc1=$?
-out2=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-       STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out2=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
        NONINTERACTIVE=1 \
        bash "$INSTALL_SH" --test-mode 2>&1) && rc2=0 || rc2=$?
-if [[ $rc1 -eq 0 && $rc2 -eq 0 && -x "$tmpdir/stacklane" ]]; then
+if [[ $rc1 -eq 0 && $rc2 -eq 0 && -x "$tmpdir/stage" ]]; then
   pass "install_idempotent"
 else
   fail "install_idempotent" "first=$rc1, second=$rc2"
@@ -121,8 +121,8 @@ tmpdir=$(mktemp -d)
 # Use a dir that is definitely not in PATH
 unique_dir="$tmpdir/zz_not_in_path_$$"
 mkdir -p "$unique_dir"
-out=$(STACKLANE_INSTALL_DIR="$unique_dir" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$unique_dir" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       PATH="/usr/bin:/bin" \
       bash "$INSTALL_SH" --test-mode 2>&1) && true
@@ -135,8 +135,8 @@ rm -rf "$tmpdir"
 
 # ── Test 8: No PATH warning when install dir is already in PATH ───────────────
 tmpdir=$(mktemp -d)
-out=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       PATH="$tmpdir:/usr/bin:/bin" \
       bash "$INSTALL_SH" --test-mode 2>&1) && true
@@ -149,8 +149,8 @@ rm -rf "$tmpdir"
 
 # ── Test 9: NONINTERACTIVE=1 suppresses TUI launch prompt ────────────────────
 tmpdir=$(mktemp -d)
-out=$(STACKLANE_INSTALL_DIR="$tmpdir" \
-      STACKLANE_TEST_ASSET_PATH="/usr/bin/true" \
+out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+      STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && true
 rm -rf "$tmpdir"
@@ -160,8 +160,8 @@ else
   pass "install_noninteractive_no_tui_launch"
 fi
 
-# ── Test 10: STACKLANE_VERSION env var overrides default version in asset name ─
-orig=$(STACKLANE_TEST_ONLY_ASSET_NAME=1 STACKLANE_VERSION="v1.2.3" bash "$INSTALL_SH" 2>&1) && true
+# ── Test 10: STAGESERVE_VERSION env var overrides default version in asset name ─
+orig=$(STAGESERVE_TEST_ONLY_ASSET_NAME=1 STAGESERVE_VERSION="v1.2.3" bash "$INSTALL_SH" 2>&1) && true
 if [[ "$orig" == *"v1.2.3"* ]]; then
   pass "install_version_env_respected_in_asset_name"
 else

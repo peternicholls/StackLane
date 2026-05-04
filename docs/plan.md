@@ -1,14 +1,14 @@
 ## Plan: Multi-site Attachable Stack
 
-Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stacklane` is the canonical entrypoint; `stacklane up` becomes "ensure shared infra exists, start this project, register its hostname". `stacklane attach` and `stacklane detach` then manage additional repos against that same shared layer.
+Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stage` is the canonical entrypoint; `stage up` becomes "ensure shared infra exists, start this project, register its hostname". `stage attach` and `stage detach` then manage additional repos against that same shared layer.
 
 I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is preferred only if it stays low-friction, and on macOS `.dev` becomes awkward fast because of HSTS and the implied need for local TLS.
 
 ## Outcome
 
-- `stacklane up` works from a project root and exposes that project at a stable local hostname.
+- `stage up` works from a project root and exposes that project at a stable local hostname.
 - Multiple projects can coexist concurrently through one shared gateway and DNS layer.
-- `stacklane attach` and `stacklane detach` manage project registration without breaking other attached projects.
+- `stage attach` and `stage detach` manage project registration without breaking other attached projects.
 - Monitoring reports both Docker state and logical attachment state.
 
 ## Principles
@@ -22,7 +22,7 @@ I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is p
 
 ### Story 1: Shared runtime bootstrap
 
-As a developer, I want `stacklane up` to ensure the shared gateway and DNS layer exist so I do not need to manually prepare the environment before starting a project.
+As a developer, I want `stage up` to ensure the shared gateway and DNS layer exist so I do not need to manually prepare the environment before starting a project.
 
 ### Story 2: Project-specific hostname
 
@@ -42,18 +42,18 @@ As a developer, I want status commands to show what is attached, where it lives,
 
 ### Story 6: Low-friction current workflow
 
-As a developer, I want the current `stacklane <subcommand>` workflow to be predictable and documented.
+As a developer, I want the current `stage <subcommand>` workflow to be predictable and documented.
 
 ## Task List
 
 ### Phase 1: Runtime contract and CLI semantics
 
-- [x] Define exact command semantics for `stacklane up`, `stacklane attach`, `stacklane detach`, `stacklane down`, and global teardown.
-- [x] Decide the canonical hostname derivation rule: folder name by default, project-root `.env.stacklane` override when set.
+- [x] Define exact command semantics for `stage up`, `stage attach`, `stage detach`, `stage down`, and global teardown.
+- [x] Decide the canonical hostname derivation rule: folder name by default, project-root `.env.stageserve` override when set.
 - [x] Define the first-stage suffix as `.test` and record `.dev` as a later HTTPS-capable option.
-- [x] Extend the project-root `.env.stacklane` contract with site name override, document root override, PHP version override, and project database settings.
+- [x] Extend the project-root `.env.stageserve` contract with site name override, document root override, PHP version override, and project database settings.
 - [x] Define the expected state transitions for attached, detached, down, and global teardown.
-- [x] Document behavior for running `stacklane up` in a single project with no other attachments.
+- [x] Document behavior for running `stage up` in a single project with no other attachments.
 
 ### Phase 2: Shared infrastructure split
 
@@ -77,11 +77,11 @@ As a developer, I want the current `stacklane <subcommand>` workflow to be predi
 
 - [x] Add a registry/state file under the stack home to record attachments.
 - [x] Store repo path, project name, hostname, document root, runtime settings, and live container identity.
-- [x] Update `stacklane up` to write registration state and validate it after startup.
-- [x] Implement `stacklane attach` as attach-or-bootstrap behavior.
-- [x] Implement `stacklane detach` to remove routing and stop only the targeted project runtime.
-- [x] Update `stacklane down` to remain project-local by default.
-- [x] Add explicit global teardown behavior such as `stacklane down --all`.
+- [x] Update `stage up` to write registration state and validate it after startup.
+- [x] Implement `stage attach` as attach-or-bootstrap behavior.
+- [x] Implement `stage detach` to remove routing and stop only the targeted project runtime.
+- [x] Update `stage down` to remain project-local by default.
+- [x] Add explicit global teardown behavior such as `stage down --all`.
 
 ### Phase 5: Gateway routing
 
@@ -110,7 +110,7 @@ As a developer, I want the current `stacklane <subcommand>` workflow to be predi
 ### Phase 8: Documentation and migration
 
 - [x] Update README examples away from `localhost` toward project hostnames.
-- [x] Document project-root `.env.stacklane` additions and override precedence.
+- [x] Document project-root `.env.stageserve` additions and override precedence.
 - [x] Add docs for attach, detach, shared teardown, and concurrent project workflows.
 - [x] Add a migration section explaining old versus new behavior.
 - [x] Mark GUI support as deferred or partial if CLI ships first.
@@ -163,30 +163,30 @@ Pass criteria:
 
 ### Checkpoint 1: Single-project validation
 
-- [x] From a clean state, run `stacklane up` in one repo.
+- [x] From a clean state, run `stage up` in one repo.
 - [x] Confirm shared services bootstrap automatically.
 - [x] Confirm the project is reachable at its hostname, not `localhost`.
 - [x] Confirm database connectivity and existing dev workflow still work.
 
 ### Checkpoint 2: Concurrent attachment
 
-- [x] Run `stacklane attach` in a second repo.
+- [x] Run `stage attach` in a second repo.
 - [x] Confirm both sites stay reachable simultaneously.
 - [x] Confirm project A and project B route to the correct mounted codebases.
 - [x] Confirm both projects preserve isolated database state.
 
 ### Checkpoint 3: Safe detach and local down
 
-- [x] Run `stacklane detach` in one repo.
+- [x] Run `stage detach` in one repo.
 - [x] Confirm its hostname stops resolving or routing.
 - [x] Confirm the other project stays healthy.
-- [ ] Run `stacklane down` from the remaining repo and confirm only that project stops.
+- [ ] Run `stage down` from the remaining repo and confirm only that project stops.
 
 ### Checkpoint 4: Global teardown and recovery
 
 - [x] Run the global teardown command.
 - [x] Confirm all shared infrastructure and registrations are removed cleanly.
-- [ ] Re-run `stacklane up` and confirm the environment can rebuild from scratch.
+- [ ] Re-run `stage up` and confirm the environment can rebuild from scratch.
 - [ ] Reattach a previously used repo and confirm its project database persists correctly.
 
 ### Checkpoint 5: Failure-path validation
@@ -210,10 +210,10 @@ Pass criteria:
 **Verification**
 
 1. From a clean state, bootstrap the local DNS setup and verify wildcard resolution before any project is attached.
-2. Run `stacklane up` in one repo and confirm it is reachable by hostname rather than `localhost`.
-3. Run `stacklane attach` in a second repo and confirm both sites remain reachable concurrently.
+2. Run `stage up` in one repo and confirm it is reachable by hostname rather than `localhost`.
+3. Run `stage attach` in a second repo and confirm both sites remain reachable concurrently.
 4. Run monitoring/status and confirm it reports attached repo path, hostname, container health, and DNS/gateway health together.
-5. Run `stacklane detach` in one repo and verify only that project disappears while the other stays live.
+5. Run `stage detach` in one repo and verify only that project disappears while the other stays live.
 6. Run the global teardown path and verify shared infra and registrations are removed cleanly.
 7. Reattach a previously detached project and verify its database data remains isolated and intact.
 
@@ -221,7 +221,7 @@ Pass criteria:
 
 - Included now: CLI/runtime architecture, attach/detach semantics, shared gateway, local DNS integration, monitoring/status output, and shell docs.
 - Excluded unless you want them pulled in now: full GUI parity, local TLS/cert management for `.dev`, and a full redesign of database admin UX.
-- Recommended hostname policy: folder name by default, override via project-root `.env.stacklane`.
+- Recommended hostname policy: folder name by default, override via project-root `.env.stageserve`.
 - Recommended suffix policy: ship `.test` first, leave `.dev` for a later HTTPS-capable phase.
 
 ## Recommended delivery order

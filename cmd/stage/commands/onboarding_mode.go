@@ -5,7 +5,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
 // resolveOutputMode maps the shared onboarding CLI flags to an OutputMode.

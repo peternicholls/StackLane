@@ -1,4 +1,4 @@
-// stacklane status: print runtime state for the current project, or every
+// stage status: print runtime state for the current project, or every
 // recorded project when --all is passed. Drift is reported per FR-010.
 package commands
 
@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/observability/status"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/observability/status"
 )
 
 func NewStatus(flags *SharedFlags) *cobra.Command {

@@ -1,10 +1,10 @@
-// stacklane doctor: read-only machine diagnostics and drift detection.
+// stage doctor: read-only machine diagnostics and drift detection.
 package commands
 
 import (
 	"fmt"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/spf13/cobra"
 )
 

@@ -1,4 +1,4 @@
-// stacklane down: stop a project's stack.
+// stage down: stop a project's stack.
 package commands
 
 import (

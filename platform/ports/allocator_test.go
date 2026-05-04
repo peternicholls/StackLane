@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/state"
+	"github.com/peternicholls/stageserve/core/state"
 )
 
 func freshAllocator(t *testing.T, busy map[int]bool) *Allocator {

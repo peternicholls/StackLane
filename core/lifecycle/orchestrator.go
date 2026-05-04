@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -12,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/peternicholls/stacklane/core/config"
-	"github.com/peternicholls/stacklane/core/state"
-	"github.com/peternicholls/stacklane/infra/compose"
-	"github.com/peternicholls/stacklane/infra/docker"
-	"github.com/peternicholls/stacklane/infra/gateway"
-	"github.com/peternicholls/stacklane/platform/ports"
+	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/state"
+	"github.com/peternicholls/stageserve/infra/compose"
+	"github.com/peternicholls/stageserve/infra/docker"
+	"github.com/peternicholls/stageserve/infra/gateway"
+	"github.com/peternicholls/stageserve/platform/ports"
 )
 
 // Deps bundles the collaborators the orchestrator needs.
@@ -97,17 +98,17 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	}
 	if err := o.D.Compose.Up(ctx, composeOpts); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("compose-up", cfg.Slug, err, "Check `stacklane logs` for the failing service.")
+		return Wrap("compose-up", cfg.Slug, err, "Check `stage logs` for the failing service.")
 	}
 
 	// Step 7: wait for healthchecks.
 	if err := o.D.Docker.WaitHealthy(ctx, cfg.ComposeProjectName, time.Duration(cfg.WaitTimeoutSecs)*time.Second); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("wait-healthy", cfg.Slug, err, "Inspect container health with `docker ps` then `stacklane logs`.")
+		return Wrap("wait-healthy", cfg.Slug, err, "Inspect container health with `docker ps` then `stage logs`.")
 	}
 	if err := o.runPostUpHook(ctx, cfg); err != nil {
 		o.rollbackProject(ctx, cfg)
-		return Wrap("post-up-hook", cfg.Slug, err, "Check STACKLANE_POST_UP_COMMAND and verify it succeeds inside the apache container.")
+		return Wrap("post-up-hook", cfg.Slug, err, "Check STAGESERVE_POST_UP_COMMAND and verify it succeeds inside the apache container.")
 	}
 
 	// Step 8: regenerate gateway config, reload gateway.
@@ -196,7 +197,19 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 
 	rec, err := o.D.State.Load(cfg.Slug)
 	if err != nil {
-		return Wrap("attach", cfg.Slug, err, "Run `stacklane up` first.")
+		if errors.Is(err, state.ErrNotFound) {
+			return o.Up(ctx, cfg)
+		}
+		return Wrap("attach", cfg.Slug, err, "Inspect the recorded state for this project.")
+	}
+	containers, err := o.D.Docker.ListContainersByLabel(ctx, map[string]string{
+		"com.docker.compose.project": cfg.ComposeProjectName,
+	})
+	if err != nil {
+		return Wrap("attach", cfg.Slug, err, "Inspect Docker daemon availability and the current project containers.")
+	}
+	if len(containers) == 0 {
+		return o.Up(ctx, cfg)
 	}
 	rec.AttachmentState = state.StateAttached
 	if err := o.D.State.Save(rec); err != nil {
@@ -245,7 +258,7 @@ func (o *Orchestrator) ensureSharedNetwork(ctx context.Context, cfg config.Proje
 
 func sharedComposeRemedy(cfg config.ProjectConfig, command, suffix string) string {
 	return fmt.Sprintf(
-		"Run `docker compose -f %s -p stln-shared %s` (or run the command from `STACK_HOME`)%s",
+		"Run `docker compose -f %s -p stage-shared %s` (or run the command from `STACK_HOME`)%s",
 		cfg.SharedFile,
 		command,
 		suffix,

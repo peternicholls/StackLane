@@ -10,7 +10,7 @@ func TestSlugify(t *testing.T) {
 		"Already-Slug":       "already-slug",
 		"!!chars$$":          "chars",
 		"":                   "site",
-		"stacklane-foo--bar": "stacklane-foo-bar",
+		"stageserve-foo--bar": "stageserve-foo-bar",
 	}
 	for in, want := range cases {
 		got := Slugify(in)

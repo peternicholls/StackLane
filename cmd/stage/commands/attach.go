@@ -1,4 +1,4 @@
-// stacklane attach / detach: route a project through the shared gateway or
+// stage attach / detach: route a project through the shared gateway or
 // tear it down and remove its record.
 package commands
 

@@ -56,8 +56,8 @@ func AbsPathFromBase(baseDir, path string) string {
 	return filepath.Join(baseDir, path)
 }
 
-// ResolveDocRoot reproduces stacklane_resolve_docroot precedence:
-//  1. explicit docRoot (CLI / project .env.stacklane / env)
+// ResolveDocRoot reproduces stageserve_resolve_docroot precedence:
+//  1. explicit docRoot (CLI / project .env.stageserve / env)
 //  2. codeDir (alias)
 //  3. <projectDir>/public_html when present
 //  4. projectDir itself
@@ -100,7 +100,7 @@ func ResolveDocRoot(projectDir, docRoot, codeDir string) (abs string, rel string
 	return abs, rel, nil
 }
 
-// ResolveHostname reproduces stacklane_resolve_hostname: explicit hostname wins,
+// ResolveHostname reproduces stageserve_resolve_hostname: explicit hostname wins,
 // otherwise <slug>.<suffix>. Suffix defaults to "test" and is itself slugified.
 func ResolveHostname(slug, siteHostname, siteSuffix string) (hostname, suffix string) {
 	suffix = siteSuffix
@@ -116,7 +116,7 @@ func ResolveHostname(slug, siteHostname, siteSuffix string) (hostname, suffix st
 
 var hostnameLabel = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$`)
 
-// HostnameValid mirrors stacklane_hostname_valid: requires at least one dot,
+// HostnameValid mirrors stageserve_hostname_valid: requires at least one dot,
 // labels of [A-Za-z0-9-], no leading/trailing dash on a label, no consecutive
 // dots, no trailing dot.
 func HostnameValid(host string) bool {
@@ -133,5 +133,5 @@ func HostnameValid(host string) bool {
 
 var aliasRe = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`)
 
-// AliasValid mirrors stacklane_alias_valid (lowercase, digits, internal dashes).
+// AliasValid mirrors stageserve_alias_valid (lowercase, digits, internal dashes).
 func AliasValid(alias string) bool { return aliasRe.MatchString(alias) }

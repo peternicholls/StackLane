@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stacklane Development Environment</title>
+    <title>StageServe Development Environment</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -75,7 +75,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Stacklane Development Environment</h1>
+            <h1>🚀 StageServe Development Environment</h1>
             <p>Your local shared-hosting compatibility stack is up and running.</p>
         </div>
 
@@ -128,7 +128,7 @@
             <h3>🔗 Quick Links</h3>
             <a href="?phpinfo=1">PHP Info</a>
             <a href="http://localhost:8081" target="_blank">phpMyAdmin</a>
-            <a href="https://github.com/peternicholls/StackLane" target="_blank">StackLane GitHub</a>
+            <a href="https://github.com/peternicholls/StageServe" target="_blank">StageServe GitHub</a>
         </div>
 
         <?php if (isset($_GET['phpinfo'])): ?>
@@ -141,7 +141,7 @@
         <?php endif; ?>
 
         <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666;">
-            <p>Stacklane Development Environment - Ready for Development</p>
+            <p>StageServe Development Environment - Ready for Development</p>
         </footer>
     </div>
 </body>

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
 // TestValidateProjectRoot_RejectsEmpty verifies that an empty project root is rejected.
@@ -47,16 +47,16 @@ func TestValidateProjectEnv_AcceptsRelativeDocroot(t *testing.T) {
 	if err := os.MkdirAll(subdir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := onboarding.ValidateDocroot(dir, subdir); err != nil {
+	if err := onboarding.ValidateDocroot(dir, "public_html"); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
 // TestWriteProjectEnv_SkipsExistingFile verifies that WriteProjectEnv does not
-// overwrite an existing .env.stacklane unless force=true.
+// overwrite an existing .env.stageserve unless force=true.
 func TestWriteProjectEnv_SkipsExistingFile(t *testing.T) {
 	dir := t.TempDir()
-	envPath := filepath.Join(dir, ".env.stacklane")
+	envPath := filepath.Join(dir, ".env.stageserve")
 	original := "ORIGINAL=1\n"
 	if err := os.WriteFile(envPath, []byte(original), 0o600); err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestWriteProjectEnv_SkipsExistingFile(t *testing.T) {
 }
 
 // TestWriteProjectEnv_CreatesNewFile verifies that WriteProjectEnv creates a
-// .env.stacklane when none exists.
+// .env.stageserve when none exists.
 func TestWriteProjectEnv_CreatesNewFile(t *testing.T) {
 	dir := t.TempDir()
 	action, err := onboarding.WriteProjectEnv(dir, "mysite", "public_html", false)
@@ -86,8 +86,8 @@ func TestWriteProjectEnv_CreatesNewFile(t *testing.T) {
 	if action != onboarding.InitActionCreated {
 		t.Errorf("want created, got %s", action)
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".env.stacklane")); err != nil {
-		t.Error("expected .env.stacklane to exist")
+	if _, err := os.Stat(filepath.Join(dir, ".env.stageserve")); err != nil {
+		t.Error("expected .env.stageserve to exist")
 	}
 }
 
@@ -95,7 +95,7 @@ func TestWriteProjectEnv_CreatesNewFile(t *testing.T) {
 // overwrites an existing file when force=true.
 func TestWriteProjectEnv_OverwritesWithForce(t *testing.T) {
 	dir := t.TempDir()
-	envPath := filepath.Join(dir, ".env.stacklane")
+	envPath := filepath.Join(dir, ".env.stageserve")
 	if err := os.WriteFile(envPath, []byte("OLD=1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

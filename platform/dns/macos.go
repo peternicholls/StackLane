@@ -64,8 +64,8 @@ func (p MacOSProvider) Bootstrap(s Settings) error {
 		return err
 	}
 	// Strip stale managed configs so duplicate global dnsmasq directives from
-	// previous Stacklane / legacy 20i runs do not prevent dnsmasq from starting.
-	for _, pattern := range []string{"stacklane-*.conf", "20i-*.conf"} {
+	// previous StageServe runs do not prevent dnsmasq from starting.
+	for _, pattern := range []string{"stage-*.conf"} {
 		matches, _ := filepath.Glob(filepath.Join(filepath.Dir(managed), pattern))
 		for _, m := range matches {
 			_ = os.Remove(m)
@@ -139,7 +139,7 @@ func dnsmasqManagedFile(suffix string) (string, error) {
 
 // dnsmasqManagedFileWithPrefix returns the path to the dnsmasq-managed config file for the given suffix.
 func dnsmasqManagedFileWithPrefix(suffix, prefix string) string {
-	return filepath.Join(prefix, "etc", "dnsmasq.d", "stacklane-"+suffix+".conf")
+	return filepath.Join(prefix, "etc", "dnsmasq.d", "stage-"+suffix+".conf")
 }
 
 func dnsmasqMainConf() (string, error) {
@@ -179,7 +179,7 @@ func ensureDnsmasqIncludeWithPrefix(prefix string) error {
 		return err
 	}
 	defer f.Close()
-	_, err = f.WriteString("\n# Stacklane managed include\n" + includeLine + "\n")
+	_, err = f.WriteString("\n# StageServe managed include\n" + includeLine + "\n")
 	return err
 }
 

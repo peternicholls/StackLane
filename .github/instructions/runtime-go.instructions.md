@@ -11,14 +11,14 @@ Before changing behavior, identify the owning slice first:
 - gateway routing behavior lives under `infra/gateway`
 
 Keep the active runtime contract intact unless the task explicitly changes it:
-- `STACKLANE_STACK=20i` is the only supported stack kind today
+- `STAGESERVE_STACK=20i` is the only supported stack kind today
 - the active project compose file is `docker-compose.20i.yml`
 - the shared layer is `docker-compose.shared.yml`
-- shared routing resources use the `stln-*` naming contract
+- shared routing resources use the `stage-*` naming contract
 
 When touching these areas, prefer focused validation with the smallest relevant test command first:
 - `go test ./core/config`
 - `go test ./core/lifecycle`
-- `go test ./cmd/stacklane/commands`
+- `go test ./cmd/stage/commands`
 
-Do not reintroduce legacy fallback behavior such as `.stackenv`, `<stack-home>/.env`, `.stacklane-local`, or deprecated `20i-*` wrapper semantics unless the task explicitly asks for compatibility restoration.
+Do not reintroduce legacy fallback behavior such as `.stackenv`, `<stack-home>/.env`, `.stageserve-local`, or deprecated `20i-*` wrapper semantics unless the task explicitly asks for compatibility restoration.

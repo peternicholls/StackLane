@@ -3,7 +3,7 @@ package onboarding_test
 import (
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
 // --- ReduceExitCode tests ---
@@ -105,7 +105,7 @@ func TestBuildResult_MatchesSteps(t *testing.T) {
 }
 
 func TestBuildResult_PreservesNextSteps(t *testing.T) {
-	ns := []string{"stacklane up", "stacklane doctor"}
+	ns := []string{"stage up", "stage doctor"}
 	result := onboarding.BuildResult(nil, nil, ns)
 	if len(result.NextSteps) != 2 {
 		t.Errorf("want 2 next_steps, got %d", len(result.NextSteps))

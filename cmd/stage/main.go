@@ -1,4 +1,4 @@
-// stacklane CLI entrypoint. Wires cobra subcommands to the lifecycle
+// stage CLI entrypoint. Wires cobra subcommands to the lifecycle
 // orchestrator.
 package main
 
@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/peternicholls/stacklane/cmd/stacklane/commands"
+	"github.com/peternicholls/stageserve/cmd/stage/commands"
 )
 
 // version is overridden at build time via -ldflags.

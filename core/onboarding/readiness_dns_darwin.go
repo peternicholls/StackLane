@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/peternicholls/stacklane/platform/dns"
+	"github.com/peternicholls/stageserve/platform/dns"
 )
 
 func checkDNS(suffix string) StepResult {
@@ -30,7 +30,7 @@ func checkDNS(suffix string) StepResult {
 			Message: st.Message,
 		}
 	}
-	rem := remediationPtr("Run: stacklane setup (will bootstrap dnsmasq + /etc/resolver/" + suffix + ")")
+	rem := remediationPtr("Run: stage setup (will bootstrap dnsmasq + /etc/resolver/" + suffix + ")")
 	return StepResult{
 		ID:          "dns.resolver",
 		Label:       label,

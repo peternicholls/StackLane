@@ -24,7 +24,7 @@ description: "Tasks for workflow and lifecycle hardening"
 
 Single Go module at repository root:
 
-- `cmd/stacklane/` — CLI wiring
+- `cmd/stage/` — CLI wiring
 - `core/config/` — precedence, stack defaults, runtime naming
 - `core/lifecycle/` — bootstrap execution, rollback, failure classification
 - `core/state/` — project state persistence and registry projection
@@ -38,12 +38,12 @@ Single Go module at repository root:
 
 **Purpose**: Codify the new naming and lifecycle contract in tests before changing runtime behavior.
 
-- [ ] T001 [P] Add config precedence tests for `.env.stacklane` as the canonical stack-owned defaults file and for project `.env` staying application-owned in `core/config/loader_test.go`. Include a `STACK_HOME` override case that points at a directory containing `.env.stacklane` and asserts it loads from there.
-- [ ] T002 [P] Add runtime naming default tests in `core/config/loader_test.go` for every project-scoped derivation: `ComposeProjectName` = `stln-<slug>`, `WebNetworkAlias` = `stln-<slug>-web`, `RuntimeNetwork` = `<compose-project>-runtime`, `DatabaseVolume` = `<compose-project>-db-data`.
+- [ ] T001 [P] Add config precedence tests for `.env.stageserve` as the canonical stack-owned defaults file and for project `.env` staying application-owned in `core/config/loader_test.go`. Include a `STACK_HOME` override case that points at a directory containing `.env.stageserve` and asserts it loads from there.
+- [ ] T002 [P] Add runtime naming default tests in `core/config/loader_test.go` for every project-scoped derivation: `ComposeProjectName` = `stage-<slug>`, `WebNetworkAlias` = `stage-<slug>-web`, `RuntimeNetwork` = `<compose-project>-runtime`, `DatabaseVolume` = `<compose-project>-db-data`.
 - [ ] T003 [P] Add bootstrap failure classification and rollback coherence tests in `core/lifecycle/orchestrator_test.go`. Cover the post-readiness, pre-state-persist failure window so a rolled-back project is never left as `attached` in the state store.
 - [ ] T004 [P] **(new file)** Create `observability/status/status_test.go` and add status reporting tests proving rollback does not leave phantom running state.
-- [ ] T005 Codify the shared-resource naming rule in `core/config/loader_test.go` and `docs/runtime-contract.md` before changing project-scoped defaults: shared compose project and shared network use `stln-shared`; the gateway service network alias uses `stln-gateway`.
-- [ ] T006 Hand-write updated gateway golden fixtures and tests in `infra/gateway/manager_test.go` and `infra/gateway/testdata/*` to express the final `stln-<slug>` upstream naming. Goldens are written by hand in this phase (not regenerated) so they fail until implementation lands.
+- [ ] T005 Codify the shared-resource naming rule in `core/config/loader_test.go` and `docs/runtime-contract.md` before changing project-scoped defaults: shared compose project and shared network use `stage-shared`; the gateway service network alias uses `stage-gateway`.
+- [ ] T006 Hand-write updated gateway golden fixtures and tests in `infra/gateway/manager_test.go` and `infra/gateway/testdata/*` to express the final `stage-<slug>` upstream naming. Goldens are written by hand in this phase (not regenerated) so they fail until implementation lands.
 
 **Checkpoint**: The test suite names the final contract before implementation begins.
 
@@ -55,11 +55,11 @@ Single Go module at repository root:
 
 **⚠️ CRITICAL**: No user story is complete until this phase is complete.
 
-- [ ] T007 Update stack-default loading in `core/config/loader.go` so `.env.stacklane` is the only supported stack-owned defaults file. Update the package-level docstring (lines ~1–8) and the `loadStackEnv` comment to match.
+- [ ] T007 Update stack-default loading in `core/config/loader.go` so `.env.stageserve` is the only supported stack-owned defaults file. Update the package-level docstring (lines ~1–8) and the `loadStackEnv` comment to match.
 - [X] T008 Remove both legacy stack-default behaviors from `core/config/loader.go`: (a) reading `<stackHome>/.stackenv`, and (b) falling back to `<stackHome>/.env`. Add a regression test asserting `<stackHome>/.env` is NOT loaded as stack defaults.
-- [X] T009 Update default project-scoped runtime naming in `core/config/loader.go` and `core/config/types.go` from `stacklane-` to `stln-`. Enumerated defaults to change: `ComposeProjectName` (`stln-<slug>`), `WebNetworkAlias` (`stln-<slug>-web`); confirm derived `RuntimeNetwork` and `DatabaseVolume` follow automatically. Update the `ProjectConfig` doc comment in `types.go` line ~109 that still references `.stackenv`.
-- [X] T010 Apply the explicit shared-resource naming rule in `core/config/loader.go`, `docker-compose.shared.yml`, and any related config comments: shared compose project and shared network use `stln-shared`; the gateway service network alias uses `stln-gateway`. Confirm rendered nginx upstreams in `infra/gateway/templates.go` still resolve after the project-scoped rename.
-- [X] T011 Update example/default env surfaces so operators are pointed at the correct stack-owned file: keep `.env.stacklane.example` as the stack-defaults template, confirm `.env.example` is not restored as a supported compatibility surface, and delete `.stackenv.example` from the repository.
+- [X] T009 Update default project-scoped runtime naming in `core/config/loader.go` and `core/config/types.go` from `stage-` to `stage-`. Enumerated defaults to change: `ComposeProjectName` (`stage-<slug>`), `WebNetworkAlias` (`stage-<slug>-web`); confirm derived `RuntimeNetwork` and `DatabaseVolume` follow automatically. Update the `ProjectConfig` doc comment in `types.go` line ~109 that still references `.stackenv`.
+- [X] T010 Apply the explicit shared-resource naming rule in `core/config/loader.go`, `docker-compose.shared.yml`, and any related config comments: shared compose project and shared network use `stage-shared`; the gateway service network alias uses `stage-gateway`. Confirm rendered nginx upstreams in `infra/gateway/templates.go` still resolve after the project-scoped rename.
+- [X] T011 Update example/default env surfaces so operators are pointed at the correct stack-owned file: keep `.env.stageserve.example` as the stack-defaults template, confirm `.env.example` is not restored as a supported compatibility surface, and delete `.stackenv.example` from the repository.
 
 **Checkpoint**: Config loading and naming defaults reflect the 004 contract everywhere the runtime derives them.
 
@@ -69,28 +69,28 @@ Single Go module at repository root:
 
 **Goal**: Keep one post-up bootstrap phase, keep it project-local, and make the outcome explicit and recoverable.
 
-**Independent Test**: Configure `STACKLANE_POST_UP_COMMAND` in project-root `.env.stacklane`, run `stacklane up`, and confirm the runtime either completes bootstrap successfully or reports a named bootstrap failure and rolls the project back.
+**Independent Test**: Configure `STAGESERVE_POST_UP_COMMAND` in project-root `.env.stageserve`, run `stage up`, and confirm the runtime either completes bootstrap successfully or reports a named bootstrap failure and rolls the project back.
 
 ### Tests for User Story 1
 
-- [X] T012 [P] [US1] Extend bootstrap precedence and phase tests in `core/config/loader_test.go` and `core/lifecycle/orchestrator_test.go`. Include three negative-path tests proving `STACKLANE_POST_UP_COMMAND` is ignored when set via (a) shell environment, (b) stack-home `.env.stacklane`, (c) project `.env` — and only honored when set via project-root `.env.stacklane`. Also assert the hook only runs in the post-up phase, after readiness, inside the apache service container.
+- [X] T012 [P] [US1] Extend bootstrap precedence and phase tests in `core/config/loader_test.go` and `core/lifecycle/orchestrator_test.go`. Include three negative-path tests proving `STAGESERVE_POST_UP_COMMAND` is ignored when set via (a) shell environment, (b) stack-home `.env.stageserve`, (c) project `.env` — and only honored when set via project-root `.env.stageserve`. Also assert the hook only runs in the post-up phase, after readiness, inside the apache service container.
 
 ### Implementation for User Story 1
 
-- [X] T013 [US1] Restrict bootstrap source to project-root `.env.stacklane` only in `core/config/loader.go`. Concretely: remove `STACKLANE_POST_UP_COMMAND` from `trackedEnvKeys`, exclude it from the `loadStackEnv` merge into `merged`, and resolve `cfg.PostUpCommand` from the project-local map only. Document the special-case in the package docstring.
+- [X] T013 [US1] Restrict bootstrap source to project-root `.env.stageserve` only in `core/config/loader.go`. Concretely: remove `STAGESERVE_POST_UP_COMMAND` from `trackedEnvKeys`, exclude it from the `loadStackEnv` merge into `merged`, and resolve `cfg.PostUpCommand` from the project-local map only. Document the special-case in the package docstring.
 - [ ] T014 [US1] Make the single post-up bootstrap step explicit in `core/lifecycle/orchestrator.go` (`runPostUpHook`), keep it bound to the `apache` service container, and keep its lifecycle step name `post-up-hook` stable in `core/lifecycle/errors.go`. If the contract requires an explicit working directory (see `data-model.md`), set it on the docker exec invocation here. Honor the operator's context cancellation (`Ctrl-C`) by aborting the hook and triggering rollback.
 - [ ] T015 [US1] Update supporting mocks and touched tests in `internal/mocks/mocks.go` and `core/lifecycle/orchestrator_test.go` to match the final bootstrap contract, including any new working-directory or context-cancel behavior introduced by T014.
 - [ ] T016 [US1] Run focused validation for the bootstrap slice with `go test ./core/config ./core/lifecycle` and fix any contract regressions before moving on.
 
-**Checkpoint**: A project-local bootstrap command declared in project-root `.env.stacklane` behaves predictably and fails as a named, rollback-triggering lifecycle step.
+**Checkpoint**: A project-local bootstrap command declared in project-root `.env.stageserve` behaves predictably and fails as a named, rollback-triggering lifecycle step.
 
 ---
 
-## Phase 4: User Story 2 - Distinguish Stacklane Failures From App Failures (Priority: P1)
+## Phase 4: User Story 2 - Distinguish StageServe Failures From App Failures (Priority: P1)
 
 **Goal**: Make lifecycle reporting distinguish bootstrap failure from infrastructure failure and keep status coherent after rollback.
 
-**Independent Test**: Trigger a bootstrap failure after readiness and confirm Stacklane reports a bootstrap-specific lifecycle failure, rolls the project back, and leaves `stacklane status` coherent.
+**Independent Test**: Trigger a bootstrap failure after readiness and confirm StageServe reports a bootstrap-specific lifecycle failure, rolls the project back, and leaves `stage status` coherent.
 
 ### Tests for User Story 2
 
@@ -100,7 +100,7 @@ Single Go module at repository root:
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Tighten bootstrap failure wrapping and remediation messaging in `core/lifecycle/errors.go` and `core/lifecycle/orchestrator.go`. Spot-check the rendered text via `go test` golden output and ensure `cmd/stacklane/commands/up.go` still surfaces the error legibly to operators.
+- [ ] T020 [US2] Tighten bootstrap failure wrapping and remediation messaging in `core/lifecycle/errors.go` and `core/lifecycle/orchestrator.go`. Spot-check the rendered text via `go test` golden output and ensure `cmd/stage/commands/up.go` still surfaces the error legibly to operators.
 - [ ] T021 [P] [US2] Update rollback handling in `core/lifecycle/orchestrator.go` so failed bootstrap attempts leave state and route outcomes coherent: state record is removed (or never persisted as `attached`), gateway route is not added, and unrelated projects' routes are untouched.
 - [ ] T022 [P] [US2] Update `observability/status/status.go` so post-rollback status output reflects reality, keeps bootstrap failure separate from infrastructure readiness failures, and preserves unrelated attached project state.
 - [ ] T023 [US2] Run focused validation for failure-path reporting with `go test ./core/lifecycle ./observability/status` and record any remaining real-daemon-only gap in `specs/004-workflow-and-lifecycle/quickstart.md`.
@@ -113,19 +113,19 @@ Single Go module at repository root:
 
 **Goal**: Align naming, docs, and real-project validation so multi-project operator workflows are easy to follow and verify.
 
-**Independent Test**: Validate one representative bootstrap-sensitive app and one multi-project scenario, explicitly exercising `attach`, DNS routing, shared-gateway readiness, runtime env injection, DB provisioning alignment, bootstrap behavior, rollback isolation, teardown, `.env.stacklane`, and `stln-` naming.
+**Independent Test**: Validate one representative bootstrap-sensitive app and one multi-project scenario, explicitly exercising `attach`, DNS routing, shared-gateway readiness, runtime env injection, DB provisioning alignment, bootstrap behavior, rollback isolation, teardown, `.env.stageserve`, and `stage-` naming.
 
 ### Tests for User Story 3
 
 - [ ] T024 [P] [US3] Extend config and gateway tests in `core/config/loader_test.go` and `infra/gateway/manager_test.go` for final naming behavior after the shared-resource rule is applied (T005, T010).
-- [ ] T024a [P] [US3] Add an attach-slice test in `core/lifecycle/orchestrator_test.go` covering `Orchestrator.Attach` against the new naming: route is added to the gateway, state moves to `attached`, and the rendered upstream uses the `stln-<slug>-web` alias. If a behavior cannot be exercised without a real daemon, record the explicit gap in `quickstart.md` instead.
+- [ ] T024a [P] [US3] Add an attach-slice test in `core/lifecycle/orchestrator_test.go` covering `Orchestrator.Attach` against the new naming: route is added to the gateway, state moves to `attached`, and the rendered upstream uses the `stage-<slug>-web` alias. If a behavior cannot be exercised without a real daemon, record the explicit gap in `quickstart.md` instead.
 
 ### Implementation for User Story 3
 
-- [X] T025 [US3] Update `README.md` to document `.env.stacklane`, `stln-` project-scoped runtime names, explicit `attach` validation, Stacklane-managed shared routing behavior for normal operators, the bootstrap source restriction, and the repo-to-deployed-copy sync point under `$HOME/docker/20i-stack` as a local example. Remove the `.stackenv.example` reference from the directory tree (line ~193).
+- [X] T025 [US3] Update `README.md` to document `.env.stageserve`, `stage-` project-scoped runtime names, explicit `attach` validation, StageServe-managed shared routing behavior for normal operators, the bootstrap source restriction, and the repo-to-deployed-copy sync point under `$HOME/docker/20i-stack` as a local example. Remove the `.stackenv.example` reference from the directory tree (line ~193).
 - [ ] T026 [P] [US3] Update `docs/runtime-contract.md` to match the final config precedence, naming contract, failure classification, shared-resource naming, bootstrap timeout/cancel semantics (per `research.md`), and validation expectations.
-- [X] T027 [P] [US3] Update operator-facing examples and example env guidance around `.env.stacklane.example` and project-local `.env.stacklane`. Confirm `.stackenv.example` was deleted in T011 and that no doc still advertises `.env.example` as a supported surface.
-- [ ] T028 [US3] Update any project-scoped gateway/upstream naming assumptions that changed with `stln-` in `infra/gateway/testdata/*`, `infra/gateway/manager.go`, `infra/gateway/templates.go`, and related docs.
+- [X] T027 [P] [US3] Update operator-facing examples and example env guidance around `.env.stageserve.example` and project-local `.env.stageserve`. Confirm `.stackenv.example` was deleted in T011 and that no doc still advertises `.env.example` as a supported surface.
+- [ ] T028 [US3] Update any project-scoped gateway/upstream naming assumptions that changed with `stage-` in `infra/gateway/testdata/*`, `infra/gateway/manager.go`, `infra/gateway/templates.go`, and related docs.
 - [ ] T029 [US3] Execute the validation workflow in `specs/004-workflow-and-lifecycle/quickstart.md` against one representative app and one multi-project scenario, explicitly checking `attach`, DNS routing, shared-gateway readiness, runtime env injection, DB provisioning alignment, bootstrap behavior, rollback isolation, and teardown; if any check is unrun, record the exact gap in that same file.
 
 **Checkpoint**: The multi-project workflow is documented, named clearly, and validated against real runtime behavior.
@@ -136,9 +136,9 @@ Single Go module at repository root:
 
 **Purpose**: Finish parity, run final checks, and keep documentation and runtime behavior aligned.
 
-- [X] T030 [P] Documentation parity sweep across `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md`, `specs/004-workflow-and-lifecycle/quickstart.md`, and `specs/004-workflow-and-lifecycle/contracts/workflow-lifecycle-contract.md` so operator-facing surfaces agree on `.env.stacklane`, `stln-`, Stacklane-managed shared routing for normal operators, and the bootstrap source restriction, while lower-level contract material retains exact internal names where needed.
-- [X] T030a [P] Code-comment sweep: grep `core/`, `infra/`, `cmd/`, and `internal/` for surviving `stackenv|stacklane-<slug>|stacklane-\$` references in docstrings, comments, help text, and error remediation strings. Update or remove every non-historical, non-regression-test hit. Any remaining matches must be intentional negative-path coverage or lower-level internal naming.
-- [X] T030b [P] CLI surface check: rebuild `stacklane-bin` and confirm `stacklane up --help`, `stacklane status --help`, `stacklane down --help`, `stacklane attach --help`, `stacklane logs --help` contain no references to `.stackenv` or `stacklane-<slug>` paths.
+- [X] T030 [P] Documentation parity sweep across `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md`, `specs/004-workflow-and-lifecycle/quickstart.md`, and `specs/004-workflow-and-lifecycle/contracts/workflow-lifecycle-contract.md` so operator-facing surfaces agree on `.env.stageserve`, `stage-`, StageServe-managed shared routing for normal operators, and the bootstrap source restriction, while lower-level contract material retains exact internal names where needed.
+- [X] T030a [P] Code-comment sweep: grep `core/`, `infra/`, `cmd/`, and `internal/` for surviving `stackenv|stage-<slug>|stage-\$` references in docstrings, comments, help text, and error remediation strings. Update or remove every non-historical, non-regression-test hit. Any remaining matches must be intentional negative-path coverage or lower-level internal naming.
+- [X] T030b [P] CLI surface check: rebuild `stage-bin` and confirm `stage up --help`, `stage status --help`, `stage down --help`, `stage attach --help`, `stage logs --help` contain no references to `.stackenv` or `stage-<slug>` paths.
 - [ ] T031 Run the focused implementation test suite with `go test ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
 - [ ] T032 Validate startup, `attach`, status/inspection, teardown, and one failure path from the final operator workflow; if any part remains manual-only or unrun, record the gap explicitly in `specs/004-workflow-and-lifecycle/quickstart.md`.
 
@@ -202,6 +202,6 @@ Single Go module at repository root:
 ## Notes
 
 - Keep language imperative in code, docs, and task execution where ambiguity would weaken the contract.
-- Do not reintroduce `.stackenv` or `stacklane-<slug>` as supported names while implementing this feature. Per the workspace legacy policy, no backward-compatibility shim is added.
+- Do not reintroduce `.stackenv` or `stage-<slug>` as supported names while implementing this feature. Per the workspace legacy policy, no backward-compatibility shim is added.
 - Treat explicit validation notes as deliverables, not as optional commentary.
 - `handoff.md` is a historical sprint-closure artifact and intentionally still references `.stackenv`. Do not edit it as part of doc-parity work; the banner at the top of that file marks it superseded.

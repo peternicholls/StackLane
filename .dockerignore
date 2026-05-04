@@ -6,7 +6,7 @@
 .vscode/
 .idea/
 .omx/
-.stacklane-state/
+.stageserve-state/
 .20i-state/
 node_modules/
 coverage/

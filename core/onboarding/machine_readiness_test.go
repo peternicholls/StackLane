@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/peternicholls/stacklane/core/onboarding"
+	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
 // TestDockerBinaryCheck_MissingBinary verifies that when the Docker binary
@@ -36,7 +36,7 @@ func TestDockerBinaryCheck_PresentBinary(t *testing.T) {
 // TestStateDirCheck_MissingDir verifies a missing state dir is reported as
 // needs_action with a creation remediation.
 func TestStateDirCheck_MissingDir(t *testing.T) {
-	r := onboarding.CheckStateDir("/tmp/stacklane_test_nonexistent_xyz123")
+	r := onboarding.CheckStateDir("/tmp/stageserve_test_nonexistent_xyz123")
 	if r.ID != "state.dir" {
 		t.Errorf("want id state.dir, got %s", r.ID)
 	}
@@ -60,7 +60,7 @@ func TestStateDirCheck_ExistingDir(t *testing.T) {
 // TestStateDirCheck_FileNotDir verifies that a path pointing to a file (not a
 // directory) is reported as error.
 func TestStateDirCheck_FileNotDir(t *testing.T) {
-	f, err := os.CreateTemp("", "stacklane_test_notdir_*")
+	f, err := os.CreateTemp("", "stageserve_test_notdir_*")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}

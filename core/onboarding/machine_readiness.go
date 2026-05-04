@@ -1,12 +1,16 @@
 package onboarding
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
+
+var portListen = net.Listen
 
 // CheckDockerBinary checks whether the Docker CLI binary exists at path.
 // Pass an empty string to auto-detect via PATH.
@@ -68,7 +72,7 @@ func CheckDockerDaemon() StepResult {
 	}
 }
 
-// CheckStateDir checks whether the StackLane state directory exists and is
+// CheckStateDir checks whether the StageServe state directory exists and is
 // accessible.
 func CheckStateDir(stateDir string) StepResult {
 	label := "State directory"
@@ -94,7 +98,7 @@ func CheckStateDir(stateDir string) StepResult {
 		}
 	}
 	if !info.IsDir() {
-		rem := remediationPtr(fmt.Sprintf("Remove %q and run 'stacklane setup' again", stateDir))
+		rem := remediationPtr(fmt.Sprintf("Remove %q and run 'stage setup' again", stateDir))
 		return StepResult{
 			ID:          "state.dir",
 			Label:       label,
@@ -115,15 +119,57 @@ func CheckStateDir(stateDir string) StepResult {
 // stepID should be "port.80" or "port.443".
 func CheckPort(stepID string, port int) StepResult {
 	label := fmt.Sprintf("Port %d", port)
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	ln, err := net.Listen("tcp", addr)
+	loopbackAddr := fmt.Sprintf("127.0.0.1:%d", port)
+	ln, err := portListen("tcp", loopbackAddr)
 	if err != nil {
-		rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -i :%d", port, port))
+		if isPermissionDenied(err) {
+			wildcardAddr := fmt.Sprintf("0.0.0.0:%d", port)
+			wildcardLn, wildcardErr := portListen("tcp", wildcardAddr)
+			switch {
+			case wildcardErr == nil:
+				wildcardLn.Close()
+				return StepResult{
+					ID:      stepID,
+					Label:   label,
+					Status:  StatusReady,
+					Message: fmt.Sprintf("port %d is available", port),
+				}
+			case isAddrInUse(wildcardErr):
+				rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -i :%d", port, port))
+				return StepResult{
+					ID:          stepID,
+					Label:       label,
+					Status:      StatusNeedsAction,
+					Message:     fmt.Sprintf("port %d is already in use", port),
+					Remediation: rem,
+				}
+			default:
+				rem := remediationPtr(fmt.Sprintf("Check local networking permissions while probing port %d: %v", port, wildcardErr))
+				return StepResult{
+					ID:          stepID,
+					Label:       label,
+					Status:      StatusError,
+					Message:     fmt.Sprintf("could not probe port %d availability", port),
+					Remediation: rem,
+				}
+			}
+		}
+		if isAddrInUse(err) {
+			rem := remediationPtr(fmt.Sprintf("Find and stop the process using port %d: lsof -i :%d", port, port))
+			return StepResult{
+				ID:          stepID,
+				Label:       label,
+				Status:      StatusNeedsAction,
+				Message:     fmt.Sprintf("port %d is already in use", port),
+				Remediation: rem,
+			}
+		}
+		rem := remediationPtr(fmt.Sprintf("Check local networking permissions while probing port %d: %v", port, err))
 		return StepResult{
 			ID:          stepID,
 			Label:       label,
-			Status:      StatusNeedsAction,
-			Message:     fmt.Sprintf("port %d is already in use", port),
+			Status:      StatusError,
+			Message:     fmt.Sprintf("could not probe port %d availability", port),
 			Remediation: rem,
 		}
 	}
@@ -134,6 +180,14 @@ func CheckPort(stepID string, port int) StepResult {
 		Status:  StatusReady,
 		Message: fmt.Sprintf("port %d is available", port),
 	}
+}
+
+func isAddrInUse(err error) bool {
+	return errors.Is(err, syscall.EADDRINUSE)
+}
+
+func isPermissionDenied(err error) bool {
+	return errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM)
 }
 
 // CheckDNS probes whether the local DNS resolver for suffix is configured and

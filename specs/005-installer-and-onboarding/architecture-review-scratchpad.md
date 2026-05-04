@@ -158,15 +158,15 @@ Potential direction:
 - route both adapters through the same implementation
 
 Plan of action:
-1. Re-read the `stacklane init` and fallback helper rules in `spec.md` and `tasks.md` as one ownership problem.
+1. Re-read the `stage init` and fallback helper rules in `spec.md` and `tasks.md` as one ownership problem.
 2. Identify the shared invariants: allowed keys, overwrite policy, validation, preservation semantics, and file ownership.
 3. Distinguish the real seam from the two adapters: explicit init and silent fallback.
 4. Define what the deepened ownership module would need to hide from both adapters.
 5. Prepare task and plan adjustments so the adapters depend on one implementation instead of each carrying part of the rules.
 
 Review outcome:
-- Project-local `.env.stacklane` ownership is now explicit as one shared seam.
-- `stacklane init` is the explicit operator-facing adapter.
+- Project-local `.env.stageserve` ownership is now explicit as one shared seam.
+- `stage init` is the explicit operator-facing adapter.
 - `ensureProjectEnvFile` is the silent fallback adapter.
 - Shared invariants are now called out directly: allowed keys, overwrite policy, validation boundary, and preservation semantics.
 

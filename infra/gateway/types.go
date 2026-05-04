@@ -2,8 +2,8 @@
 // config writes, and reload semantics.
 //
 // Route here replaces the positional pipe-delimited "hostname|alias|slug"
-// strings the bash stacklane_gateway_route_lines emitted, and the typed model
-// removes the heredoc string-interpolation hazards in stacklane_gateway_block_for_route.
+// strings the bash stageserve_gateway_route_lines emitted, and the typed model
+// removes the heredoc string-interpolation hazards in stageserve_gateway_block_for_route.
 package gateway
 
 // Route describes one hostname → upstream-alias mapping.

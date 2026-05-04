@@ -5,19 +5,19 @@
 
 ## Summary
 
-Lock the operator lifecycle contract that now exists in partial form. Keep one post-up bootstrap phase, keep bootstrap configuration project-local, classify bootstrap failure separately from Stacklane infrastructure failure, and keep rollback mandatory on bootstrap failure.
+Lock the operator lifecycle contract that now exists in partial form. Keep one post-up bootstrap phase, keep bootstrap configuration project-local, classify bootstrap failure separately from StageServe infrastructure failure, and keep rollback mandatory on bootstrap failure.
 
-Implement the spec by tightening four concrete surfaces rather than widening the runtime: refactor stack-wide naming from `.stackenv` to `.env.stacklane`, shorten project-scoped runtime naming from `stacklane-` to `stln-`, align documentation and operator guidance to that contract, and formalize real-project validation around the existing orchestrator, config loader, gateway manager, and state store.
+Implement the spec by tightening four concrete surfaces rather than widening the runtime: refactor stack-wide naming from `.stackenv` to `.env.stageserve`, shorten project-scoped runtime naming from `stage-` to `stage-`, align documentation and operator guidance to that contract, and formalize real-project validation around the existing orchestrator, config loader, gateway manager, and state store.
 
 ## Technical Context
 
 **Language/Version**: Go 1.26.2  
 **Primary Dependencies**: `github.com/spf13/cobra`, Docker Engine SDK `github.com/docker/docker`, Go standard library packages for files/templates/JSON, existing compose subprocess wrapper under `infra/compose`  
-**Storage**: local files under `.stacklane-state`, stack-owned env defaults file, generated gateway config, Docker runtime state  
+**Storage**: local files under `.stageserve-state`, stack-owned env defaults file, generated gateway config, Docker runtime state  
 **Testing**: `go test` for unit and slice integration coverage in `core/...`, `infra/...`, `platform/...`; manual real-daemon validation for representative projects  
 **Target Platform**: macOS with Docker Desktop as the primary operator environment  
 **Project Type**: CLI infrastructure tool  
-**Performance Goals**: preserve current operator path speed; do not add extra lifecycle phases, prompts, or repeated manual steps to `stacklane up`  
+**Performance Goals**: preserve current operator path speed; do not add extra lifecycle phases, prompts, or repeated manual steps to `stage up`  
 **Constraints**: preserve deterministic precedence; keep project `.env` application-owned; keep rollback project-scoped; do not add backward-compatibility behavior for old naming; keep shared gateway naming decisions explicit because they affect compose labels and routing  
 **Scale/Scope**: one CLI, one shared gateway, multiple attached local projects, one documented representative single-project app and one multi-project validation scenario
 
@@ -25,10 +25,10 @@ Implement the spec by tightening four concrete surfaces rather than widening the
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [x] Ease-of-use impact is documented. The plan preserves the shortest operator path (`stacklane up`) and removes undocumented bootstrap follow-up work plus ambiguous stack-owned naming.
+- [x] Ease-of-use impact is documented. The plan preserves the shortest operator path (`stage up`) and removes undocumented bootstrap follow-up work plus ambiguous stack-owned naming.
 - [x] Reliability expectations are explicit. Canonical names, precedence order, required config scope, rollback semantics, and failure classification are all fixed in the spec with no compatibility window.
 - [x] Robustness boundaries are defined. Bootstrap execution, rollback, gateway routing, state persistence, and per-project isolation stay project-scoped and must not affect unrelated attached runtimes.
-- [x] Documentation surfaces requiring same-change updates are identified: `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md`, `.env.example`, `.env.stacklane.example`, and any operator guidance or in-code docstring that still references `.stackenv` or `stacklane-<slug>` runtime names.
+- [x] Documentation surfaces requiring same-change updates are identified: `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md`, `.env.example`, `.env.stageserve.example`, and any operator guidance or in-code docstring that still references `.stackenv` or `stage-<slug>` runtime names.
 - [x] Validation covers startup, inspection/status, teardown, and a relevant failure path. Manual real-daemon validation remains required for representative projects because that workflow is not yet formalized in CI.
 
 **Post-Design Re-Check**: Pass. The design keeps one lifecycle phase, no compatibility mode, explicit naming ownership, and real-daemon validation requirements without violating the constitution.
@@ -38,9 +38,9 @@ Implement the spec by tightening four concrete surfaces rather than widening the
 ### Lifecycle Contract
 
 - Keep one bootstrap phase only.
-- Run it after Stacklane-owned readiness succeeds.
+- Run it after StageServe-owned readiness succeeds.
 - Run it inside the `apache` service container.
-- Source it only from project-root `.env.stacklane`. Enforce that restriction in the config loader (not the orchestrator) by removing `STACKLANE_POST_UP_COMMAND` from `trackedEnvKeys` and excluding it from the stack-home defaults merge.
+- Source it only from project-root `.env.stageserve`. Enforce that restriction in the config loader (not the orchestrator) by removing `STAGESERVE_POST_UP_COMMAND` from `trackedEnvKeys` and excluding it from the stack-home defaults merge.
 - Roll the project back if bootstrap fails, including on operator `Ctrl-C` cancellation. Bootstrap has no separate timeout setting; it inherits the foreground process.
 
 Rationale: this locks the already-implemented behavior in `core/lifecycle/orchestrator.go` instead of widening scope into additional phases or optional degraded states.
@@ -52,10 +52,10 @@ Alternatives considered:
 
 ### Naming Contract
 
-- Use `.env.stacklane` as the only stack-owned defaults file. Remove both legacy paths: `<stackHome>/.stackenv` and the `<stackHome>/.env` fallback.
-- Use project-root `.env.stacklane` as the canonical project-local Stacklane config surface as well; location now defines ownership.
-- Use `stln-` as the project-scoped runtime prefix. Enumerated defaults to change: `ComposeProjectName` (`stln-<slug>`) and `WebNetworkAlias` (`stln-<slug>-web`); `RuntimeNetwork` and `DatabaseVolume` derive from `ComposeProjectName`.
-- Keep shared resources aligned to the same `stln-` family: `stln-shared` for the shared compose project and shared network, `stln-gateway` for the gateway service network alias.
+- Use `.env.stageserve` as the only stack-owned defaults file. Remove both legacy paths: `<stackHome>/.stackenv` and the `<stackHome>/.env` fallback.
+- Use project-root `.env.stageserve` as the canonical project-local StageServe config surface as well; location now defines ownership.
+- Use `stage-` as the project-scoped runtime prefix. Enumerated defaults to change: `ComposeProjectName` (`stage-<slug>`) and `WebNetworkAlias` (`stage-<slug>-web`); `RuntimeNetwork` and `DatabaseVolume` derive from `ComposeProjectName`.
+- Keep shared resources aligned to the same `stage-` family: `stage-shared` for the shared compose project and shared network, `stage-gateway` for the gateway service network alias.
 - Keep project `.env` application-owned.
 
 Rationale: the stack-owned file should be visually obvious and editor-friendly, while project-scoped Docker names should leave more room to identify the attached project in operator views.
@@ -85,7 +85,7 @@ specs/004-workflow-and-lifecycle/
 
 ```text
 cmd/
-└── stacklane/
+└── stage/
 
 core/
 ├── config/
@@ -113,7 +113,7 @@ docs/
 
 README.md
 .env.example
-.env.stacklane.example
+.env.stageserve.example
 docker-compose.shared.yml
 docker-compose.yml
 ```
@@ -138,12 +138,12 @@ docker-compose.yml
 
 ### Phase 2 - Implement Runtime Naming And Config Ownership
 
-1. Rename the stack-wide defaults surface from `.stackenv` to `.env.stacklane` in the config loader, docs, and examples. Update the loader package docstring and `loadStackEnv` comment so the in-code description matches the spec.
+1. Rename the stack-wide defaults surface from `.stackenv` to `.env.stageserve` in the config loader, docs, and examples. Update the loader package docstring and `loadStackEnv` comment so the in-code description matches the spec.
 2. Remove old-name handling rather than keeping compatibility behavior in the common path. Specifically: (a) drop the `<stackHome>/.stackenv` reader, (b) drop the `<stackHome>/.env` fallback, (c) add a regression test asserting neither is loaded.
-3. Change project-scoped runtime naming defaults from `stacklane-<slug>` to `stln-<slug>` where those defaults are derived (`ComposeProjectName`, `WebNetworkAlias`).
-4. Keep the shared-gateway compose project and shared network explicit as `stln-shared`, and keep the gateway service network alias as `stln-gateway`, while still distinguishing those fixed shared names from per-project `stln-<slug>` runtime resources.
-5. Restrict `STACKLANE_POST_UP_COMMAND` to project-root `.env.stacklane` only by removing it from `trackedEnvKeys` and excluding it from the stack-defaults merge in `loader.go`.
-6. Delete `.stackenv.example` and add `.env.stacklane.example`.
+3. Change project-scoped runtime naming defaults from `stage-<slug>` to `stage-<slug>` where those defaults are derived (`ComposeProjectName`, `WebNetworkAlias`).
+4. Keep the shared-gateway compose project and shared network explicit as `stage-shared`, and keep the gateway service network alias as `stage-gateway`, while still distinguishing those fixed shared names from per-project `stage-<slug>` runtime resources.
+5. Restrict `STAGESERVE_POST_UP_COMMAND` to project-root `.env.stageserve` only by removing it from `trackedEnvKeys` and excluding it from the stack-defaults merge in `loader.go`.
+6. Delete `.stackenv.example` and add `.env.stageserve.example`.
 
 ### Phase 3 - Tighten Lifecycle Diagnostics And Boundaries
 
@@ -155,7 +155,7 @@ docker-compose.yml
 ### Phase 4 - Align Documentation And Validation
 
 1. Update `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, and `CONTRIBUTING.md` to describe the final naming and lifecycle contract.
-2. Update example env files and any operator guidance that still references the old stack-owned file name. Sweep code comments, docstrings, and CLI help text for surviving `.stackenv` / `stacklane-<slug>` mentions.
+2. Update example env files and any operator guidance that still references the old stack-owned file name. Sweep code comments, docstrings, and CLI help text for surviving `.stackenv` / `stage-<slug>` mentions.
 3. Validate the documented workflow against one representative bootstrap-sensitive app and one multi-project scenario.
 4. Record any remaining manual-only validation gap explicitly instead of implying automation exists.
 
@@ -165,12 +165,12 @@ docker-compose.yml
 
 - Run focused tests for `core/config`, `core/lifecycle`, and any touched naming or gateway slices.
 - Add or update tests that cover:
-  - `.env.stacklane` loading as the canonical stack-wide defaults surface, including `STACK_HOME` override
+  - `.env.stageserve` loading as the canonical stack-wide defaults surface, including `STACK_HOME` override
   - removal of `<stackHome>/.stackenv` and `<stackHome>/.env` as stack-defaults sources (negative regression test)
   - project `.env` remaining application-owned fallback only
-  - `stln-<slug>` and `stln-<slug>-web` project-scoped runtime naming defaults
-  - shared-resource naming staying `stln-shared` / `stln-gateway`
-  - `STACKLANE_POST_UP_COMMAND` source restriction (negative tests for shell env, `.env.stacklane`, project `.env`)
+  - `stage-<slug>` and `stage-<slug>-web` project-scoped runtime naming defaults
+  - shared-resource naming staying `stage-shared` / `stage-gateway`
+  - `STAGESERVE_POST_UP_COMMAND` source restriction (negative tests for shell env, `.env.stageserve`, project `.env`)
   - bootstrap failure classification, operator-cancellation rollback, and post-rollback state coherence
   - rollback isolation between concurrently attached projects
   - `Orchestrator.Attach` against the new naming
@@ -195,10 +195,10 @@ docker-compose.yml
 
 | Risk | Why It Matters | Mitigation |
 |---|---|---|
-| Shared and project-scoped naming drift apart | Operators will not know which Docker resources belong to which contract | Keep `stln-shared` and `stln-gateway` explicit for shared infrastructure and distinguish them from per-project `stln-<slug>` runtime resources |
-| `.env.stacklane` rename leaks into application-owned `.env` behavior | Stacklane would blur the ownership boundary the spec is trying to enforce | Keep stack defaults loading and app `.env` fallback tests separate in `core/config` |
-| `STACKLANE_POST_UP_COMMAND` leaks through shell env or stack defaults | The bootstrap source restriction would be a doc-only claim | Enforce the restriction in the config loader (`trackedEnvKeys`, stack-defaults merge) and assert it with three negative-path tests |
-| Rollback leaves stale recorded state or gateway routes | Failure handling becomes harder to trust than the bootstrap hook it added | Validate rollback through `stacklane status`, state-store assertions, and gateway route checks; assert no `attached` record after rollback |
+| Shared and project-scoped naming drift apart | Operators will not know which Docker resources belong to which contract | Keep `stage-shared` and `stage-gateway` explicit for shared infrastructure and distinguish them from per-project `stage-<slug>` runtime resources |
+| `.env.stageserve` rename leaks into application-owned `.env` behavior | StageServe would blur the ownership boundary the spec is trying to enforce | Keep stack defaults loading and app `.env` fallback tests separate in `core/config` |
+| `STAGESERVE_POST_UP_COMMAND` leaks through shell env or stack defaults | The bootstrap source restriction would be a doc-only claim | Enforce the restriction in the config loader (`trackedEnvKeys`, stack-defaults merge) and assert it with three negative-path tests |
+| Rollback leaves stale recorded state or gateway routes | Failure handling becomes harder to trust than the bootstrap hook it added | Validate rollback through `stage status`, state-store assertions, and gateway route checks; assert no `attached` record after rollback |
 | Bootstrap timeout is implicit and operator-controlled | Operators may expect a baked-in timeout | Document the foreground/`Ctrl-C` model explicitly in the contract and quickstart |
 | Real-project validation remains informal | The feature would look complete on paper but remain unproven in practice | Treat the quickstart validation workflow as a required deliverable, not an optional note |
 

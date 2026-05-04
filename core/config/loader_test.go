@@ -44,7 +44,7 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 		t.Errorf("default SITE_SUFFIX=%q want test", cfg.SiteSuffix)
 	}
 	if cfg.StackKind != "20i" {
-		t.Errorf("default STACKLANE_STACK=%q want 20i", cfg.StackKind)
+		t.Errorf("default STAGESERVE_STACK=%q want 20i", cfg.StackKind)
 	}
 	if want := filepath.Join(cfg.StackHome, "docker-compose.20i.yml"); cfg.StackFile != want {
 		t.Errorf("StackFile=%q want %q", cfg.StackFile, want)
@@ -64,24 +64,24 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.ContainerSiteRoot != "/home/sites/"+cfg.Slug {
 		t.Errorf("ContainerSiteRoot=%q", cfg.ContainerSiteRoot)
 	}
-	if cfg.WebNetworkAlias != "stln-"+cfg.Slug+"-web" {
+	if cfg.WebNetworkAlias != "stage-"+cfg.Slug+"-web" {
 		t.Errorf("WebNetworkAlias=%q", cfg.WebNetworkAlias)
 	}
-	if cfg.ComposeProjectName != "stln-"+cfg.Slug {
+	if cfg.ComposeProjectName != "stage-"+cfg.Slug {
 		t.Errorf("ComposeProjectName=%q", cfg.ComposeProjectName)
 	}
-	if cfg.RuntimeNetwork != "stln-"+cfg.Slug+"-runtime" {
+	if cfg.RuntimeNetwork != "stage-"+cfg.Slug+"-runtime" {
 		t.Errorf("RuntimeNetwork=%q", cfg.RuntimeNetwork)
 	}
-	if cfg.DatabaseVolume != "stln-"+cfg.Slug+"-db-data" {
+	if cfg.DatabaseVolume != "stage-"+cfg.Slug+"-db-data" {
 		t.Errorf("DatabaseVolume=%q", cfg.DatabaseVolume)
 	}
-	// Shared resources now use the same stln- prefix family as project runtimes.
-	if cfg.SharedGateway.Network != "stln-shared" {
-		t.Errorf("SharedGateway.Network=%q want stln-shared", cfg.SharedGateway.Network)
+	// Shared resources now use the same stage- prefix family as project runtimes.
+	if cfg.SharedGateway.Network != "stage-shared" {
+		t.Errorf("SharedGateway.Network=%q want stage-shared", cfg.SharedGateway.Network)
 	}
-	if cfg.SharedGateway.ComposeProjectName != "stln-shared" {
-		t.Errorf("SharedGateway.ComposeProjectName=%q want stln-shared", cfg.SharedGateway.ComposeProjectName)
+	if cfg.SharedGateway.ComposeProjectName != "stage-shared" {
+		t.Errorf("SharedGateway.ComposeProjectName=%q want stage-shared", cfg.SharedGateway.ComposeProjectName)
 	}
 }
 
@@ -89,10 +89,10 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	// .env.stacklane in stack home (lowest of the file layers)
-	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
-	// project .env.stacklane overrides shell env and stack defaults.
-	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "PHP_VERSION=8.2\nSITE_SUFFIX=local\n")
+	// .env.stageserve in stack home (lowest of the file layers)
+	writeFile(t, filepath.Join(stackHome, ".env.stageserve"), "PHP_VERSION=8.0\nSITE_SUFFIX=stack-env\n")
+	// project .env.stageserve overrides shell env and stack defaults.
+	writeFile(t, filepath.Join(projectDir, ".env.stageserve"), "PHP_VERSION=8.2\nSITE_SUFFIX=local\n")
 
 	env := map[string]string{
 		"PHP_VERSION": "8.1",
@@ -113,9 +113,9 @@ func TestLoader_PrecedenceChain(t *testing.T) {
 	if cfg.PHPVersion != "8.3" {
 		t.Errorf("PHP_VERSION precedence: got %q, want 8.3 (CLI)", cfg.PHPVersion)
 	}
-	// Project .env.stacklane wins over shell env when no CLI value.
+	// Project .env.stageserve wins over shell env when no CLI value.
 	if cfg.SiteSuffix != "local" {
-		t.Errorf("SITE_SUFFIX precedence: got %q, want local (project .env.stacklane)", cfg.SiteSuffix)
+		t.Errorf("SITE_SUFFIX precedence: got %q, want local (project .env.stageserve)", cfg.SiteSuffix)
 	}
 	// shell env populates ports when no project-local file / CLI value.
 	if cfg.MySQL.Port != 33060 {
@@ -130,7 +130,7 @@ func TestLoader_ProjectRuntimeEnvDBFallback(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "SITE_SUFFIX=stack-env\n")
+	writeFile(t, filepath.Join(stackHome, ".env.stageserve"), "SITE_SUFFIX=stack-env\n")
 	writeFile(t, filepath.Join(projectDir, ".env"), "DB_HOST=127.0.0.1\nDB_DATABASE=budget_forecaster\nDB_USERNAME=devuser\nDB_PASSWORD=devpass\nSITE_SUFFIX=project-should-be-ignored\n")
 
 	loader := newLoader(t, nil, stackHome)
@@ -140,7 +140,7 @@ func TestLoader_ProjectRuntimeEnvDBFallback(t *testing.T) {
 	}
 
 	if cfg.SiteSuffix != "stack-env" {
-		t.Fatalf("SITE_SUFFIX=%q want stack-env from stacklane .env", cfg.SiteSuffix)
+		t.Fatalf("SITE_SUFFIX=%q want stack-env from stageserve .env", cfg.SiteSuffix)
 	}
 	if cfg.MySQL.Database != "budget_forecaster" {
 		t.Fatalf("MYSQL_DATABASE=%q want budget_forecaster from project .env fallback", cfg.MySQL.Database)
@@ -186,12 +186,12 @@ func TestLoader_StackHomeEnvIsNotLoaded(t *testing.T) {
 	}
 }
 
-// TestLoader_StackHomeOverrideLoadsEnvStacklane confirms the canonical
-// .env.stacklane file is loaded from a STACK_HOME override directory.
-func TestLoader_StackHomeOverrideLoadsEnvStacklane(t *testing.T) {
+// TestLoader_StackHomeOverrideLoadsEnvStageserve confirms the canonical
+// .env.stageserve file is loaded from a STACK_HOME override directory.
+func TestLoader_StackHomeOverrideLoadsEnvStageserve(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
-	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "STACKLANE_STACK=20i\nPHP_VERSION=8.2\nSITE_SUFFIX=stack-defaults\n")
+	writeFile(t, filepath.Join(stackHome, ".env.stageserve"), "STAGESERVE_STACK=20i\nPHP_VERSION=8.2\nSITE_SUFFIX=stack-defaults\n")
 
 	loader := newLoader(t, nil, stackHome)
 	cfg, err := loader.Load(projectDir, CLIFlags{})
@@ -199,30 +199,44 @@ func TestLoader_StackHomeOverrideLoadsEnvStacklane(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	if cfg.PHPVersion != "8.2" {
-		t.Fatalf("PHP_VERSION=%q want 8.2 from .env.stacklane", cfg.PHPVersion)
+		t.Fatalf("PHP_VERSION=%q want 8.2 from .env.stageserve", cfg.PHPVersion)
 	}
 	if cfg.SiteSuffix != "stack-defaults" {
-		t.Fatalf("SITE_SUFFIX=%q want stack-defaults from .env.stacklane", cfg.SiteSuffix)
+		t.Fatalf("SITE_SUFFIX=%q want stack-defaults from .env.stageserve", cfg.SiteSuffix)
 	}
 }
 
 func TestLoader_RejectsUnsupportedStackKind(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
-	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "STACKLANE_STACK=laravel\n")
+	writeFile(t, filepath.Join(projectDir, ".env.stageserve"), "STAGESERVE_STACK=laravel\n")
 
 	loader := newLoader(t, nil, stackHome)
 	_, err := loader.Load(projectDir, CLIFlags{})
 	if err == nil {
 		t.Fatal("load succeeded, want unsupported stack error")
 	}
-	if !strings.Contains(err.Error(), "unsupported STACKLANE_STACK") {
-		t.Fatalf("error=%q want unsupported STACKLANE_STACK message", err)
+	if !strings.Contains(err.Error(), "unsupported STAGESERVE_STACK") {
+		t.Fatalf("error=%q want unsupported STAGESERVE_STACK message", err)
+	}
+}
+
+func TestLoader_RejectsInvalidHostname(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+
+	loader := newLoader(t, nil, stackHome)
+	_, err := loader.Load(projectDir, CLIFlags{SiteHostname: "localhost"})
+	if err == nil {
+		t.Fatal("load succeeded, want invalid hostname error")
+	}
+	if !strings.Contains(err.Error(), "invalid site hostname") {
+		t.Fatalf("error=%q want invalid site hostname message", err)
 	}
 }
 
 func TestLoadEnvFile_UnquotesGeneratedDoubleQuotedValues(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".env.stacklane")
+	path := filepath.Join(t.TempDir(), ".env.stageserve")
 	writeFile(t, path, "SITE_NAME=\"It's \\\"his\\\" site\"\n")
 
 	envMap, err := loadEnvFile(path)
@@ -237,13 +251,13 @@ func TestLoadEnvFile_UnquotesGeneratedDoubleQuotedValues(t *testing.T) {
 func TestLoader_SharedGatewaySettingsAreNotLoadedFromEnv(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
-	writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "SHARED_GATEWAY_HTTP_PORT=8080\nSHARED_GATEWAY_HTTPS_PORT=8443\nSHARED_GATEWAY_NETWORK=stln-central\nSHARED_GATEWAY_COMPOSE_PROJECT_NAME=stln-central\n")
-	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "SHARED_GATEWAY_HTTP_PORT=18080\nSHARED_GATEWAY_HTTPS_PORT=18443\nSHARED_GATEWAY_NETWORK=stln-project\nSHARED_GATEWAY_COMPOSE_PROJECT_NAME=stln-project\n")
+	writeFile(t, filepath.Join(stackHome, ".env.stageserve"), "SHARED_GATEWAY_HTTP_PORT=8080\nSHARED_GATEWAY_HTTPS_PORT=8443\nSHARED_GATEWAY_NETWORK=stage-central\nSHARED_GATEWAY_COMPOSE_PROJECT_NAME=stage-central\n")
+	writeFile(t, filepath.Join(projectDir, ".env.stageserve"), "SHARED_GATEWAY_HTTP_PORT=18080\nSHARED_GATEWAY_HTTPS_PORT=18443\nSHARED_GATEWAY_NETWORK=stage-project\nSHARED_GATEWAY_COMPOSE_PROJECT_NAME=stage-project\n")
 	env := map[string]string{
 		"SHARED_GATEWAY_HTTP_PORT":            "28080",
 		"SHARED_GATEWAY_HTTPS_PORT":           "28443",
-		"SHARED_GATEWAY_NETWORK":              "stln-shell",
-		"SHARED_GATEWAY_COMPOSE_PROJECT_NAME": "stln-shell",
+		"SHARED_GATEWAY_NETWORK":              "stage-shell",
+		"SHARED_GATEWAY_COMPOSE_PROJECT_NAME": "stage-shell",
 	}
 
 	loader := newLoader(t, env, stackHome)
@@ -257,11 +271,11 @@ func TestLoader_SharedGatewaySettingsAreNotLoadedFromEnv(t *testing.T) {
 	if cfg.SharedGateway.HTTPSPort != 443 {
 		t.Fatalf("SharedGateway.HTTPSPort=%d want fixed default 443", cfg.SharedGateway.HTTPSPort)
 	}
-	if cfg.SharedGateway.Network != "stln-shared" {
-		t.Fatalf("SharedGateway.Network=%q want stln-shared", cfg.SharedGateway.Network)
+	if cfg.SharedGateway.Network != "stage-shared" {
+		t.Fatalf("SharedGateway.Network=%q want stage-shared", cfg.SharedGateway.Network)
 	}
-	if cfg.SharedGateway.ComposeProjectName != "stln-shared" {
-		t.Fatalf("SharedGateway.ComposeProjectName=%q want stln-shared", cfg.SharedGateway.ComposeProjectName)
+	if cfg.SharedGateway.ComposeProjectName != "stage-shared" {
+		t.Fatalf("SharedGateway.ComposeProjectName=%q want stage-shared", cfg.SharedGateway.ComposeProjectName)
 	}
 	if cfg.Hostname != cfg.Slug+".test" {
 		t.Fatalf("hostname=%q want project defaults to keep working", cfg.Hostname)
@@ -275,7 +289,7 @@ func TestLoader_PostUpHookFromProjectLocalConfig(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
 
-	writeFile(t, filepath.Join(projectDir, ".env.stacklane"), "STACKLANE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
+	writeFile(t, filepath.Join(projectDir, ".env.stageserve"), "STAGESERVE_POST_UP_COMMAND=php artisan migrate --force --no-interaction\n")
 
 	loader := newLoader(t, nil, stackHome)
 	cfg, err := loader.Load(projectDir, CLIFlags{})
@@ -288,7 +302,7 @@ func TestLoader_PostUpHookFromProjectLocalConfig(t *testing.T) {
 }
 
 // TestLoader_PostUpHookOnlyHonoredFromProjectLocal proves FR-016: the bootstrap
-// command must be ignored when set via shell env, .env.stacklane, or project
+// command must be ignored when set via shell env, .env.stageserve, or project
 // .env. Each case below asserts cfg.PostUpCommand stays empty.
 func TestLoader_PostUpHookOnlyHonoredFromProjectLocal(t *testing.T) {
 	cases := []struct {
@@ -298,20 +312,20 @@ func TestLoader_PostUpHookOnlyHonoredFromProjectLocal(t *testing.T) {
 		{
 			name: "shell env is ignored",
 			setup: func(t *testing.T, stackHome, projectDir string) map[string]string {
-				return map[string]string{"STACKLANE_POST_UP_COMMAND": "echo from-shell"}
+				return map[string]string{"STAGESERVE_POST_UP_COMMAND": "echo from-shell"}
 			},
 		},
 		{
-			name: ".env.stacklane is ignored",
+			name: ".env.stageserve is ignored",
 			setup: func(t *testing.T, stackHome, projectDir string) map[string]string {
-				writeFile(t, filepath.Join(stackHome, ".env.stacklane"), "STACKLANE_POST_UP_COMMAND=echo from-stack-env\n")
+				writeFile(t, filepath.Join(stackHome, ".env.stageserve"), "STAGESERVE_POST_UP_COMMAND=echo from-stack-env\n")
 				return nil
 			},
 		},
 		{
 			name: "project .env is ignored",
 			setup: func(t *testing.T, stackHome, projectDir string) map[string]string {
-				writeFile(t, filepath.Join(projectDir, ".env"), "STACKLANE_POST_UP_COMMAND=echo from-project-env\n")
+				writeFile(t, filepath.Join(projectDir, ".env"), "STAGESERVE_POST_UP_COMMAND=echo from-project-env\n")
 				return nil
 			},
 		},
@@ -327,16 +341,16 @@ func TestLoader_PostUpHookOnlyHonoredFromProjectLocal(t *testing.T) {
 				t.Fatalf("load: %v", err)
 			}
 			if cfg.PostUpCommand != "" {
-				t.Fatalf("PostUpCommand=%q want empty (only project .env.stacklane is honored)", cfg.PostUpCommand)
+				t.Fatalf("PostUpCommand=%q want empty (only project .env.stageserve is honored)", cfg.PostUpCommand)
 			}
 		})
 	}
 }
 
-func TestLoader_IgnoresLegacyStacklaneLocalFile(t *testing.T) {
+func TestLoader_IgnoresLegacyStageserveLocalFile(t *testing.T) {
 	stackHome := t.TempDir()
 	projectDir := t.TempDir()
-	writeFile(t, filepath.Join(projectDir, ".stacklane-local"), "PHP_VERSION=7.4\nSITE_SUFFIX=legacy\n")
+	writeFile(t, filepath.Join(projectDir, ".stageserve-local"), "PHP_VERSION=7.4\nSITE_SUFFIX=legacy\n")
 
 	loader := newLoader(t, nil, stackHome)
 	cfg, err := loader.Load(projectDir, CLIFlags{})
@@ -344,12 +358,12 @@ func TestLoader_IgnoresLegacyStacklaneLocalFile(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	if cfg.PHPVersion != "8.5" {
-		t.Errorf("PHP_VERSION=%q, want default 8.5 because .stacklane-local is ignored", cfg.PHPVersion)
+		t.Errorf("PHP_VERSION=%q, want default 8.5 because .stageserve-local is ignored", cfg.PHPVersion)
 	}
 	if cfg.SiteSuffix != "test" {
-		t.Errorf("SITE_SUFFIX=%q, want default test because .stacklane-local is ignored", cfg.SiteSuffix)
+		t.Errorf("SITE_SUFFIX=%q, want default test because .stageserve-local is ignored", cfg.SiteSuffix)
 	}
-	legacy, err := loadEnvFile(filepath.Join(projectDir, ".stacklane-local"))
+	legacy, err := loadEnvFile(filepath.Join(projectDir, ".stageserve-local"))
 	if err != nil {
 		t.Fatalf("legacy project file should still be parseable for migration checks: %v", err)
 	}
@@ -381,9 +395,28 @@ func TestLoader_IgnoresLegacyProjectAndStatePaths(t *testing.T) {
 	if err != nil {
 		stackHomeResolved = stackHome
 	}
-	wantStateDir := filepath.Join(stackHomeResolved, ".stacklane-state")
+	wantStateDir := filepath.Join(stackHomeResolved, ".stageserve-state")
 	if cfg.StateDir != wantStateDir {
 		t.Errorf("StateDir=%q, want %q", cfg.StateDir, wantStateDir)
+	}
+}
+
+func TestLoader_StateDirUsesStageserveEnvKey(t *testing.T) {
+	stackHome := t.TempDir()
+	projectDir := t.TempDir()
+	wantStateDir := filepath.Join(t.TempDir(), "custom-state")
+	legacyStateDir := filepath.Join(t.TempDir(), "legacy-state")
+	loader := newLoader(t, map[string]string{
+		"STAGESERVE_STATE_DIR": wantStateDir,
+		"STACK_STATE_DIR":      legacyStateDir,
+	}, stackHome)
+
+	cfg, err := loader.Load(projectDir, CLIFlags{})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.StateDir != wantStateDir {
+		t.Fatalf("StateDir=%q, want %q", cfg.StateDir, wantStateDir)
 	}
 }
 
@@ -397,8 +430,8 @@ func TestLoader_WaitTimeoutPrecedence(t *testing.T) {
 		want int
 	}{
 		{"default", nil, 0, 120},
-		{"env wins over default", map[string]string{"STACKLANE_WAIT_TIMEOUT": "30"}, 0, 30},
-		{"flag wins over env", map[string]string{"STACKLANE_WAIT_TIMEOUT": "30"}, 60, 60},
+		{"env wins over default", map[string]string{"STAGESERVE_WAIT_TIMEOUT": "30"}, 0, 30},
+		{"flag wins over env", map[string]string{"STAGESERVE_WAIT_TIMEOUT": "30"}, 60, 60},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

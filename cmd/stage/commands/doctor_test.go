@@ -100,7 +100,7 @@ func TestDoctor_UsesConfigResolvedStateDir(t *testing.T) {
 	root.SetArgs([]string{"--stack-home", stackHome, "doctor", "--json"})
 	_ = root.Execute()
 
-	want := filepath.Join(stackHome, ".stacklane-state")
+	want := filepath.Join(stackHome, ".stageserve-state")
 	if !strings.Contains(buf.String(), want) {
 		t.Fatalf("expected doctor output to reference config-resolved state dir %q, got: %s", want, buf.String())
 	}

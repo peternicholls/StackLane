@@ -1,18 +1,18 @@
-x-stacklane-project-labels: &stacklane-project-labels
-  io.stacklane.project.name: ${PROJECT_NAME:?err}
-  io.stacklane.project.slug: ${PROJECT_SLUG:?err}
-  io.stacklane.project.dir: ${PROJECT_ROOT:?err}
-  io.stacklane.project.hostname: ${PROJECT_HOSTNAME:?err}
-  io.stacklane.project.docroot: ${PROJECT_DOCROOT:?err}
-  io.stacklane.compose_project: ${COMPOSE_PROJECT_NAME:?err}
+x-stageserve-project-labels: &stageserve-project-labels
+  io.stageserve.project.name: ${PROJECT_NAME:?err}
+  io.stageserve.project.slug: ${PROJECT_SLUG:?err}
+  io.stageserve.project.dir: ${PROJECT_ROOT:?err}
+  io.stageserve.project.hostname: ${PROJECT_HOSTNAME:?err}
+  io.stageserve.project.docroot: ${PROJECT_DOCROOT:?err}
+  io.stageserve.compose_project: ${COMPOSE_PROJECT_NAME:?err}
 
 services:
   nginx:
     image: nginx:1.25-alpine
     expose: ["80"]
     labels:
-      <<: *stacklane-project-labels
-      io.stacklane.service: nginx
+      <<: *stageserve-project-labels
+      io.stageserve.service: nginx
     environment:
       CONTAINER_DOCROOT: ${CONTAINER_DOCROOT:?err}
     volumes:
@@ -22,7 +22,7 @@ services:
       apache:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/__stacklane_health >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/__stageserve_health >/dev/null 2>&1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -40,8 +40,8 @@ services:
         PHP_VERSION: ${PHP_VERSION:-8.5}
     expose: ["9000"]
     labels:
-      <<: *stacklane-project-labels
-      io.stacklane.service: apache
+      <<: *stageserve-project-labels
+      io.stageserve.service: apache
     environment:
       DB_HOST: ${DB_HOST:-mariadb}
       DB_PORT: ${DB_PORT:-3306}
@@ -64,8 +64,8 @@ services:
   mariadb:
     image: mariadb:${MYSQL_VERSION:-10.6}
     labels:
-      <<: *stacklane-project-labels
-      io.stacklane.service: mariadb
+      <<: *stageserve-project-labels
+      io.stageserve.service: mariadb
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?err}
       MYSQL_DATABASE: ${MYSQL_DATABASE:?err}
@@ -85,8 +85,8 @@ services:
     image: phpmyadmin/phpmyadmin
     profiles: ["debug"]
     labels:
-      <<: *stacklane-project-labels
-      io.stacklane.service: phpmyadmin
+      <<: *stageserve-project-labels
+      io.stageserve.service: phpmyadmin
     environment:
       PMA_HOST: mariadb
     ports: ["${PMA_PORT:-8081}:80"]
@@ -98,7 +98,7 @@ networks:
   default:
     name: ${PROJECT_RUNTIME_NETWORK:?err}
   shared-gateway:
-    name: ${SHARED_GATEWAY_NETWORK:-stln-shared}
+    name: ${SHARED_GATEWAY_NETWORK:-stage-shared}
     external: true
 
 volumes:

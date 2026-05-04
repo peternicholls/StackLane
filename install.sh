@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# StackLane installer — downloads the correct release asset, verifies checksum,
+# StageServe installer — downloads the correct release asset, verifies checksum,
 # and places the binary in the install destination.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/peternicholls/StackLane/master/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/peternicholls/StageServe/master/install.sh | bash
 #   NONINTERACTIVE=1 bash install.sh
 #
 # Environment overrides (for testing):
-#   STACKLANE_INSTALL_DIR   — destination directory (default: $HOME/.local/bin)
-#   STACKLANE_TEST_ASSET_PATH — bypass download; copy this path as the binary
+#   STAGESERVE_INSTALL_DIR   — destination directory (default: $HOME/.local/bin)
+#   STAGESERVE_TEST_ASSET_PATH — bypass download; copy this path as the binary
 #   NONINTERACTIVE          — suppress prompts and TUI handoff (set to 1)
 #
 # Test-mode flags (internal — used by smoke tests):
@@ -20,9 +20,9 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────────────────────
 # Globals / defaults
 # ──────────────────────────────────────────────────────────────────────────────
-STACKLANE_VERSION="${STACKLANE_VERSION:-latest}"
-STACKLANE_REPO="peternicholls/StackLane"
-STACKLANE_INSTALL_DIR="${STACKLANE_INSTALL_DIR:-$HOME/.local/bin}"
+STAGESERVE_VERSION="${STAGESERVE_VERSION:-latest}"
+STAGESERVE_REPO="peternicholls/StageServe"
+STAGESERVE_INSTALL_DIR="${STAGESERVE_INSTALL_DIR:-$HOME/.local/bin}"
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 
 _test_mode=0
@@ -69,14 +69,14 @@ detect_arch() {
 
 asset_name() {
   local version="$1"
-  echo "stacklane_${version}_$(detect_os)_$(detect_arch)"
+  echo "stage_${version}_$(detect_os)_$(detect_arch)"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Test-mode: expose asset_name and exit (used by smoke tests)
 # ──────────────────────────────────────────────────────────────────────────────
-if [[ "${STACKLANE_TEST_ONLY_ASSET_NAME:-0}" == "1" ]]; then
-  asset_name "${STACKLANE_VERSION}"
+if [[ "${STAGESERVE_TEST_ONLY_ASSET_NAME:-0}" == "1" ]]; then
+  asset_name "${STAGESERVE_VERSION}"
   exit 0
 fi
 
@@ -111,10 +111,10 @@ verify_sha256() {
 # Test-mode: verify-sha only (used by T016 smoke tests)
 # ──────────────────────────────────────────────────────────────────────────────
 if [[ $_verify_sha_only -eq 1 ]]; then
-  if [[ -z "${STACKLANE_TEST_VERIFY_SHA:-}" ]] || [[ -z "${STACKLANE_TEST_SHA_FILE:-}" ]]; then
-    die "--verify-sha requires STACKLANE_TEST_VERIFY_SHA and STACKLANE_TEST_SHA_FILE"
+  if [[ -z "${STAGESERVE_TEST_VERIFY_SHA:-}" ]] || [[ -z "${STAGESERVE_TEST_SHA_FILE:-}" ]]; then
+    die "--verify-sha requires STAGESERVE_TEST_VERIFY_SHA and STAGESERVE_TEST_SHA_FILE"
   fi
-  verify_sha256 "$STACKLANE_TEST_VERIFY_SHA" "$STACKLANE_TEST_SHA_FILE"
+  verify_sha256 "$STAGESERVE_TEST_VERIFY_SHA" "$STAGESERVE_TEST_SHA_FILE"
   exit 0
 fi
 
@@ -122,17 +122,17 @@ fi
 # T019: Deterministic install destination and PATH warning
 # ──────────────────────────────────────────────────────────────────────────────
 ensure_install_dir() {
-  if [[ ! -d "$STACKLANE_INSTALL_DIR" ]]; then
-    info "Creating install directory: $STACKLANE_INSTALL_DIR"
-    mkdir -p "$STACKLANE_INSTALL_DIR"
+  if [[ ! -d "$STAGESERVE_INSTALL_DIR" ]]; then
+    info "Creating install directory: $STAGESERVE_INSTALL_DIR"
+    mkdir -p "$STAGESERVE_INSTALL_DIR"
   fi
 }
 
 check_path_warning() {
-  if [[ ":$PATH:" != *":$STACKLANE_INSTALL_DIR:"* ]]; then
-    warn "$STACKLANE_INSTALL_DIR is not in your PATH."
+  if [[ ":$PATH:" != *":$STAGESERVE_INSTALL_DIR:"* ]]; then
+    warn "$STAGESERVE_INSTALL_DIR is not in your PATH."
     warn "Add the following to your shell profile:"
-    warn "  export PATH=\"\$PATH:$STACKLANE_INSTALL_DIR\""
+    warn "  export PATH=\"\$PATH:$STAGESERVE_INSTALL_DIR\""
   fi
 }
 
@@ -140,21 +140,21 @@ check_path_warning() {
 # Download or use test-supplied asset
 # ──────────────────────────────────────────────────────────────────────────────
 resolve_version() {
-  if [[ "$STACKLANE_VERSION" == "latest" ]]; then
+  if [[ "$STAGESERVE_VERSION" == "latest" ]]; then
     local resolved_version=""
-    if [[ "${STACKLANE_TEST_DISABLE_RELEASE_LOOKUP:-0}" != "1" ]] && command -v curl &>/dev/null; then
+    if [[ "${STAGESERVE_TEST_DISABLE_RELEASE_LOOKUP:-0}" != "1" ]] && command -v curl &>/dev/null; then
       resolved_version=$(curl -fsSL \
-        "https://api.github.com/repos/$STACKLANE_REPO/releases/latest" \
+        "https://api.github.com/repos/$STAGESERVE_REPO/releases/latest" \
         | grep '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
     fi
     # Fallback if curl/API unavailable (e.g., offline test env)
-    STACKLANE_VERSION="${resolved_version:-dev}"
+    STAGESERVE_VERSION="${resolved_version:-dev}"
   fi
 }
 
-if [[ "${STACKLANE_TEST_ONLY_RESOLVED_VERSION:-0}" == "1" ]]; then
+if [[ "${STAGESERVE_TEST_ONLY_RESOLVED_VERSION:-0}" == "1" ]]; then
   resolve_version
-  printf '%s\n' "$STACKLANE_VERSION"
+  printf '%s\n' "$STAGESERVE_VERSION"
   exit 0
 fi
 
@@ -162,8 +162,8 @@ download_binary() {
   local dest="$1"
 
   # Test mode: copy provided asset instead of downloading.
-  if [[ -n "${STACKLANE_TEST_ASSET_PATH:-}" ]]; then
-    cp "$STACKLANE_TEST_ASSET_PATH" "$dest"
+  if [[ -n "${STAGESERVE_TEST_ASSET_PATH:-}" ]]; then
+    cp "$STAGESERVE_TEST_ASSET_PATH" "$dest"
     chmod +x "$dest"
     return 0
   fi
@@ -171,8 +171,8 @@ download_binary() {
   resolve_version
 
   local name
-  name=$(asset_name "$STACKLANE_VERSION")
-  local url="https://github.com/$STACKLANE_REPO/releases/download/$STACKLANE_VERSION/$name"
+  name=$(asset_name "$STAGESERVE_VERSION")
+  local url="https://github.com/$STAGESERVE_REPO/releases/download/$STAGESERVE_VERSION/$name"
   local sha_url="$url.sha256"
 
   info "Downloading $name ..."
@@ -206,20 +206,20 @@ print_next_steps() {
   fi
 
   echo ""
-  ok "StackLane installed to $STACKLANE_INSTALL_DIR/stacklane"
+  ok "StageServe installed to $STAGESERVE_INSTALL_DIR/stage"
   echo ""
 
   if [[ "$NONINTERACTIVE" == "1" ]]; then
     info "Next steps:"
-    echo "  stacklane setup    — run machine-readiness checks and first-run setup"
-    echo "  stacklane doctor   — diagnose machine drift at any time"
+    echo "  stage setup    — run machine-readiness checks and first-run setup"
+    echo "  stage doctor   — diagnose machine drift at any time"
   elif [[ $is_tty -eq 1 ]]; then
     info "To complete setup, run:"
-    echo "  stacklane setup --tui"
+    echo "  stage setup --tui"
   else
     info "Next steps:"
-    echo "  stacklane setup    — run machine-readiness checks and first-run setup"
-    echo "  stacklane doctor   — diagnose machine drift at any time"
+    echo "  stage setup    — run machine-readiness checks and first-run setup"
+    echo "  stage doctor   — diagnose machine drift at any time"
   fi
 }
 
@@ -227,10 +227,10 @@ print_next_steps() {
 # Main
 # ──────────────────────────────────────────────────────────────────────────────
 main() {
-  info "Installing StackLane ..."
+  info "Installing StageServe ..."
 
   ensure_install_dir
-  local dest="$STACKLANE_INSTALL_DIR/stacklane"
+  local dest="$STAGESERVE_INSTALL_DIR/stage"
   download_binary "$dest"
   check_path_warning
   print_next_steps
