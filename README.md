@@ -111,11 +111,12 @@ For a migration walk-through if you are coming from the old single-project local
 
 ## Design References
 
-StageServe treats terminal output as a product interface. Human-facing style guides and prototype terminal interfaces live in [docs/design/](docs/design/):
+StageServe treats terminal output as a product interface. The human-facing design system lives in [docs/design/README.md](docs/design/README.md):
 
 - [Terminal Experience Style Guide](docs/design/terminal-experience-style-guide.md)
 - [Terminal Copy Style Guide](docs/design/terminal-copy-style-guide.md)
-- [Terminal Interface Prototypes](docs/design/terminal-interface-prototypes.md)
+- [Terminal Components And Prototypes](docs/design/terminal-interface-prototypes.md)
+- [Guided Flow Map](docs/design/guided-flow-map.md)
 
 ## Command Semantics
 

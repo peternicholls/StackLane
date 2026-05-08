@@ -20,6 +20,15 @@ StageServe sounds like a capable local-development tool.
 
 Do not write like logs, docs, marketing, or a chat assistant. Terminal copy is product UI.
 
+## First-Level Language Boundary
+
+StageServe has two language zones:
+
+- **First-level product language:** what the user sees in the normal flow.
+- **Advanced and troubleshooting language:** implementation detail for power users.
+
+First-level copy stays in user-goal language. Docker, compose, gateway, runtime, registry, state record, `attach`, and `detach` do not lead the conversation.
+
 ## Copy Hierarchy
 
 Write terminal output in this order:
@@ -46,6 +55,37 @@ Use stable user-facing terms.
 | Planned change | `Will update` | `Mutation plan`, `Diff payload` |
 
 Use internal IDs only in tests, logs, or developer-facing diagnostics. Do not print them as user copy.
+
+## User-Goal Labels
+
+Prefer labels that describe what the user is trying to do.
+
+| Intent | Preferred label | Avoid |
+|---|---|---|
+| Start a configured project | `Run this project` | `Attach`, `Bootstrap runtime` |
+| Stop a running project | `Stop this project` | `Down`, `Shutdown runtime` |
+| Create first project config | `Set up this folder as a project` | `Init`, `Create stack config` |
+| Forget a stopped project | `Remove this project from StageServe` | `Detach`, `Remove record` |
+| Show power-user paths | `More…` | `Extras`, `Utility menu` |
+| Show command equivalents | `Show direct commands` | `Command list`, `CLI mode` |
+| Explain implementation detail | `Advanced and troubleshooting` | `Internals`, `Diagnostics` |
+| Non-interactive path | `Plain text output` | `CLI fallback`, `No TUI mode` |
+
+## Advanced-Only Terms
+
+These terms are valid, but they do not belong in first-level user text unless the screen is explicitly advanced or troubleshooting.
+
+| Advanced-only term | Say this first |
+|---|---|
+| `drift` | `doesn't match what StageServe expects` |
+| `gateway` | `local URL routing` or no first-level term at all |
+| `compose` | no first-level term |
+| `container` | no first-level term |
+| `daemon` | `Docker Desktop isn't running` |
+| `runtime` | `project` or `local site` |
+| `docroot` | `web folder` |
+| `attach` | `Add this project to StageServe` |
+| `detach` | `Remove this project from StageServe` |
 
 ## Sentence Patterns
 
@@ -74,6 +114,17 @@ Actions:
 To fix:  open -a Docker
 Next:  stage init
 Next:  stage project remove api.test --confirm
+```
+
+Guided verdicts:
+
+```text
+Your computer isn't ready yet.
+This folder doesn't have StageServe settings yet.
+This project is ready to run.
+This project is running at http://pete-site.develop.
+This project doesn't match what StageServe expects.
+StageServe couldn't safely choose a next step.
 ```
 
 ## Remediation Copy
@@ -106,6 +157,26 @@ Labels should match user concepts and fit compact terminal layouts.
 
 If a label needs extra explanation, keep the label short and put the explanation in the description line.
 
+## Defaults And Action Copy
+
+When a screen has a highlighted default action, the description beneath that action is part of the contract.
+
+Good:
+
+```text
+▶ Run this project
+	Start the project and open it in your browser.
+```
+
+Bad:
+
+```text
+▶ Continue
+	Proceed with the next step.
+```
+
+The user should know exactly what pressing `enter` will do.
+
 ## Descriptions
 
 Descriptions explain why a check or step matters. They are not instructions.
@@ -137,6 +208,48 @@ Warnings should state the consequence. If an action is destructive, say what cha
 
 Long-running work should name the current step and set expectation only when waiting is normal.
 
+## Confirmation Copy
+
+Confirmation screens must show:
+
+- what StageServe is about to act on
+- what value or path it will use
+- what will change
+- what will not change
+
+Good:
+
+```text
+StageServe will create /Users/pete/sites/pete-site/.env.stageserve.
+StageServe will not change any other file.
+```
+
+Good:
+
+```text
+StageServe will stop pete-site.
+Your files will not be touched.
+http://pete-site.develop will no longer respond.
+```
+
+## Recovery Copy
+
+Recovery copy should describe observable truth first, then the safe next step.
+
+Good:
+
+```text
+StageServe expected this project to be running, but http://pete-site.develop is not responding.
+StageServe will treat this project as stopped. Nothing in your folder will be deleted.
+```
+
+Bad:
+
+```text
+Drift detected.
+The registry and runtime are inconsistent.
+```
+
 ## Editing Checklist
 
 Before shipping terminal copy, check:
@@ -144,6 +257,7 @@ Before shipping terminal copy, check:
 - The verdict is human-readable.
 - The first action is exact and copy-pasteable.
 - Internal status names, IDs, counters, and enum values are absent.
+- First-level copy uses user-goal language before implementation terms.
 - The copy still works without colour or icons.
 - Success is quieter than failure.
 - Descriptions explain why, not what command to run.

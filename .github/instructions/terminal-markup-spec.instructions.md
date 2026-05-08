@@ -4,9 +4,11 @@ applyTo: "core/onboarding/**,cmd/stage/commands/**"
 
 # StageServe Terminal Markup Spec
 
-This spec maps the terminal design contract onto the current StageServe implementation. It governs concrete rendering choices in `projection_tui.go`, `projection_text.go`, `projection_shared.go`, and commands that render a `CommandResult`.
+This spec maps the terminal visual identity and design contract onto the current StageServe implementation. It governs concrete rendering choices in `projection_tui.go`, `projection_text.go`, `projection_shared.go`, and any guided surface that adopts the same StageServe screen grammar.
 
-The markup spec may evolve, but every change must preserve the design contract unless the contract is updated first.
+This is not the graphic-design style guide. The viewable style guide is `docs/design/terminal-visual-style-guide.md`; this file explains how that identity becomes ANSI colour, layout, glyphs, helper functions, and text/TUI parity in code.
+
+The markup spec may evolve, but every change must preserve the visual identity guide and design contract unless those artifacts are updated first.
 
 ## Core Rendering Rules
 
@@ -15,6 +17,19 @@ The markup spec may evolve, but every change must preserve the design contract u
 3. **Colour carries meaning, not decoration.** Each colour has a single consistent semantic.
 4. **Commands must be copy-pasteable.** Any command shown in output must be the exact shell invocation, free of surrounding prose.
 5. **TUI and plain text must carry the same information.** The TUI path may add colour and weight; it must not add or remove content.
+
+## Shared Screen Anatomy
+
+All StageServe screens should be composed from these layers when relevant:
+
+1. **Surface header** — StageServe identity plus current surface.
+2. **Verdict line** — first human sentence about the state.
+3. **Facts or values** — visible defaults, observed facts, or current project details.
+4. **Focus section** — blockers, passing checks, setup steps, recovery steps, or decisions.
+5. **Secondary surface** — `More…`, details, advanced and troubleshooting, logs, or confirmation.
+6. **Footer help** — only keys that matter on that screen.
+
+Do not make the user hunt across multiple equal-weight sections for the reason the screen exists.
 
 ## Colour Palette
 
@@ -70,6 +85,131 @@ Section title variants:
 
 - Issues present: `"Needs fixing"` yellow `"3"` and `"All clear"` green `"2"`.
 - All passing: `"Checks passed"` green `"2"`; no `"Needs fixing"` section.
+
+## Guided Screen Layout
+
+Use this for bare `stage`, project setup, run/stop/logs, recovery, and any future Bubble Tea screen that is action-first instead of evidence-first.
+
+```text
+<blank line>
+  ◆  StageServe                         <Surface>
+  ──────────────────────────────────────
+<blank line>
+  <human verdict sentence>
+<blank line>
+  <one short summary line, optional>
+<blank line>
+── Key facts ───────────────────────────
+<blank line>
+  <Label padded>  <Value padded>  (<short note>)
+<blank line>
+── <Setup steps|Recovery steps|What you can do> ─────
+<blank line>
+  ▶ <default item>
+    <what enter will do>
+<blank line>
+    <secondary item>
+    <why someone would choose it>
+<blank line>
+  <context-specific footer help>
+```
+
+Rules:
+
+- Show the value StageServe will use before the action that commits to it.
+- Keep the highlighted default first and low-risk.
+- Use one dominant focus section. Do not show `Needs fixing`, `Setup steps`, and `What you can do` at equal visual weight on the same screen unless the screen truly needs all three.
+- `More…` is a secondary entry, not a footer-only hidden shortcut.
+
+## Work Checklist Rows
+
+Use work checklists for machine setup and ordered recovery work.
+
+```text
+  ✓  Docker Desktop                     ready
+  ▶  Local DNS for .develop             needs your approval
+     StageServe will add a small file so your browser can open local project URLs.
+     Enter: preview the change and confirm it.
+```
+
+Rules:
+
+- One step may be active at a time.
+- The active step gets description and next-action copy.
+- Status words are short and human-readable.
+- The checklist order communicates the tool-owned path.
+
+## Decision List Rows
+
+Use decision lists for user-goal choices.
+
+```text
+▶ Run this project
+    Start the project and open it in your browser.
+
+  Edit project settings
+    Change site name, web folder, or domain suffix first.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
+```
+
+Rules:
+
+- The description is the contract for what pressing `enter` will do.
+- Do not use vague labels like `Continue` when the concrete action can be named.
+- Do not mix exact shell commands inline with the decision list; keep them in `More…` or report remediation.
+
+## Confirmation Layout
+
+```text
+<Title>
+<blank line>
+  <what StageServe will change>
+  <what StageServe will not change>
+  <path/value/URL>
+<blank line>
+  ▶ <Yes label>    <No label>
+<blank line>
+  ←/→ choose • enter confirm • esc cancel
+```
+
+Rules:
+
+- Show the concrete target path, URL, or project name.
+- Confirmations for destructive or state-changing actions are required.
+- Rare destructive actions may default to the non-destructive option.
+
+## More Panel Layout
+
+`More…` groups power-user material and keeps the main screen focused.
+
+It should contain:
+
+- direct command equivalents
+- plain-text fallback entry
+- advanced and troubleshooting path
+- settings-file or hidden working-folder path when relevant
+
+Do not expose implementation detail as a primary action when it can live in `More…`.
+
+## Logs View
+
+Logs preserve the existing log stream format. The view should add only:
+
+- clear project identity
+- a stable exit hint
+- return-to-screen consistency
+
+Do not reformat logs into decorative cards or tables.
+
+## Footer Help
+
+Footer hints are contextual.
+
+- Show only keys that matter on that screen.
+- Avoid footers that teach the screen through hidden shortcuts alone.
+- Essential power-user paths should be reachable through `More…` even if a shortcut also exists.
 
 ## Compact Mode Layout
 

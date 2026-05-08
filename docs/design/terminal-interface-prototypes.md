@@ -1,184 +1,370 @@
-# StageServe Terminal Interface Prototypes
+# StageServe Terminal Components And Prototypes
 
-These prototypes demonstrate StageServe terminal patterns. They are reference sketches, not byte-perfect renderer snapshots.
+These sketches define the reusable component language for StageServe reports, guided flows, and utility surfaces. They are not byte-perfect snapshots. They are the design contract for how a screen should feel and what it must contain.
 
-Use them when designing a new command, reviewing output structure, or prompting an agent to generate terminal UX. Preserve the intent behind the pattern rather than copying every line.
+Use this file when shaping a new screen, reviewing a prototype, or checking whether the TUI and text fallback still speak the same design language.
 
-## Prototype Format
+For the current production report seed, start with [StageServe Doctor Seed](stage-doctor-seed.md). That document is grounded in the real `stage doctor` command and projector code rather than a forward-looking sketch.
 
-Each pattern includes:
+## Component Vocabulary
 
-- **Context:** where the pattern applies.
-- **User state:** what the user likely needs at this moment.
-- **Interface sketch:** representative terminal output.
-- **Why it works:** the design reasoning.
-- **Rules demonstrated:** the style and copy rules in action.
-
-## Detailed Readiness With Blockers
-
-**Context:** `stage setup` or `stage doctor` finds checks that need attention.
-
-**User state:** The user needs a quick verdict, the exact blocker, and a command they can run.
-
-**Interface sketch:**
+### Surface header
 
 ```text
-  *  StageServe Doctor
-  --------------------------------------
+  ◆  StageServe                         Doctor
+  ──────────────────────────────────────
+```
 
-  X  Not ready - 2 of 7 checks need attention.
+Must contain the StageServe identity and current surface. It establishes context, not verdict.
 
--- Needs fixing ------------------------
+### Verdict line
+
+```text
+  ✗  Not ready - 2 of 7 checks need attention.
+```
+
+The verdict is the first human sentence about the state.
+
+### Key facts or visible defaults
+
+```text
+  Local URL         http://pete-site.develop    (what you'll visit)
+  Web folder        ./public_html               (found here)
+  Target file       /Users/pete/sites/pete-site/.env.stageserve
+```
+
+The user sees the values StageServe will actually use before committing.
+
+### Attention block
+
+```text
+  1  Port 443
+     Port 443 must be free for the local HTTPS gateway to bind to it.
+
+     Something else on your computer is using port 443.
+     To fix:  sudo lsof -nP -iTCP:443 -sTCP:LISTEN
+```
+
+Each item carries a label, why-it-matters line, observed problem, and exact remediation.
+
+### Ready summary row
+
+```text
+  ✓  State directory    exists
+```
+
+Ready rows stay terse and secondary.
+
+### Work checklist
+
+```text
+── Setup steps ─────────────────────────
+
+  ✓  Docker Desktop                     ready
+  ▶  Local DNS for .develop             needs your approval
+     StageServe will add a small file so your browser can open local project URLs.
+     Enter: ask for permission and preview the change.
+```
+
+The active step explains what happens next. The tool owns the sequence.
+
+### Decision list
+
+```text
+── What you can do ─────────────────────
+
+▶ Run this project
+    Start the project and open it in your browser.
+
+  Edit project settings
+    Change site name, web folder, or domain suffix first.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
+```
+
+The default action is first and low-risk.
+
+### Confirmation sheet
+
+```text
+Stop pete-site?
+
+  StageServe will stop this project.
+  Your files will not be touched.
+  http://pete-site.develop will no longer respond.
+
+▶ Yes, stop it    No, keep it running
+```
+
+Confirmations explain what changes and what does not.
+
+### More panel
+
+```text
+More
+
+  Show direct commands
+    stage up
+    stage status
+    stage logs
+
+  Plain text output
+    stage --notui
+
+  Advanced and troubleshooting
+    Hidden working folder, exact checks, and implementation detail.
+```
+
+Power-user material is grouped here, not mixed into the main action list.
+
+### Logs view
+
+```text
+pete-site logs
+
+10:42:13  GET /                  200  12ms
+10:42:14  GET /admin             200  21ms
+
+q/esc exit logs
+```
+
+Logs preserve the stream and the exit hint.
+
+## Reusable Patterns
+
+### Current Production Seed: StageServe Doctor
+
+**Context:** The current shipped report surface for machine readiness and diagnostics.
+
+```text
+  ◆  StageServe Doctor
+  ──────────────────────────────────────
+
+  ✗  Not ready — 2 of 7 checks need attention.
+
+── Needs fixing ────────────────────────
 
   1  Docker daemon
      The Docker daemon must be running before any container can start.
 
-     Docker is installed, but the daemon is not running.
-     To fix:  open -a Docker
+      Docker daemon is not reachable
+      To fix:  Start Docker Desktop or run: sudo systemctl start docker
 
-  2  Port 443
+── All clear ───────────────────────────
+
+  ✓  State directory    exists
+
+  ──────────────────────────────────────
+  Fix the issues above, then run: stage doctor
+```
+
+**Why it matters:** This is the real production seed for report surfaces. It establishes the current section grammar, verdict placement, semantic colour model, and the current remediation slot, even where the wording is still more operational than polished.
+
+For the full code-anchored write-up, see [StageServe Doctor Seed](stage-doctor-seed.md).
+
+### Detailed report with assistance handoff
+
+**Context:** `stage doctor` in an interactive terminal finds blockers.
+
+```text
+  ◆  StageServe                         Doctor
+  ──────────────────────────────────────
+
+  ✗  Not ready - 2 of 7 checks need attention.
+
+── Needs fixing ────────────────────────
+
+  1  Port 443
      Port 443 must be free for the local HTTPS gateway to bind to it.
 
-     Another process is already listening on port 443.
+     Something else on your computer is using port 443.
      To fix:  sudo lsof -nP -iTCP:443 -sTCP:LISTEN
 
--- All clear ---------------------------
+  2  Local DNS resolver
+     Routes local project addresses to this computer.
 
-  OK State directory    exists
-  OK mkcert             installed
+     Your computer cannot yet open local project URLs.
+     To fix:  stage setup
 
-  --------------------------------------
-  Fix the issues above, then run: stage setup
+── All clear ───────────────────────────
+
+  ✓  Docker Desktop    running
+  ✓  State directory   exists
+  ✓  mkcert local CA   installed
+
+── Assistance ──────────────────────────
+
+  StageServe can help with the issues above.
+
+▶ Help me fix these
+    Walk through each issue one at a time.
+
+  Leave it here
+    Exit without changing anything.
 ```
 
-**Why it works:** The verdict appears before details. Problems come before confirmations. Each issue pairs reason, current problem, and exact remediation.
+**Why it works:** the passive report is already useful, then the interactive handoff stays explicit and optional.
 
-**Rules demonstrated:** human verdict, problem-first ordering, command copy-pasteability, semantic sections.
+### Machine setup checklist
 
-## Detailed Readiness All Clear
-
-**Context:** `stage setup` or `stage doctor` confirms everything required is ready.
-
-**User state:** The user needs confirmation and a natural handoff, not a long celebration.
-
-**Interface sketch:**
+**Context:** the machine is not ready yet.
 
 ```text
-  *  StageServe Setup
-  --------------------------------------
+  ◆  StageServe                         Setup
+  ──────────────────────────────────────
 
-  OK Ready - all checks passed.
+  Your computer isn't ready yet.
 
--- Checks passed -----------------------
+  StageServe is checking the computer before it looks at this project.
 
-  OK State directory    exists
-  OK Port 80            available
-  OK Port 443           available
-  OK mkcert             installed
+── Setup steps ─────────────────────────
 
-  --------------------------------------
-  Next: stage init
+  ✓  Docker Desktop                     ready
+  ✓  StageServe working folder          ready
+  ▶  Local DNS for .develop             needs your approval
+     StageServe will add a small file so your browser can open local project URLs.
+     Enter: preview the change and confirm it.
+
+  •  Local HTTPS certificates           optional for this URL
+  •  Network ports 80 and 443           pending
+
+  ? details • q quit
 ```
 
-**Why it works:** Success is quiet and actionable. The output still provides evidence, but it does not over-explain a healthy state.
+**Why it works:** setup is presented as tool-owned work, not a diagnostic menu.
 
-**Rules demonstrated:** quieter success state, concise proof, direct next action.
+### Project setup preview
 
-## Compact Inline Check
-
-**Context:** `stage init` performs a readiness check as part of a larger flow.
-
-**User state:** The user is trying to continue and only needs blockers that affect the current action.
-
-**Interface sketch:**
+**Context:** this folder needs its first `.env.stageserve` file.
 
 ```text
-OK State directory
-!  DNS resolver
-   *.test domains are not resolving to localhost.
-   Next:  sudo brew services restart dnsmasq
+  ◆  StageServe                         Project setup
+  ──────────────────────────────────────
 
->  Fix DNS, then run stage init again.
+  This folder doesn't have StageServe settings yet.
+
+  StageServe will create one file only: .env.stageserve.
+
+── Key facts ───────────────────────────
+
+  Site name         pete-site                          (from folder name)
+  Web folder        ./public_html                      (found here)
+  Domain suffix     .develop                           (machine setting)
+  Local URL         http://pete-site.develop           (what you'll visit)
+  Target file       /Users/pete/sites/pete-site/.env.stageserve
+
+── What you can do ─────────────────────
+
+▶ Use these settings
+    Write .env.stageserve and continue.
+
+  Edit before writing
+    Change site name, web folder, or suffix first.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
 ```
 
-**Why it works:** Compact mode removes descriptions and detailed footers. It keeps the failure close to the next command and prints only one bottom-line next step.
+**Why it works:** the values are visible before the write, and the edit path is one step away.
 
-**Rules demonstrated:** compact hierarchy, one next step, failing checks get details, passing checks stay quiet.
+### Running project screen
 
-## First-Run Onboarding
-
-**Context:** The user runs StageServe before local prerequisites or project state exist.
-
-**User state:** The user needs orientation, not a manual.
-
-**Interface sketch:**
+**Context:** a configured project is already running.
 
 ```text
-  *  StageServe
-  --------------------------------------
+  ◆  StageServe                         Project
+  ──────────────────────────────────────
 
-  !  Local setup is not ready yet.
+  pete-site is running.
 
--- Start here --------------------------
+── Key facts ───────────────────────────
 
-  1  Install trusted local certificates
-     Creates HTTPS certificates without browser warnings.
+  Local URL         http://pete-site.develop           (open in browser)
+  Web folder        ./public_html                      (serving now)
+  Status            healthy                            (started 4 minutes ago)
 
-     Next:  stage setup
+── What you can do ─────────────────────
 
-  2  Register this project
-     Adds the current app to the local StageServe registry.
+▶ View project logs
+    Watch what your project is doing right now.
 
-     Next:  stage init
+  Stop this project
+    Free up the local URL and shut down the project.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
+
+  → open in browser • q quit
 ```
 
-**Why it works:** It frames first run as a short path. It does not expose every underlying check before the user knows the product shape.
+**Why it works:** the default action is informative, not destructive.
 
-**Rules demonstrated:** orientation before detail, ordered path, direct commands.
+### Recovery flow
 
-## Multiple Valid Fix Paths
-
-**Context:** A blocked check can be fixed in more than one reasonable way.
-
-**User state:** The user needs to choose based on intent.
-
-**Interface sketch:**
+**Context:** StageServe cannot safely choose the next step.
 
 ```text
-  !  Port 443 is already in use.
+  ◆  StageServe                         Recovery
+  ──────────────────────────────────────
 
--- Choose a fix ------------------------
+  StageServe couldn't safely choose a next step.
 
-  Stop the process if it should not be using HTTPS locally:
-  sudo lsof -nP -iTCP:443 -sTCP:LISTEN
+  Something went wrong while StageServe was checking this project.
+  StageServe doesn't want to guess. Here is what it can try, in order.
 
-  Use a different gateway port for this project:
-  stage config set https-port 8443
+── Recovery steps ──────────────────────
+
+  ▶  Step 1: look at this project's current state   read-only
+     Nothing on your computer will be changed.
+
+  •  Step 2: look at the running log                read-only
+  •  Step 3: stop and forget the running record     confirmed change
+  •  Step 4: run this project from scratch          uses current settings
+
+── What you can do ─────────────────────
+
+▶ Run step 1
+    Start with the least invasive step.
+
+  Show what went wrong in detail
+    Read a longer plain-language explanation.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
 ```
 
-**Why it works:** The choice is explained in human terms before the exact commands. The commands remain copy-pasteable.
+**Why it works:** the recovery path is ordered, visible, and safe-by-default.
 
-**Rules demonstrated:** decision before command, no ambiguous remediation, exact shell invocations.
+### Plain-text twin
 
-## Long-Running Operation
-
-**Context:** A command starts work that may take several seconds or more.
-
-**User state:** The user needs to know what is happening and what completion will look like.
-
-**Interface sketch:**
+**Context:** `--notui`, `--cli`, or no TTY.
 
 ```text
-  *  StageServe Setup
-  --------------------------------------
+StageServe Project setup
 
-  !  Preparing local HTTPS support.
+This folder doesn't have StageServe settings yet.
+StageServe will create one file only: .env.stageserve.
 
--- Working -----------------------------
+Key facts
+  Site name: pete-site (from folder name)
+  Web folder: ./public_html (found here)
+  Domain suffix: .develop (machine setting)
+  Local URL: http://pete-site.develop (what you'll visit)
+  Target file: /Users/pete/sites/pete-site/.env.stageserve
 
-  OK mkcert installed
-  !  Creating local certificate authority
-     This can take a few seconds the first time.
+What you can do
+> Use these settings
+  Write .env.stageserve and continue.
+
+- Edit before writing
+  Change site name, web folder, or suffix first.
+
+- More…
+  Show direct commands, plain text output, and advanced detail.
+```
+
+**Why it works:** text mode keeps the same truth and ordering, even without colour or richer layout.
 ```
 
 **Why it works:** The output explains the current step without streaming noisy implementation logs. It names why waiting is normal.

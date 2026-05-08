@@ -132,20 +132,36 @@ func TestTextFallbackUsesSurfaceLanguage(t *testing.T) {
 	renderText(&b, planFixtures()[projectMissingConfig])
 	text := b.String()
 	for _, want := range []string{
+		"StageServe Project setup",
 		"This folder doesn't have StageServe settings yet.",
-		"Visible defaults",
+		"Key facts",
 		"http://pete-site.develop",
-		"Highlighted default",
+		"What you can do",
 		"Use these settings",
-		"Footer",
-		"show direct commands",
+		"More…",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("text fallback missing %q:\n%s", want, text)
 		}
 	}
-	if strings.Contains(text, "Primary action") || strings.Contains(text, "Secondary actions") {
+	if strings.Contains(text, "Visible defaults") || strings.Contains(text, "Decision bar") || strings.Contains(text, "Highlighted default") {
 		t.Fatalf("text fallback uses old action model:\n%s", text)
+	}
+}
+
+func TestGuidedPlansExposeMoreAsSecondaryAction(t *testing.T) {
+	for _, id := range []situation{projectMissingConfig, projectReadyToRun, projectRunning, projectDown, driftDetected, unknownError} {
+		plan := planFixtures()[id]
+		found := false
+		for _, item := range plan.Decisions {
+			if item.Label == "More…" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%s is missing More… as a secondary action", id)
+		}
 	}
 }
 
@@ -337,8 +353,8 @@ func TestRenderMainKeepsProjectVerdictOutOfHeaderChrome(t *testing.T) {
 	}
 	for _, want := range []string{
 		plan.StatusHeader,
-		"prototype - tab switches canned situations",
-		"Actions",
+		"Key facts",
+		"What you can do",
 	} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("project render missing %q:\n%s", want, view)

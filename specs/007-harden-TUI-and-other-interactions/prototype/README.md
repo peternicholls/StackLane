@@ -1,6 +1,6 @@
 # Guided Easy Mode Prototype
 
-This is a tracked, non-production prototype for spec 007. It exists to test the easy-mode flow, copy, keyboard model, and visible-default rules before production implementation.
+This is a tracked, non-production prototype for spec 007. It exists to test the guided flow, screen grammar, copy, keyboard model, and visible-default rules before production implementation.
 
 The prototype is fixture-only. It does not read real StageServe state, run Docker, touch local DNS, or write `.env.stageserve`.
 
@@ -20,22 +20,21 @@ go run ./specs/007-harden-TUI-and-other-interactions/prototype --cli --scenario 
 
 ## What It Demonstrates
 
-- Four surfaces: status header, decision bar, tool work panel, persistent footer.
+- One shared screen grammar across reports and guided flows: surface header, verdict line, key facts, focus section, More panel, and footer help.
 - Machine setup as a tool-owned checklist, not a menu.
 - `.develop` local URL examples with visible site name, web folder, suffix, and URL before any write.
 - Project settings preview and confirmation before `.env.stageserve` would be written.
 - Running-project default is non-destructive: `enter` opens logs, not stop.
 - Out-of-sync recovery previews the safe step and confirms before changing records.
 - Doctor-style reports can offer guided help without hiding copy-pasteable commands.
-- Direct commands and advanced troubleshooting live behind footer paths.
+- Direct commands and advanced troubleshooting live behind `More…`, with shortcuts only as accelerators.
 
 ## Controls
 
 - `up` / `down`: move through decision items.
 - `enter`: run the highlighted/default item.
 - `?`: show plain-language detail.
-- `m`: show direct command equivalents.
-- `a`: show advanced/troubleshooting detail.
+- `m`: open `More…`.
 - `tab` / `shift+tab`: switch between canned scenarios.
 - `q`: quit.
 
@@ -79,4 +78,4 @@ Manual TTY checks:
 - Choose `Help me fix these`; confirm the next screen focuses only on Port 443 and explains the read-only sudo check.
 - Choose `Check with sudo`; confirm StageServe shows a read-only sudo confirmation before any result copy.
 - Confirm `Leave it here` exits the prototype without implying a change was made.
-- Press `m`; confirm direct commands are discoverable but not mixed into the decision bar.
+- Press `m` or choose `More…`; confirm direct commands are discoverable but not mixed into the main action list.

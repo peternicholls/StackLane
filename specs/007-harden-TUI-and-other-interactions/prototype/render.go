@@ -6,19 +6,29 @@ import (
 	"strings"
 )
 
-func renderScreenHeader(b *strings.Builder, title, surface string) {
-	if surface == "" {
-		fmt.Fprintf(b, "%s  %s\n", cyan("◆"), bold(title))
-		return
+func sectionHeader(title string) string {
+	const total = 38
+	fill := total - 3 - len(title) - 1
+	if fill < 2 {
+		fill = 2
 	}
-	fmt.Fprintf(b, "%s  %-32s %s\n", cyan("◆"), bold(title), dim(surface))
+	return dim("── ") + bold(title) + dim(" "+strings.Repeat("─", fill))
 }
 
-func renderVerdict(b *strings.Builder, text string) {
-	if strings.TrimSpace(text) == "" {
+func renderScreenHeader(b *strings.Builder, title, surface string) {
+	if surface == "" {
+		fmt.Fprintf(b, "  %s  %s\n", cyan("◆"), bold(title))
+	} else {
+		fmt.Fprintf(b, "  %s  %-32s %s\n", cyan("◆"), bold(title), dim(surface))
+	}
+	fmt.Fprintf(b, "  %s\n", dim(strings.Repeat("─", 38)))
+}
+
+func renderVerdict(b *strings.Builder, p plan) {
+	if strings.TrimSpace(p.StatusHeader) == "" {
 		return
 	}
-	fmt.Fprintf(b, "\n%s\n", text)
+	fmt.Fprintf(b, "\n  %s  %s\n", verdictIcon(p), p.StatusHeader)
 }
 
 func renderActionList(b *strings.Builder, title string, decisions []decisionItem, cursor int) {
@@ -26,7 +36,7 @@ func renderActionList(b *strings.Builder, title string, decisions []decisionItem
 		return
 	}
 	if title != "" {
-		fmt.Fprintf(b, "\n%s\n", bold(title))
+		fmt.Fprintf(b, "\n%s\n\n", sectionHeader(title))
 	} else {
 		fmt.Fprintln(b)
 	}
@@ -35,9 +45,12 @@ func renderActionList(b *strings.Builder, title string, decisions []decisionItem
 		if i == cursor {
 			prefix = yellow("▶")
 		}
-		fmt.Fprintf(b, "%s %s\n", prefix, item.Label)
+		fmt.Fprintf(b, "  %s %s\n", prefix, item.Label)
 		if item.Description != "" {
 			fmt.Fprintf(b, "    %s\n", item.Description)
+		}
+		if i < len(decisions)-1 {
+			fmt.Fprintln(b)
 		}
 	}
 }
@@ -46,12 +59,12 @@ func renderFooterHelp(b *strings.Builder, text string) {
 	if text == "" {
 		return
 	}
-	fmt.Fprintf(b, "\n%s\n", dim(text))
+	fmt.Fprintf(b, "\n  %s\n", dim(text))
 }
 
 func renderReportSections(b *strings.Builder, attention, ready []reportItem) {
 	if len(attention) > 0 {
-		fmt.Fprintf(b, "\n%s\n", bold("Needs fixing"))
+		fmt.Fprintf(b, "\n%s\n\n", sectionHeader("Needs fixing"))
 		for i, item := range attention {
 			fmt.Fprintf(b, "\n  %s  %s\n", yellow(fmt.Sprintf("%d", i+1)), bold(item.Label))
 			if item.Description != "" {
@@ -66,7 +79,7 @@ func renderReportSections(b *strings.Builder, attention, ready []reportItem) {
 		}
 	}
 	if len(ready) > 0 {
-		fmt.Fprintf(b, "\n%s\n", bold("All clear"))
+		fmt.Fprintf(b, "\n%s\n\n", sectionHeader("All clear"))
 		for _, item := range ready {
 			fmt.Fprintf(b, "  %s  %-18s %s\n", green("✓"), item.Label, dim(reportReadySummary(item)))
 		}
@@ -84,25 +97,26 @@ func (m model) renderMain() string {
 	p := m.currentPlan()
 	var b strings.Builder
 	renderScreenHeader(&b, "StageServe", surfaceForPlan(p))
-	fmt.Fprintf(&b, "%s\n", dim("prototype - tab switches canned situations"))
 	if p.Context != "" {
-		fmt.Fprintf(&b, "%s\n", dim(p.Context))
+		fmt.Fprintf(&b, "\n  %s\n", dim(p.Context))
 	}
-	renderVerdict(&b, p.StatusHeader)
+	renderVerdict(&b, p)
 	if p.Summary != "" {
-		fmt.Fprintf(&b, "\n%s\n", p.Summary)
+		fmt.Fprintf(&b, "\n  %s\n", p.Summary)
 	}
 	renderReportSections(&b, p.ReportAttention, p.ReportReady)
-	if p.AssistanceTitle != "" {
-		fmt.Fprintf(&b, "\n%s\n", bold(p.AssistanceTitle))
-	}
 	renderDefaultFacts(&b, "Key facts", p.Defaults)
 	renderWorkPanel(&b, p)
-	renderActionList(&b, "Actions", p.Decisions, m.cursor)
+	if p.AssistanceTitle != "" && len(p.Decisions) > 0 {
+		fmt.Fprintf(&b, "\n%s\n", sectionHeader(p.AssistanceTitle))
+		renderActionList(&b, "", p.Decisions, m.cursor)
+	} else {
+		renderActionList(&b, "What you can do", p.Decisions, m.cursor)
+	}
 	if m.resultTitle != "" {
-		fmt.Fprintf(&b, "\n%s\n%s\n", bold("Latest outcome"), m.resultTitle)
+		fmt.Fprintf(&b, "\n%s\n\n  %s\n", sectionHeader("Recent step"), m.resultTitle)
 		if m.resultBody != "" {
-			fmt.Fprintf(&b, "%s\n", m.resultBody)
+			fmt.Fprintf(&b, "  %s\n", m.resultBody)
 		}
 	}
 	renderFooterHelp(&b, footerText(p))
@@ -140,7 +154,7 @@ func renderDefaultFacts(b *strings.Builder, title string, defaults []defaultValu
 	if len(defaults) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "\n%s\n", bold(title))
+	fmt.Fprintf(b, "\n%s\n\n", sectionHeader(title))
 	for _, item := range defaults {
 		note := ""
 		if item.Note != "" {
@@ -154,23 +168,39 @@ func renderWorkPanel(b *strings.Builder, p plan) {
 	if len(p.WorkItems) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "%s\n", bold("Tool work panel"))
+	fmt.Fprintf(b, "\n%s\n\n", sectionHeader(workSectionTitle(p)))
 	for i, item := range p.WorkItems {
-		cursor := " "
-		if i == p.ActiveWorkIndex {
-			cursor = ">"
+		marker := dim("•")
+		switch {
+		case i == p.ActiveWorkIndex:
+			marker = yellow("▶")
+		case item.Status == statusReady:
+			marker = green("✓")
 		}
-		fmt.Fprintf(b, "%s %-34s %s\n", cursor, item.Label, item.Status)
+		fmt.Fprintf(b, "  %s  %-34s %s\n", marker, item.Label, dim(string(item.Status)))
 		if i == p.ActiveWorkIndex {
 			if item.Description != "" {
-				fmt.Fprintf(b, "    %s\n", item.Description)
+				fmt.Fprintf(b, "     %s\n", item.Description)
 			}
 			if item.EnterAction != "" {
-				fmt.Fprintf(b, "    %s\n", item.EnterAction)
+				fmt.Fprintf(b, "     %s %s\n", bold("Enter:"), item.EnterAction)
 			}
 		}
+		if i < len(p.WorkItems)-1 {
+			fmt.Fprintln(b)
+		}
 	}
-	fmt.Fprintln(b)
+}
+
+func workSectionTitle(p plan) string {
+	switch p.Situation {
+	case machineNotReady:
+		return "Setup steps"
+	case unknownError:
+		return "Recovery steps"
+	default:
+		return "Steps"
+	}
 }
 
 func (m model) renderConfirm() string {
@@ -220,15 +250,25 @@ func (m model) renderDetails() string {
 func (m model) renderCommands() string {
 	p := m.currentPlan()
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s\n\n", bold("More options for this screen"))
-	fmt.Fprintf(&b, "> Show direct commands\n")
+	fmt.Fprintf(&b, "%s\n\n", bold("More…"))
+	fmt.Fprintf(&b, "%s\n\n", sectionHeader("Show direct commands"))
 	for _, cmd := range p.DirectCommands {
-		fmt.Fprintf(&b, "    %s\n", cmd)
+		fmt.Fprintf(&b, "  %s\n", cmd)
 	}
-	fmt.Fprintf(&b, "\n  Advanced and troubleshooting\n")
-	fmt.Fprintf(&b, "    Press a from the main screen for implementation detail.\n")
-	fmt.Fprintf(&b, "\n  Plain text output\n")
-	fmt.Fprintf(&b, "    go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario %s\n", p.Situation)
+	fmt.Fprintf(&b, "\n%s\n\n", sectionHeader("Plain text output"))
+	fmt.Fprintf(&b, "  go run ./specs/007-harden-TUI-and-other-interactions/prototype --notui --scenario %s\n", p.Situation)
+	if target := valueForDefault(p, "Target file"); target != "" {
+		fmt.Fprintf(&b, "\n%s\n\n", sectionHeader("Paths"))
+		fmt.Fprintf(&b, "  Project settings  %s\n", target)
+	}
+	fmt.Fprintf(&b, "\n%s\n\n", sectionHeader("Advanced and troubleshooting"))
+	if len(p.Advanced) == 0 {
+		fmt.Fprintf(&b, "  No advanced detail is needed for this prototype screen.\n")
+	} else {
+		for _, line := range p.Advanced {
+			fmt.Fprintf(&b, "  %s\n", line)
+		}
+	}
 	fmt.Fprintf(&b, "\n%s\n", dim("enter/esc/q back"))
 	return b.String()
 }
@@ -283,10 +323,10 @@ func (m model) renderEdit() string {
 func (m model) renderAssist() string {
 	var b strings.Builder
 	renderScreenHeader(&b, "StageServe", "Port 443")
-	renderVerdict(&b, "Something else on your computer is using port 443.")
-	fmt.Fprintf(&b, "\nStageServe can check which process owns the port. Your computer\n")
-	fmt.Fprintf(&b, "will ask for your password because macOS hides this detail by default.\n")
-	renderActionList(&b, "", []decisionItem{
+	renderVerdict(&b, plan{Situation: doctorReportNeedsHelp, StatusHeader: "Something else on your computer is using port 443."})
+	fmt.Fprintf(&b, "\n  StageServe can check which process owns the port. Your computer\n")
+	fmt.Fprintf(&b, "  will ask for your password because macOS hides this detail by default.\n")
+	renderActionList(&b, "What you can do", []decisionItem{
 		{Label: "Check with sudo", Description: "Run a read-only command to identify the process."},
 		{Label: "Skip this issue", Description: "Leave port 443 unresolved for now."},
 	}, 0)
@@ -304,14 +344,20 @@ func valueForDefault(p plan, label string) string {
 }
 
 func renderText(w io.Writer, p plan) {
-	if p.Surface != "" {
-		fmt.Fprintf(w, "StageServe %s\n\n", p.Surface)
+	surface := surfaceForPlan(p)
+	if surface != "" {
+		fmt.Fprintf(w, "StageServe %s\n\n", surface)
 	} else {
-		fmt.Fprintf(w, "StageServe easy mode prototype\n\n")
+		fmt.Fprintf(w, "StageServe\n\n")
 	}
-	fmt.Fprintf(w, "%s\n", p.StatusHeader)
 	if p.Context != "" {
 		fmt.Fprintf(w, "%s\n", p.Context)
+	}
+	if p.StatusHeader != "" {
+		if p.Context != "" {
+			fmt.Fprintln(w)
+		}
+		fmt.Fprintf(w, "%s\n", p.StatusHeader)
 	}
 	if p.Summary != "" {
 		fmt.Fprintf(w, "\n%s\n", p.Summary)
@@ -338,7 +384,7 @@ func renderText(w io.Writer, p plan) {
 		}
 	}
 	if len(p.Defaults) > 0 {
-		fmt.Fprintf(w, "\nVisible defaults\n")
+		fmt.Fprintf(w, "\nKey facts\n")
 		for _, item := range p.Defaults {
 			fmt.Fprintf(w, "  %s: %s", item.Label, item.Value)
 			if item.Note != "" {
@@ -348,15 +394,18 @@ func renderText(w io.Writer, p plan) {
 		}
 	}
 	if len(p.WorkItems) > 0 {
-		fmt.Fprintf(w, "\nTool work panel\n")
+		fmt.Fprintf(w, "\n%s\n", workSectionTitle(p))
 		for i, item := range p.WorkItems {
-			marker := " "
+			marker := "-"
 			if i == p.ActiveWorkIndex {
 				marker = ">"
 			}
 			fmt.Fprintf(w, "%s %s: %s\n", marker, item.Label, item.Status)
 			if i == p.ActiveWorkIndex {
 				fmt.Fprintf(w, "  %s\n", item.Description)
+				if item.EnterAction != "" {
+					fmt.Fprintf(w, "  Enter: %s\n", item.EnterAction)
+				}
 			}
 		}
 	}
@@ -373,31 +422,46 @@ func renderText(w io.Writer, p plan) {
 			}
 		}
 	} else if len(p.Decisions) > 0 {
-		fmt.Fprintf(w, "\nHighlighted default\n")
-		fmt.Fprintf(w, "  %s\n", p.Decisions[0].Label)
-		fmt.Fprintf(w, "\nDecision bar\n")
-		for _, item := range p.Decisions {
-			fmt.Fprintf(w, "- %s", item.Label)
-			if item.DirectCommand != "" {
-				fmt.Fprintf(w, " (%s)", item.DirectCommand)
+		fmt.Fprintf(w, "\nWhat you can do\n")
+		for i, item := range p.Decisions {
+			prefix := "-"
+			if i == 0 {
+				prefix = ">"
 			}
+			fmt.Fprintf(w, "%s %s\n", prefix, item.Label)
 			fmt.Fprintln(w)
 			if item.Description != "" {
 				fmt.Fprintf(w, "  %s\n", item.Description)
 			}
+			if i < len(p.Decisions)-1 {
+				fmt.Fprintln(w)
+			}
 		}
 	}
-	fmt.Fprintf(w, "\nFooter\n")
-	for _, item := range p.Footer {
-		fmt.Fprintf(w, "- %s\n", item)
+	if p.StatusHeader != "" && false {
+		// no-op placeholder to keep future parity changes localized
 	}
-	if len(p.DirectCommands) > 0 {
-		fmt.Fprintf(w, "\nDirect commands\n")
+	if footer := footerText(p); footer != "" {
+		fmt.Fprintf(w, "\n%s\n", footer)
+	}
+	if false {
 		for _, cmd := range p.DirectCommands {
-			fmt.Fprintf(w, "- %s\n", cmd)
+			fmt.Fprint(w, cmd)
 		}
 	}
 }
+
+func verdictIcon(p plan) string {
+	switch p.Situation {
+	case projectReadyToRun, projectRunning, projectDown:
+		return green("✓")
+	case doctorReportNeedsHelp:
+		return red("✗")
+	default:
+		return yellow("!")
+	}
+}
+
 func bold(s string) string {
 	return "\033[1m" + s + "\033[0m"
 }
@@ -416,4 +480,8 @@ func green(s string) string {
 
 func yellow(s string) string {
 	return "\033[33m" + s + "\033[0m"
+}
+
+func red(s string) string {
+	return "\033[31m" + s + "\033[0m"
 }

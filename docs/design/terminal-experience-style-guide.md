@@ -1,82 +1,174 @@
 # StageServe Terminal Experience Style Guide
 
-StageServe terminal output is a product interface, not incidental console text. Most users will meet StageServe through the terminal, so every command should feel calm, intentional, useful, and recognisably part of the same product.
+StageServe treats every CLI interaction as a designed terminal interface. In an interactive terminal that usually means Bubble Tea and Lip Gloss. In text fallback or JSON-adjacent flows it means the same hierarchy, semantics, and wording without the wrapper.
 
-This guide is for humans and agent designers. Use it before deciding exact wording, ANSI markup, helper functions, or implementation details.
+When the repo talks about the terminal design style guide in the graphic-design sense, start with [Terminal Visual Identity Style Guide](terminal-visual-style-guide.md). This experience guide is the companion interaction layer: it establishes product intent, surface families, and operating rules before specific copy or renderer details.
 
-## Identity
+## Experience Intent
 
 StageServe terminal UX should feel:
 
 - **Clear:** every line helps the user understand state, importance, or action.
-- **Competent:** the command knows what happened, what matters, and what should happen next.
-- **Calm:** failures are direct without being dramatic, apologetic, or noisy.
-- **Practical:** remediation is concrete, copy-pasteable, and close to the problem.
-- **Consistent:** repeated concepts use repeated structure, language, and colour semantics.
-- **Evolvable:** the system supports new workflows without freezing early implementation choices.
+- **Competent:** the tool knows what happened, what matters now, and what should happen next.
+- **Calm:** failures are direct without theatre, apology, or blame.
+- **Practical:** remediation is exact, copy-pasteable, and close to the problem.
+- **Consistent:** report views and guided views still feel like the same product.
+- **Evolvable:** new flows can reuse the same grammar without freezing early implementation choices.
 
-Avoid generic CLI habits: status dumps, internal names, decorative banners, raw enum values, unexplained counters, and vague "try again" messages.
+Avoid generic CLI habits: raw status dumps, decorative banners, internal names in first-level copy, mystery defaults, and vague "try again" guidance.
 
-## Design Layers
+## Surface Families
 
-Think about every terminal interaction in three layers:
+StageServe has three related surface families.
 
-- **UI design:** hierarchy, spacing, colour semantics, icons, grouping, scanability, and rhythm.
-- **UX design:** user journey, information order, default path, blocked path, next actions, follow-up commands, and automation boundaries.
-- **Language:** labels, explanations, problem statements, remediation copy, verdicts, and the detail needed for the user's current state.
+### Report surfaces
 
-Do not solve one layer while ignoring the others. A tidy output that leaves the user unsure what to do is not successful. Correct remediation buried in noisy prose is not successful.
+Examples: `stage doctor`, readiness checks, passive setup reports.
 
-## Interaction Model
+- Report surfaces are evidence-first.
+- They answer context, verdict, blockers, and exact remediation.
+- Interactive terminals may offer assistance after the report is already useful as a standalone artifact.
 
-Each command should answer four questions in order:
+### Guided surfaces
 
-1. **Where am I?** Name the command surface or product area.
-2. **What is the state?** Give a human verdict before details.
-3. **What matters?** Surface blockers, warnings, and confirmations in priority order.
-4. **What can I do next?** Provide the next useful action when there is one.
+Examples: bare `stage`, project setup, run/stop/logs, recovery.
 
-Prefer progressive disclosure. Start with the outcome, then the reason, then the action. Do not force users to infer status from a table of raw checks.
+- Guided surfaces are action-first.
+- They show the current truth, the values StageServe will use, and the safest likely next action.
+- They should reduce the need to remember command names.
 
-## Information Hierarchy
+### Utility surfaces
 
-Use whitespace, order, and weight to create hierarchy. Do not rely on boxes, repeated dividers, or decorative frames.
+Examples: confirmations, More panels, detail views, advanced and troubleshooting, logs.
 
-Detailed output should support reading top to bottom. Compact output should support quick scanning.
+- Utility surfaces support the main flow.
+- They should never become the primary way a user discovers the normal path.
 
-When there are problems, lead with problems. Passing checks can appear afterward as reassurance, not as a barrier before the user sees what needs attention.
+## Operating Rules
 
-When everything passes, the output should become quieter. Do not print ceremonial success text or a long proof list unless the command context needs it.
+### Tool drives, user confirms
 
-## Action Design
+StageServe should own the workflow where there is one obvious safe next step. The user should choose only when there is a real difference in goal, not just a different implementation mechanism.
 
-Commands shown to users must be exact shell invocations. Do not wrap commands in explanatory prose, placeholders, or half-commands.
+### Defaults stay visible
 
-When a single next action is clearly best, provide it directly.
+If StageServe has picked a value, the user can see it before committing. If pressing `enter` performs an action, the screen says what that action is.
 
-When multiple next actions are valid, separate the decision from the commands. Explain the choice briefly, then show exact commands.
+This applies to:
 
-When a command can safely perform the next step automatically, prefer doing the work over asking the user to manually stitch steps together. When automation would be risky, explain the risk in human terms and stop at a clear command or confirmation.
+- site name
+- web folder
+- domain suffix
+- local URL
+- target `.env.stageserve` path
+- the highlighted default action
 
-## Colour And Markup
+### Outcome first, details second
 
-Colour carries semantic meaning only. It is not decoration, brand garnish, or a way to make output feel more designed.
+Every screen should answer four questions in order:
 
-Plain text output must carry the same information as styled output. Styled output may add emphasis and colour; it must not add or remove content.
+1. Where am I?
+2. What is the state?
+3. What matters?
+4. What can I do next?
 
-Use the markup spec in `.github/instructions/terminal-markup-spec.instructions.md` when changing renderer code.
+Prefer progressive disclosure. Start with the outcome, then the reason, then the action. Do not force users to infer meaning from a table of raw checks.
+
+### Safe defaults only
+
+The default action should be the lowest-risk likely goal.
+
+- A running-project screen defaults to logs or inspect, not stop.
+- A destructive or state-changing action confirms before it mutates anything.
+- Rare destructive confirmations bias toward the non-destructive option as the default.
+
+### Plain language first
+
+User-goal labels belong in the main flow. Implementation vocabulary belongs behind `More…` or `Advanced and troubleshooting`.
+
+### Text and TUI carry the same truth
+
+Styled output may add emphasis, colour, and rhythm. It must not add or remove information compared with text fallback.
+
+## Screen Grammar
+
+StageServe screens should be composed from a small reusable grammar.
+
+### Surface header
+
+The header establishes StageServe identity and the current surface, such as `Doctor`, `Setup`, `Project`, or `Recovery`.
+
+### Verdict line
+
+The verdict is the first human sentence about the current state. It appears before diagnostics, values, or actions.
+
+### Key facts or visible defaults
+
+When the screen depends on values, show them in aligned rows with short source notes.
+
+### Focus section
+
+Each screen should have one dominant section. Examples:
+
+- `Needs fixing`
+- `All clear`
+- `Setup steps`
+- `Recovery steps`
+- `What you can do`
+
+Do not stack multiple equally-important sections if one of them is clearly the reason the screen exists.
+
+### Secondary surfaces
+
+Direct commands, advanced detail, hidden file paths, and power-user explanations belong in a `More…` path or equivalent secondary surface.
+
+### Footer help
+
+Footer hints should show only the keys that matter on that screen. Essential behaviour should not depend on undiscoverable shortcuts.
+
+## Bubble Tea And Go Boundaries
+
+StageServe should keep design concerns separate from functional implementation.
+
+### Planner and domain layer
+
+This layer decides the user situation and produces a normalized screen plan. It should not know about cursor movement, Lip Gloss styles, or key bindings.
+
+### Bubble Tea view model
+
+This layer owns transient UI state: focus, cursor position, modal state, edit drafts, pending confirmation, and in-flight actions.
+
+### Renderer and styling layer
+
+This layer owns layout, component helpers, section headers, spacing, glyphs, and semantic colour. It should be reusable across report views and guided views.
+
+### Action layer
+
+This layer executes lifecycle, setup, status, log, or recovery actions and then asks the planner to re-detect. Bubble Tea should not hard-code the business truth of whether a project is running or out of sync.
+
+The current `stage doctor` report rendering is the best visual anchor for report anatomy. Future guided screens should converge on that language rather than inventing a separate one.
+
+## Report-To-Assistance Rule
+
+When an interactive report finds problems, the report still comes first.
+
+- Power users can copy the remediation and leave.
+- Interactive users can opt into guided help.
+- Guided help should take one blocker at a time and explain what StageServe can do, what it cannot do, and what needs confirmation.
+
+Assistance is a handoff, not a replacement for a useful report.
 
 ## Review Checklist
 
-Before approving terminal output, check:
+Before approving a terminal interaction, check:
 
 - The first meaningful line establishes context.
 - The verdict is human-readable and appears before detailed diagnostics.
-- The most important user action is obvious.
+- The screen shows the values StageServe will actually use.
+- The default action is visible and low-risk.
 - Any command shown is exact and copy-pasteable.
-- The same information exists in TUI and plain-text output.
-- Colour has semantic purpose.
-- Copy avoids internal status names and implementation details.
-- Passing and failing states are both intentionally designed.
-- The output gets quieter when there is less to do.
-- A new or changed pattern has a prototype example.
+- First-level copy avoids internal vocabulary.
+- Direct commands and advanced material are secondary, not primary.
+- TUI and text fallback preserve the same information.
+- Success gets quieter as there is less to do.
+- A reusable pattern is reflected in the component catalog or flow map.

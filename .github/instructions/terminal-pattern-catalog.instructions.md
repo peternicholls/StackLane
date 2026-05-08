@@ -8,7 +8,7 @@ This catalog is the example pack for StageServe terminal UX. Use it as precedent
 
 Examples are not frozen templates. They show intent, structure, and reasoning. As StageServe evolves, update the catalog so future work follows current product thinking rather than stale output.
 
-Use `.github/instructions/terminal-copy-style.instructions.md` when adapting the wording in these examples. The catalog demonstrates patterns; the copy style guide governs voice, vocabulary, labels, and remediation phrasing.
+Use `docs/design/terminal-visual-style-guide.md` to understand the visual identity behind these examples. Use `.github/instructions/terminal-copy-style.instructions.md` when adapting the wording. The catalog demonstrates patterns; the visual guide governs identity, and the copy style guide governs voice, vocabulary, labels, and remediation phrasing.
 
 ## Example Format
 
@@ -18,13 +18,13 @@ Each reusable pattern should include:
 - **User state:** what the user likely needs at this moment.
 - **Output sketch:** representative terminal output, not necessarily byte-perfect.
 - **Why it works:** the design reasoning.
-- **Rules demonstrated:** links back to the design contract or markup spec concepts.
+- **Rules demonstrated:** links back to the visual identity guide, design contract, or markup spec concepts.
 
 ## Current StageServe Patterns
 
 ### Detailed Readiness With Blockers
 
-**Context:** `stage setup` or `stage doctor` finds checks that need attention.
+**Context:** Current production `stage doctor` output when checks need attention.
 
 **User state:** The user needs a quick verdict, the exact blocker, and a command they can run.
 
@@ -34,15 +34,15 @@ Each reusable pattern should include:
   ◆  StageServe Doctor
   --------------------------------------
 
-  ✗  Not ready - 2 of 7 checks need attention.
+  ✗  Not ready — 2 of 7 checks need attention.
 
 -- Needs fixing ------------------------
 
   1  Docker daemon
      The Docker daemon must be running before any container can start.
 
-     Docker is installed, but the daemon is not running.
-     To fix:  open -a Docker
+      Docker daemon is not reachable.
+      To fix:  Start Docker Desktop or run: sudo systemctl start docker
 
   2  Port 443
      Port 443 must be free for the local HTTPS gateway to bind to it.
@@ -56,36 +56,39 @@ Each reusable pattern should include:
   ✓  mkcert             installed
 
   --------------------------------------
-  Fix the issues above, then run: stage setup
+  Fix the issues above, then run: stage doctor
 ```
 
-**Why it works:** The verdict appears before details. Problems come before confirmations. Each issue pairs reason, current problem, and exact remediation.
+**Why it works:** The verdict appears before details. Problems come before confirmations. Each issue pairs reason, current problem, and one remediation line directly below it. This is the current production seed for report surfaces.
 
-**Rules demonstrated:** human verdict, problem-first ordering, command copy-pasteability, semantic sections.
+**Rules demonstrated:** human verdict, problem-first ordering, semantic sections, remediation kept adjacent to the blocker.
 
 ### Detailed Readiness All Clear
 
-**Context:** `stage setup` or `stage doctor` confirms everything required is ready.
+**Context:** Current production `stage doctor` output when every check is ready.
 
 **User state:** The user needs confirmation and a natural handoff, not a long celebration.
 
 **Output sketch:**
 
 ```text
-  ◆  StageServe Setup
+  ◆  StageServe Doctor
   --------------------------------------
 
-  ✓  Ready - all checks passed.
+  ✓  All 7 checks passed — your machine is ready.
 
 -- Checks passed -----------------------
 
+  ✓  Docker CLI         docker found at /usr/local/bin/docker
+  ✓  Docker daemon      Docker daemon running (server 27.5.1)
   ✓  State directory    exists
   ✓  Port 80            available
   ✓  Port 443           available
+  ✓  DNS resolver       configured
   ✓  mkcert             installed
 
   --------------------------------------
-  Next: stage init
+  Your machine is ready. Run: stage up
 ```
 
 **Why it works:** Success is quiet and actionable. The output still provides evidence, but it does not over-explain a healthy state.
@@ -114,6 +117,72 @@ Each reusable pattern should include:
 **Rules demonstrated:** compact hierarchy, one next step, failing checks get details, passing checks stay quiet.
 
 ## Anticipated Patterns
+
+### Machine Setup Checklist
+
+**Context:** The machine is not ready yet and StageServe owns an ordered setup sequence.
+
+**User state:** The user needs to see what StageServe has already checked, what step is active now, and what pressing enter will do.
+
+**Output sketch:**
+
+```text
+  ◆  StageServe                         Setup
+  --------------------------------------
+
+  Your computer isn't ready yet.
+
+-- Setup steps -------------------------
+
+  ✓  Docker Desktop                     ready
+  ✓  StageServe working folder          ready
+▶ Local DNS for .develop                needs your approval
+    StageServe will add a small file so your browser can open local project URLs.
+    Enter: preview the change and confirm it.
+
+  •  Local HTTPS certificates           optional for this URL
+  •  Network ports 80 and 443           pending
+```
+
+**Why it works:** Setup is shown as tool-owned progress rather than a menu of diagnostics.
+
+**Rules demonstrated:** tool drives, active step focus, visible next action, compact human status words.
+
+### Project Setup Preview
+
+**Context:** The current folder needs its first `.env.stageserve` file.
+
+**User state:** The user needs to see exactly what StageServe will write before any mutation happens.
+
+**Output sketch:**
+
+```text
+  ◆  StageServe                         Project setup
+  --------------------------------------
+
+  This folder doesn't have StageServe settings yet.
+
+-- Key facts ---------------------------
+
+  Site name       pete-site
+  Web folder      ./public_html
+  Domain suffix   .develop
+  Local URL       http://pete-site.develop
+  Target file     /Users/pete/sites/pete-site/.env.stageserve
+
+▶ Use these settings
+    Write .env.stageserve and continue.
+
+  Edit before writing
+    Change site name, web folder, or suffix first.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
+```
+
+**Why it works:** Defaults are visible before the write, and editing is a secondary action instead of a prerequisite maze.
+
+**Rules demonstrated:** defaults-visible rule, low-risk default, More as secondary surface.
 
 ### First-Run Onboarding
 
@@ -179,6 +248,40 @@ Each reusable pattern should include:
 
 **Rules demonstrated:** visible defaults, lowest-risk default action, plain language, semantic hierarchy, context-specific footer.
 
+### Running Project Screen
+
+**Context:** The project is already running and the user wants a day-2 control surface.
+
+**User state:** The user should be able to inspect first and stop only deliberately.
+
+**Output sketch:**
+
+```text
+  ◆  StageServe                         Project
+  --------------------------------------
+
+  pete-site is running.
+
+-- Key facts ---------------------------
+
+  Local URL       http://pete-site.develop
+  Web folder      ./public_html
+  Status          healthy
+
+▶ View project logs
+    Watch what your project is doing right now.
+
+  Stop this project
+    Free up the local URL and shut down the project.
+
+  More…
+    Show direct commands, plain text output, and advanced detail.
+```
+
+**Why it works:** The default action is informative rather than destructive, and direct commands stay secondary.
+
+**Rules demonstrated:** safe defaults, user-goal labels, More panel boundary.
+
 ### Report To Assisted Help
 
 **Context:** `stage doctor` or another command report finds issues in an interactive terminal.
@@ -219,6 +322,33 @@ Each reusable pattern should include:
 **Why it works:** The command remains useful as a report, but interactive users get a safe handoff into guided help. The wording avoids promising that StageServe can fix every blocker automatically.
 
 **Rules demonstrated:** report-first design, progressive disclosure, no hidden mutation, assistance without noisy menus.
+
+### More Panel
+
+**Context:** The user wants direct commands or implementation detail without turning the main flow into a power-user dashboard.
+
+**User state:** The user needs command equivalents and troubleshooting paths, but not mixed into the primary action list.
+
+**Output sketch:**
+
+```text
+More
+
+  Show direct commands
+    stage up
+    stage status
+    stage logs
+
+  Plain text output
+    stage --notui
+
+  Advanced and troubleshooting
+    Hidden working folder, exact checks, and implementation detail.
+```
+
+**Why it works:** Power-user paths remain easy to reach without overwhelming the main screen.
+
+**Rules demonstrated:** progressive disclosure, advanced boundary, direct commands kept secondary.
 
 ### Multiple Valid Fix Paths
 
