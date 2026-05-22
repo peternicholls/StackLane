@@ -116,7 +116,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 ### First-Run Flow
 
-- [ ] T047 Build the first guided TUI shell with status header, decision bar, tool work panel, details view, and persistent footer.
+- [x] T047 Build the first guided TUI shell with status header, decision bar, tool work panel, details view, and persistent footer.
 - [ ] T048 Route setup checks through existing onboarding result semantics.
 - [ ] T049 Implement guided project config preview using the shared project-env model.
 - [ ] T050 Add confirmation before writing `.env.stageserve`.

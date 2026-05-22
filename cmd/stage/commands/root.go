@@ -108,6 +108,9 @@ func runRootGuidance(cmd *cobra.Command, flags *SharedFlags, interaction *rootIn
 	}
 	context := guidance.Collect(cmd.Context(), cfg, guidance.CollectOptions{Capability: capability})
 	plan := guidance.Plan(context)
+	if capability.AllowsTUI() {
+		return runGuidedTUI(plan, capability, cmd.OutOrStdout())
+	}
 	return guidance.RenderText(cmd.OutOrStdout(), plan)
 }
 

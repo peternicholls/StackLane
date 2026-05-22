@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/peternicholls/stageserve/core/config"
@@ -135,5 +136,18 @@ func TestCollectDoesNotCreateProjectOrStateFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(stateDir); !os.IsNotExist(err) {
 		t.Fatalf("Collect should not create state dir, stat err=%v", err)
+	}
+}
+
+func TestShellViewRendersCoreSurfaces(t *testing.T) {
+	plan := Plan(baseContext())
+	view := renderShellView(plan, 80, 0, true, true)
+	for _, want := range []string{"StageServe", "This project is ready to run.", "Key facts", "What you can do", "Details", "stage up", "q quit"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("shell view missing %q:\n%s", want, view)
+		}
+	}
+	if strings.Contains(view, "\x1b") {
+		t.Fatalf("no-color shell view contains ANSI escape sequences:\n%s", view)
 	}
 }

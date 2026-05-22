@@ -14,8 +14,8 @@ This document locks the StageServe command semantics and state model.
 
 ### `stage`
 
-- With no subcommand, collects cheap local context and prints a guided next-step plan without mutating project config or state.
-- In non-interactive output, prints plain text guidance and exits without prompting.
+- With no subcommand, collects cheap local context and opens the guided shell in an interactive terminal without mutating project config or state.
+- In non-interactive output, prints the same plain text guidance and exits without prompting.
 - `--notui`, `--cli`, and `STAGESERVE_NO_TUI=1` force the same plain text fallback for bare `stage`.
 - `--help`, `-h`, `--version`, and direct subcommands bypass guided routing and keep their normal Cobra behavior.
 - The guided plan uses the same config precedence as direct commands and keeps direct command equivalents visible.

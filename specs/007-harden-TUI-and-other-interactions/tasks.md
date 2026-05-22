@@ -89,8 +89,8 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 - [X] T023 [US1] Add injectable TTY/mode detection seam in `cmd/stage/commands/onboarding_mode.go` or a new root interaction helper.
 - [X] T024 [US1] Add root no-args `RunE` wiring in `cmd/stage/commands/root.go`.
 - [X] T025 [US1] Add text fallback renderer for `core/guidance.NextActionPlan`.
-- [ ] T026 [US1] Add thin TUI adapter entrypoint in `cmd/stage/commands/tui.go`.
-- [ ] T027 [US1] Run focused supporting checks for `cmd/stage/commands` and `core/guidance`.
+- [X] T026 [US1] Add thin TUI adapter entrypoint in `cmd/stage/commands/tui.go`.
+- [X] T027 [US1] Run focused supporting checks for `cmd/stage/commands` and `core/guidance`.
 
 **Checkpoint**: Bare `stage` routes correctly without implementing every guided action yet.
 
