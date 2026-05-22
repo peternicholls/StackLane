@@ -67,6 +67,16 @@ func (r *Reporter) One(ctx context.Context, slug string) (ProjectStatus, error) 
 	return ProjectStatus{}, fmt.Errorf("status: project %q not found", slug)
 }
 
+// OneBySelector reports a single project matched by slug, project name,
+// hostname, or recorded project path.
+func (r *Reporter) OneBySelector(ctx context.Context, selector string) (ProjectStatus, error) {
+	rec, _, err := r.State.StateFileForSelector(selector)
+	if err != nil {
+		return ProjectStatus{}, fmt.Errorf("status: project %q not found: %w", selector, err)
+	}
+	return r.One(ctx, rec.Project.Slug)
+}
+
 func (r *Reporter) byRow(ctx context.Context, row state.RegistryRow) (ProjectStatus, error) {
 	ps := ProjectStatus{
 		Slug:            row.Slug,

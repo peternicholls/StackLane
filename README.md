@@ -47,7 +47,7 @@ chmod +x stage && mv stage ~/.local/bin/
 **Canonical first-run sequence** (after install):
 
 ```bash
-stage setup     # machine-readiness checks + one-time DNS/mkcert setup
+stage setup     # machine-readiness checks with exact fixes
 stage init      # initialize project config in your repo root (optional)
 stage up        # bring the project stack online
 stage doctor    # diagnose drift at any time
@@ -125,11 +125,11 @@ StageServe treats terminal output as a product interface. The human-facing desig
 - `stage down`: Stop only the current project runtime and retain its record with state `down`.
 - `stage detach`: Stop only the current project runtime and remove its attachment record.
 - `stage down --all`: Stop every known runtime and remove all recorded attachment state.
-- `stage status [--project SELECTOR]`: Show shared routing health plus recorded projects, their planned hostnames, hostname route URLs, gateway probe URL, container docroots, registry file path, recorded live container identity, registry drift, and Docker state.
-- `stage logs [--project SELECTOR] [service]`: Follow logs for a selected project runtime.
+- `stage status [--project SELECTOR]`: Show the current recorded project by default, one recorded project selected by slug/name/hostname/path, or every recorded project with `--all`.
+- `stage logs [--project SELECTOR] [service]`: Stream logs for the current project runtime or a selected recorded project. The service can be passed positionally, for example `stage logs apache`, or with `--service apache`.
 - `stage dns-setup`: Bootstrap local suffix resolution on macOS using Homebrew `dnsmasq` on `127.0.0.1:53535` and an `/etc/resolver/<suffix>` file. The documented examples prefer `.develop`.
 
-When `.dev` TLS is enabled, `stage up` and `stage status` surface the route as `https://<hostname>:8443`.
+When `.dev` TLS is enabled, `stage up` and `stage attach` refresh the local mkcert bundle, mount it into the shared gateway, and serve the route as `https://<hostname>:8443` by default.
 
 ## Config Precedence
 

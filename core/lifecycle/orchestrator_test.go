@@ -6,6 +6,7 @@ package lifecycle_test
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -16,7 +17,25 @@ import (
 	"github.com/peternicholls/stageserve/infra/docker"
 	"github.com/peternicholls/stageserve/internal/mocks"
 	"github.com/peternicholls/stageserve/platform/ports"
+	stls "github.com/peternicholls/stageserve/platform/tls"
 )
+
+type tlsProviderStub struct {
+	certFile string
+	keyFile  string
+	hosts    []string
+	calls    int
+}
+
+func (p *tlsProviderStub) Available() bool { return true }
+
+func (p *tlsProviderStub) Ensure(certFile, keyFile string, hosts []string) (stls.Bundle, error) {
+	p.calls++
+	p.certFile = certFile
+	p.keyFile = keyFile
+	p.hosts = append([]string(nil), hosts...)
+	return stls.Bundle{CertFile: certFile, KeyFile: keyFile, Hosts: append([]string(nil), hosts...)}, nil
+}
 
 func newCfg(t *testing.T) config.ProjectConfig {
 	t.Helper()
@@ -168,6 +187,76 @@ func TestOrchestrator_UpRunsPostUpHook(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_UpPassesDebugProfileToProjectCompose(t *testing.T) {
+	cfg := newCfg(t)
+	cfg.Profile = "debug"
+	dc := mocks.NewDocker()
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	if err := orch.Up(context.Background(), cfg); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if len(composer.UpCalls) < 2 {
+		t.Fatalf("compose up calls=%d want at least 2", len(composer.UpCalls))
+	}
+	if len(composer.UpCalls[0].Profiles) != 0 {
+		t.Fatalf("shared gateway should not receive project profiles: %+v", composer.UpCalls[0].Profiles)
+	}
+	if !slices.Contains(composer.UpCalls[1].Profiles, "debug") {
+		t.Fatalf("project compose up profiles=%+v want debug", composer.UpCalls[1].Profiles)
+	}
+}
+
+func TestOrchestrator_UpGeneratesDevTLSAndMountsCerts(t *testing.T) {
+	cfg := newCfg(t)
+	cfg.SiteSuffix = "dev"
+	cfg.Hostname = "demo.dev"
+	cfg.SharedGateway.HTTPSPort = 443
+	tlsProvider := &tlsProviderStub{}
+	dc := mocks.NewDocker()
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa, TLS: tlsProvider,
+	})
+
+	if err := orch.Up(context.Background(), cfg); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if tlsProvider.calls == 0 {
+		t.Fatal("expected TLS provider to be called")
+	}
+	certsDir := filepath.Join(cfg.StateDir, "shared", "certs")
+	if tlsProvider.certFile != filepath.Join(certsDir, "tls.pem") {
+		t.Fatalf("cert file=%q want %q", tlsProvider.certFile, filepath.Join(certsDir, "tls.pem"))
+	}
+	if tlsProvider.keyFile != filepath.Join(certsDir, "tls-key.pem") {
+		t.Fatalf("key file=%q want %q", tlsProvider.keyFile, filepath.Join(certsDir, "tls-key.pem"))
+	}
+	if !slices.Contains(tlsProvider.hosts, "demo.dev") {
+		t.Fatalf("TLS hosts=%+v want demo.dev", tlsProvider.hosts)
+	}
+	if len(composer.UpCalls) == 0 || !slices.Contains(composer.UpCalls[0].Env, "SHARED_GATEWAY_CERTS_DIR="+certsDir) {
+		t.Fatalf("shared gateway env missing certs dir %q: %+v", certsDir, composer.UpCalls)
+	}
+	if !gw.LastInput.TLSEnabled {
+		t.Fatalf("gateway config should be rendered with TLS enabled: %+v", gw.LastInput)
+	}
+	if gw.LastInput.HTTPSPort != 8443 {
+		t.Fatalf("gateway HTTPS port=%d want 8443", gw.LastInput.HTTPSPort)
+	}
+}
+
 func TestOrchestrator_UpRollbackOnPostUpHookFailure(t *testing.T) {
 	cfg := newCfg(t)
 	cfg.PostUpCommand = "php artisan migrate --force --no-interaction"
@@ -208,6 +297,75 @@ func TestOrchestrator_UpRollbackOnPostUpHookFailure(t *testing.T) {
 	}
 	if _, err := st.Load("demo"); err == nil {
 		t.Fatal("state should NOT be saved on hook rollback")
+	}
+}
+
+func TestOrchestrator_UpRollbackOnGatewayReloadFailureRemovesRoute(t *testing.T) {
+	cfg := newCfg(t)
+	dc := mocks.NewDocker()
+	composer := mocks.NewComposer()
+	composer.UpErr = errors.New("gateway reload failed")
+	composer.UpErrOnCall = 3
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	err := orch.Up(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected gateway reload failure")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok || se.Step != "gateway-reload" {
+		t.Fatalf("expected gateway-reload StepError, got %+v", err)
+	}
+	if len(composer.DownCalls) == 0 {
+		t.Fatal("rollback did not invoke compose down")
+	}
+	for _, route := range gw.Routes {
+		if route.Slug == cfg.Slug {
+			t.Fatalf("rolled-back project still has gateway route: %+v", gw.Routes)
+		}
+	}
+	if _, err := st.Load(cfg.Slug); err == nil {
+		t.Fatal("state should NOT be saved on gateway reload failure")
+	}
+}
+
+func TestOrchestrator_UpRollbackOnSaveFailureRemovesRoute(t *testing.T) {
+	cfg := newCfg(t)
+	dc := mocks.NewDocker()
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	st.SaveErr = errors.New("save failed")
+	pa := mocks.NewPorts(ports.Allocation{MySQLPort: 3306, PMAPort: 8081})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	err := orch.Up(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected save failure")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok || se.Step != "save-state" {
+		t.Fatalf("expected save-state StepError, got %+v", err)
+	}
+	if len(composer.DownCalls) == 0 {
+		t.Fatal("rollback did not invoke compose down")
+	}
+	for _, route := range gw.Routes {
+		if route.Slug == cfg.Slug {
+			t.Fatalf("rolled-back project still has gateway route: %+v", gw.Routes)
+		}
+	}
+	if _, err := st.Load(cfg.Slug); err == nil {
+		t.Fatal("state should NOT be saved after save failure")
 	}
 }
 

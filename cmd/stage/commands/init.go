@@ -16,6 +16,8 @@ type initFlags struct {
 	ProjectDir     string
 	Force          bool
 	NonInteractive bool
+	NotUI          bool
+	CLI            bool
 	NoTUI          bool
 	JSON           bool
 }
@@ -24,10 +26,10 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	f := &initFlags{}
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Initialize a project for StageServe",
-		Long:  "Creates a starter .env.stageserve with documented defaults. Validates docroot/site settings and protects existing config from accidental overwrite.",
+		Short: "Set up this folder as a project",
+		Long:  "Creates a starter .env.stageserve with documented defaults. Validates the web folder and protects existing project settings from accidental overwrite.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mode := resolveOutputMode(f.JSON, f.NoTUI, false, f.NonInteractive)
+			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
 			// Determine project directory.
 			projectDir := f.ProjectDir
@@ -108,7 +110,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	cmd.Flags().StringVar(&f.ProjectDir, "project-dir", "", "Project directory (defaults to cwd)")
 	cmd.Flags().BoolVar(&f.Force, "force", false, "Overwrite existing .env.stageserve")
 	cmd.Flags().BoolVar(&f.NonInteractive, "non-interactive", false, "Suppress interactive prompts")
-	cmd.Flags().BoolVar(&f.NoTUI, "no-tui", false, "Force plain-text output")
+	addPlainTextOutputFlags(cmd, &f.NotUI, &f.CLI, &f.NoTUI)
 	cmd.Flags().BoolVar(&f.JSON, "json", false, "Emit JSON envelope only")
 	return cmd
 }

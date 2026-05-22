@@ -63,7 +63,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 - [ ] T012 [P] Refactor `cmd/stage/commands/doctor.go` to use `onboarding.NewProjector`.
 - [ ] T013 [P] Refactor `cmd/stage/commands/init.go` to use `onboarding.NewProjector`.
 - [ ] T014 Implement the spec decision that `stage init` opens an explicit guided project-config form by default in interactive terminals while `--notui`, `--cli`, and `--json` use the final non-guided contracts.
-- [ ] T015 Remove or correct stale `--recheck` documentation in `docs/runtime-contract.md` and any other active docs.
+- [X] T015 Remove or correct stale `--recheck` documentation in `docs/runtime-contract.md` and any other active docs.
 - [ ] T016 Add terminal JSON purity checks for setup, doctor, and init using real command output parsed with `jq` or equivalent.
 - [ ] T017 Run focused supporting checks for `core/onboarding` and `cmd/stage/commands` after terminal JSON checks are green.
 
@@ -82,7 +82,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 - [ ] T020 [P] [US1] Verify `stage --help` bypasses the guided path.
 - [ ] T021 [P] [US1] Verify `STAGESERVE_NO_TUI=1 stage` uses text fallback.
 - [ ] T021a [P] [US1] Verify `stage --notui` and `stage --cli` both use text fallback.
-- [ ] T022 [P] [US1] Verify direct subcommand help paths such as `stage up --help` remain direct and no spec 007 help path advertises `--tui`.
+- [X] T022 [P] [US1] Verify direct subcommand help paths such as `stage up --help` remain direct and no spec 007 help path advertises `--tui`.
 
 ### Implementation
 

@@ -105,3 +105,29 @@ func TestReporter_AttachedRecordWithoutContainersReportsDrift(t *testing.T) {
 		t.Fatalf("expected drift for attached-but-empty record, got none")
 	}
 }
+
+func TestReporter_OneBySelectorMatchesRecordedProjectPath(t *testing.T) {
+	project := attachedProject("beta")
+	project.Dir = "/sites/beta"
+	st := mocks.NewState()
+	if err := st.Save(state.Record{Project: project, AttachmentState: state.StateAttached}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dc := mocks.NewDocker()
+	dc.Containers = []docker.Container{{
+		ID: "beta-nginx-1", Name: "stage-beta-nginx", Service: "nginx", Status: "running",
+		Labels: map[string]string{"com.docker.compose.project": project.ComposeProjectName, "com.docker.compose.service": "nginx"},
+	}}
+
+	reporter := &Reporter{State: st, Docker: dc}
+	got, err := reporter.OneBySelector(context.Background(), "/sites/beta")
+	if err != nil {
+		t.Fatalf("OneBySelector: %v", err)
+	}
+	if got.Slug != "beta" {
+		t.Fatalf("slug=%q want beta", got.Slug)
+	}
+	if len(got.Containers) != 1 || got.Containers[0].Service != "nginx" {
+		t.Fatalf("containers=%+v want nginx", got.Containers)
+	}
+}

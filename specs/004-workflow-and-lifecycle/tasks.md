@@ -101,7 +101,7 @@ Single Go module at repository root:
 ### Implementation for User Story 2
 
 - [ ] T020 [US2] Tighten bootstrap failure wrapping and remediation messaging in `core/lifecycle/errors.go` and `core/lifecycle/orchestrator.go`. Spot-check the rendered text via `go test` golden output and ensure `cmd/stage/commands/up.go` still surfaces the error legibly to operators.
-- [ ] T021 [P] [US2] Update rollback handling in `core/lifecycle/orchestrator.go` so failed bootstrap attempts leave state and route outcomes coherent: state record is removed (or never persisted as `attached`), gateway route is not added, and unrelated projects' routes are untouched.
+- [X] T021 [P] [US2] Update rollback handling in `core/lifecycle/orchestrator.go` so failed bootstrap attempts leave state and route outcomes coherent: state record is removed (or never persisted as `attached`), gateway route is not added, and unrelated projects' routes are untouched.
 - [ ] T022 [P] [US2] Update `observability/status/status.go` so post-rollback status output reflects reality, keeps bootstrap failure separate from infrastructure readiness failures, and preserves unrelated attached project state.
 - [ ] T023 [US2] Run focused validation for failure-path reporting with `go test ./core/lifecycle ./observability/status` and record any remaining real-daemon-only gap in `specs/004-workflow-and-lifecycle/quickstart.md`.
 
@@ -139,7 +139,7 @@ Single Go module at repository root:
 - [X] T030 [P] Documentation parity sweep across `README.md`, `docs/runtime-contract.md`, `docs/architecture.md`, `docs/migration.md`, `CONTRIBUTING.md`, `specs/004-workflow-and-lifecycle/quickstart.md`, and `specs/004-workflow-and-lifecycle/contracts/workflow-lifecycle-contract.md` so operator-facing surfaces agree on `.env.stageserve`, `stage-`, StageServe-managed shared routing for normal operators, and the bootstrap source restriction, while lower-level contract material retains exact internal names where needed.
 - [X] T030a [P] Code-comment sweep: grep `core/`, `infra/`, `cmd/`, and `internal/` for surviving `stackenv|stage-<slug>|stage-\$` references in docstrings, comments, help text, and error remediation strings. Update or remove every non-historical, non-regression-test hit. Any remaining matches must be intentional negative-path coverage or lower-level internal naming.
 - [X] T030b [P] CLI surface check: rebuild `stage-bin` and confirm `stage up --help`, `stage status --help`, `stage down --help`, `stage attach --help`, `stage logs --help` contain no references to `.stackenv` or `stage-<slug>` paths.
-- [ ] T031 Run the focused implementation test suite with `go test ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
+- [X] T031 Run the focused implementation test suite with `go test ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
 - [ ] T032 Validate startup, `attach`, status/inspection, teardown, and one failure path from the final operator workflow; if any part remains manual-only or unrun, record the gap explicitly in `specs/004-workflow-and-lifecycle/quickstart.md`.
 
 ---

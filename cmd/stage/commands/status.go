@@ -14,10 +14,16 @@ import (
 )
 
 func NewStatus(flags *SharedFlags) *cobra.Command {
-	return &cobra.Command{
+	var projectSelector string
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show project status",
+		Long:  "Shows the current project by default, every recorded project with --all, or one recorded project selected by slug, name, hostname, or path with --project.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if flags.All && projectSelector != "" {
+				return fmt.Errorf("status: use either --all or --project, not both")
+			}
 			cfg, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -43,7 +49,12 @@ func NewStatus(flags *SharedFlags) *cobra.Command {
 				}
 				return nil
 			}
-			one, err := r.One(ctx, cfg.Slug)
+			var one status.ProjectStatus
+			if projectSelector != "" {
+				one, err = r.OneBySelector(ctx, projectSelector)
+			} else {
+				one, err = r.One(ctx, cfg.Slug)
+			}
 			if err != nil {
 				return err
 			}
@@ -51,4 +62,6 @@ func NewStatus(flags *SharedFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&projectSelector, "project", "", "Recorded project selector (slug, name, hostname, or path)")
+	return cmd
 }

@@ -20,7 +20,8 @@ var validSuffixes = map[string]bool{
 type setupFlags struct {
 	Suffix         string
 	NonInteractive bool
-	TUI            bool
+	NotUI          bool
+	CLI            bool
 	NoTUI          bool
 	JSON           bool
 }
@@ -29,15 +30,15 @@ func NewSetup(shared *SharedFlags) *cobra.Command {
 	f := &setupFlags{}
 	cmd := &cobra.Command{
 		Use:   "setup",
-		Short: "Run machine-readiness checks and first-run setup",
-		Long:  "Validates prerequisites (Docker, DNS, ports, state dir) and runs one-time setup steps. Reports each step as ready, needs_action, or error with exact remediation.",
+		Short: "Check whether this computer is ready",
+		Long:  "Checks Docker, local DNS, ports, the StageServe state directory, and mkcert. This command reports readiness and exact fixes; it does not change machine settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Validate --suffix value.
 			if !validSuffixes[f.Suffix] {
 				return fmt.Errorf("invalid --suffix value %q: must be one of 'develop', 'dev', 'test', or empty", f.Suffix)
 			}
 
-			mode := resolveOutputMode(f.JSON, f.NoTUI, f.TUI, f.NonInteractive)
+			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
 			stateDir, err := resolveOnboardingStateDir(shared)
 			if err != nil {
@@ -79,9 +80,8 @@ func NewSetup(shared *SharedFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&f.Suffix, "suffix", "", "Site suffix (develop|dev|test)")
-	cmd.Flags().BoolVar(&f.NonInteractive, "non-interactive", false, "Suppress prompts; implies --no-tui")
-	cmd.Flags().BoolVar(&f.TUI, "tui", false, "Force TUI mode")
-	cmd.Flags().BoolVar(&f.NoTUI, "no-tui", false, "Force plain-text output")
+	cmd.Flags().BoolVar(&f.NonInteractive, "non-interactive", false, "Suppress prompts and use plain text output")
+	addPlainTextOutputFlags(cmd, &f.NotUI, &f.CLI, &f.NoTUI)
 	cmd.Flags().BoolVar(&f.JSON, "json", false, "Emit JSON envelope only")
 	return cmd
 }

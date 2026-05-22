@@ -6,16 +6,23 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/peternicholls/stageserve/core/config"
 	"github.com/spf13/cobra"
 )
 
 func NewUp(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "up",
-		Short: "Bring a project's stack online",
+		Short: "Run this project",
+		Long:  "Starts the current project, waits for its containers to become healthy, and routes its local hostname through StageServe.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
+			if err != nil {
+				return err
+			}
+			cfg, err = applyRuntimeProfiles(cfg, flags.Profile)
 			if err != nil {
 				return err
 			}
@@ -35,6 +42,20 @@ func NewUp(flags *SharedFlags) *cobra.Command {
 			return orch.Up(ctx, cfg)
 		},
 	}
+}
+
+func applyRuntimeProfiles(cfg config.ProjectConfig, profiles []string) (config.ProjectConfig, error) {
+	for _, profile := range profiles {
+		profile = strings.TrimSpace(profile)
+		if profile == "" {
+			continue
+		}
+		if profile != "debug" {
+			return cfg, fmt.Errorf("unsupported --profile %q: supported profile is debug", profile)
+		}
+		cfg.Profile = "debug"
+	}
+	return cfg, nil
 }
 
 // contextWithSignal returns a cancellable context tied to the cobra context.

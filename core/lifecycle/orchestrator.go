@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/peternicholls/stageserve/infra/docker"
 	"github.com/peternicholls/stageserve/infra/gateway"
 	"github.com/peternicholls/stageserve/platform/ports"
+	stls "github.com/peternicholls/stageserve/platform/tls"
 )
 
 // Deps bundles the collaborators the orchestrator needs.
@@ -28,6 +30,7 @@ type Deps struct {
 	Gateway gateway.GatewayManager
 	State   state.StateStore
 	Ports   ports.PortAllocator
+	TLS     stls.Provider
 }
 
 // Orchestrator is the default implementation.
@@ -72,7 +75,12 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg.MySQL.Port = allocation.MySQLPort
 	cfg.MySQL.PMAPort = allocation.PMAPort
 
-	if err := o.prepareSharedGatewayConfig(cfg, routesFromRegistry(registry), ""); err != nil {
+	registryRoutes := routesFromRegistry(registry)
+	if err := o.ensureSharedGatewayTLS(cfg, routesWithProject(registryRoutes, cfg)); err != nil {
+		return Wrap("tls-cert", cfg.Slug, err, "Install mkcert and trust the local CA with `mkcert -install`, then retry.")
+	}
+
+	if err := o.prepareSharedGatewayConfig(cfg, registryRoutes, ""); err != nil {
 		return Wrap("gateway-config", "", err, "Inspect the gateway config path under the state directory.")
 	}
 
@@ -93,6 +101,7 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 		ComposeFile: cfg.StackFile,
 		ProjectName: cfg.ComposeProjectName,
 		EnvFile:     envFile,
+		Profiles:    runtimeProfiles(cfg),
 		Detach:      true,
 		WaitTimeout: time.Duration(cfg.WaitTimeoutSecs) * time.Second,
 	}
@@ -113,11 +122,12 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 	// Step 8: regenerate gateway config, reload gateway.
 	currentRoutes := routesFromRegistry(registry)
-	if _, _, err := o.D.Gateway.AddRoute(gateway.Route{
-		Hostname:        cfg.Hostname,
-		Slug:            cfg.Slug,
-		WebNetworkAlias: cfg.WebNetworkAlias,
-	}, currentRoutes); err != nil {
+	nextRoutes := routesWithProject(currentRoutes, cfg)
+	if err := o.ensureSharedGatewayTLS(cfg, nextRoutes); err != nil {
+		o.rollbackProject(ctx, cfg)
+		return Wrap("tls-cert", cfg.Slug, err, "Install mkcert and trust the local CA with `mkcert -install`, then retry.")
+	}
+	if err := o.prepareSharedGatewayConfig(cfg, nextRoutes, cfg.Slug); err != nil {
 		o.rollbackProject(ctx, cfg)
 		return Wrap("gateway-config", cfg.Slug, err, "Inspect the gateway config path under the state directory.")
 	}
@@ -140,6 +150,29 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 
 	// Step 10/11: log success (caller handles human output).
 	return nil
+}
+
+func routesWithProject(current []gateway.Route, cfg config.ProjectConfig) []gateway.Route {
+	route := gateway.Route{
+		Hostname:        cfg.Hostname,
+		Slug:            cfg.Slug,
+		WebNetworkAlias: cfg.WebNetworkAlias,
+	}
+	merged := make([]gateway.Route, 0, len(current)+1)
+	for _, existing := range current {
+		if existing.Slug != route.Slug {
+			merged = append(merged, existing)
+		}
+	}
+	merged = append(merged, route)
+	return merged
+}
+
+func runtimeProfiles(cfg config.ProjectConfig) []string {
+	if strings.TrimSpace(cfg.Profile) == "" {
+		return nil
+	}
+	return []string{cfg.Profile}
 }
 
 // Down stops the project, keeps its record, and removes any active route.
@@ -217,11 +250,11 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 	}
 	registry, _ := o.D.State.Registry()
 	currentRoutes := routesFromRegistry(registry)
-	if _, _, err := o.D.Gateway.AddRoute(gateway.Route{
-		Hostname:        cfg.Hostname,
-		Slug:            cfg.Slug,
-		WebNetworkAlias: cfg.WebNetworkAlias,
-	}, currentRoutes); err != nil {
+	nextRoutes := routesWithProject(currentRoutes, cfg)
+	if err := o.ensureSharedGatewayTLS(cfg, nextRoutes); err != nil {
+		return Wrap("tls-cert", cfg.Slug, err, "")
+	}
+	if err := o.prepareSharedGatewayConfig(cfg, nextRoutes, cfg.Slug); err != nil {
 		return Wrap("gateway-config", cfg.Slug, err, "")
 	}
 	return o.reloadSharedGateway(ctx, cfg)
@@ -360,6 +393,18 @@ func (o *Orchestrator) rollbackProject(ctx context.Context, cfg config.ProjectCo
 		ProjectName: cfg.ComposeProjectName,
 		EnvFile:     envFile,
 	})
+	o.rollbackGatewayRoute(ctx, cfg)
+}
+
+func (o *Orchestrator) rollbackGatewayRoute(ctx context.Context, cfg config.ProjectConfig) {
+	registry, err := o.D.State.Registry()
+	if err != nil {
+		return
+	}
+	if err := o.prepareSharedGatewayConfig(cfg, routesFromRegistry(registry), ""); err != nil {
+		return
+	}
+	_ = o.reloadSharedGateway(ctx, cfg)
 }
 
 func envFilePath(cfg config.ProjectConfig) string {
@@ -407,12 +452,59 @@ func writeEnvFile(cfg config.ProjectConfig) (string, error) {
 }
 
 func sharedGatewayEnv(cfg config.ProjectConfig) []string {
-	return []string{
+	env := []string{
 		"SHARED_GATEWAY_NETWORK=" + cfg.SharedGateway.Network,
 		"SHARED_GATEWAY_HTTP_PORT=" + intStr(cfg.SharedGateway.HTTPPort),
 		"SHARED_GATEWAY_HTTPS_PORT=" + intStr(cfg.SharedGateway.HTTPSPort),
 		"SHARED_GATEWAY_CONFIG_FILE=" + cfg.SharedGateway.ConfigFile,
 	}
+	if sharedGatewayTLSEnabled(cfg) {
+		env = append(env, "SHARED_GATEWAY_CERTS_DIR="+sharedGatewayCertsDir(cfg))
+	}
+	return env
+}
+
+func (o *Orchestrator) ensureSharedGatewayTLS(cfg config.ProjectConfig, routes []gateway.Route) error {
+	if !sharedGatewayTLSEnabled(cfg) {
+		return nil
+	}
+	provider := o.D.TLS
+	if provider == nil {
+		provider = stls.NewMkcert()
+	}
+	certsDir := sharedGatewayCertsDir(cfg)
+	_, err := provider.Ensure(
+		filepath.Join(certsDir, "tls.pem"),
+		filepath.Join(certsDir, "tls-key.pem"),
+		gatewayTLSHosts(cfg, routes),
+	)
+	return err
+}
+
+func sharedGatewayTLSEnabled(cfg config.ProjectConfig) bool {
+	return cfg.SiteSuffix == "dev"
+}
+
+func sharedGatewayCertsDir(cfg config.ProjectConfig) string {
+	return filepath.Join(cfg.StateDir, "shared", "certs")
+}
+
+func gatewayTLSHosts(cfg config.ProjectConfig, routes []gateway.Route) []string {
+	seen := map[string]bool{}
+	if cfg.Hostname != "" {
+		seen[cfg.Hostname] = true
+	}
+	for _, route := range routes {
+		if route.Hostname != "" {
+			seen[route.Hostname] = true
+		}
+	}
+	hosts := make([]string, 0, len(seen))
+	for host := range seen {
+		hosts = append(hosts, host)
+	}
+	sort.Strings(hosts)
+	return hosts
 }
 
 func resolveSharedGatewayPorts(cfg config.ProjectConfig) config.ProjectConfig {

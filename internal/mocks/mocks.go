@@ -107,13 +107,14 @@ func (m *Docker) Exec(ctx context.Context, opts docker.ExecOptions) (string, err
 // --- Composer ---
 
 type Composer struct {
-	mu        sync.Mutex
-	UpCalls   []compose.UpOptions
-	DownCalls []compose.DownOptions
-	UpErr     error
-	DownErr   error
-	LogsErr   error
-	ExecErr   error
+	mu          sync.Mutex
+	UpCalls     []compose.UpOptions
+	DownCalls   []compose.DownOptions
+	UpErr       error
+	UpErrOnCall int
+	DownErr     error
+	LogsErr     error
+	ExecErr     error
 }
 
 func NewComposer() *Composer { return &Composer{} }
@@ -121,7 +122,11 @@ func NewComposer() *Composer { return &Composer{} }
 func (m *Composer) Up(ctx context.Context, opts compose.UpOptions) error {
 	m.mu.Lock()
 	m.UpCalls = append(m.UpCalls, opts)
+	callNumber := len(m.UpCalls)
 	m.mu.Unlock()
+	if m.UpErrOnCall > 0 && callNumber != m.UpErrOnCall {
+		return nil
+	}
 	return m.UpErr
 }
 
@@ -139,11 +144,12 @@ func (m *Composer) Exec(ctx context.Context, opts compose.ExecOptions) error { r
 // --- GatewayManager ---
 
 type Gateway struct {
-	mu       sync.Mutex
-	Routes   []gateway.Route
-	Probe    string
-	Host     string
-	WriteErr error
+	mu        sync.Mutex
+	Routes    []gateway.Route
+	Probe     string
+	Host      string
+	WriteErr  error
+	LastInput gateway.RenderInput
 }
 
 func NewGateway() *Gateway { return &Gateway{Probe: "stageserve-no-route", Host: "localhost"} }
@@ -154,6 +160,7 @@ func (m *Gateway) WriteConfig(input gateway.RenderInput) (string, string, error)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Routes = append([]gateway.Route(nil), input.Routes...)
+	m.LastInput = input
 	if m.WriteErr != nil {
 		return "", "", m.WriteErr
 	}
@@ -182,6 +189,7 @@ type State struct {
 	mu          sync.Mutex
 	Records     map[string]state.Record
 	StateDirVal string
+	SaveErr     error
 }
 
 func NewState() *State {
@@ -189,6 +197,9 @@ func NewState() *State {
 }
 
 func (m *State) Save(rec state.Record) error {
+	if m.SaveErr != nil {
+		return m.SaveErr
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Records[rec.Project.Slug] = rec

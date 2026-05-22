@@ -51,12 +51,14 @@ This document locks the StageServe command semantics and state model.
 
 - Reports tracked projects from the state directory.
 - Supports `--project <selector>` where selector may be a project slug, project name, hostname, or repo path.
-- Shows shared routing health, local DNS health, planned hostname, hostname route URL, localhost probe URL, document root, container docroot, project path, registry file path, recorded live container identity, registry drift, and Docker status.
+- Shows attachment state, hostname, live service containers, and registry drift for the selected project.
+- Supports `--all` to report every recorded project.
 
 ### `stage logs`
 
 - Follows logs for the current project runtime by default.
 - Supports `--project <selector>` to target another recorded project by slug, project name, hostname, or repo path.
+- Accepts either a positional service name such as `stage logs apache` or `--service apache`. The default service is `nginx`.
 
 ### `stage dns-setup`
 
@@ -65,8 +67,7 @@ This document locks the StageServe command semantics and state model.
 - Installs or instructs the user to install the matching `/etc/resolver/<suffix>` file.
 - Operator-facing examples should prefer `--site-suffix develop` unless a test or migration case specifically needs another allowed suffix.
 - Browser access should use a full URL such as `http://my-project.develop/`; some browser address bars treat a bare hostname as a search query.
-- When `SITE_SUFFIX=dev`, generates a local wildcard TLS certificate via `mkcert` and configures the shared gateway HTTPS port (default `8443`).
-- Fails with a clear message when Homebrew is missing, `dnsmasq` is not installed, `mkcert` is required but absent, privileges are needed for `/etc/resolver`, or the resulting DNS health check is not ready.
+- Fails with a clear message when Homebrew is missing, `dnsmasq` is not installed, privileges are needed for `/etc/resolver`, or the resulting DNS health check is not ready.
 
 ## Onboarding Command Contract
 
@@ -76,10 +77,9 @@ This document locks the StageServe command semantics and state model.
 - Each step returns a `StepResult` with `id`, `label`, `status` (ready | needs_action | error), `message`, and optional `remediation`.
 - Exit codes: 0 = all ready, 1 = needs_action, 2 = error, 3 = unsupported-os (highest precedence).
 - `--suffix` accepts: `develop`, `dev`, `test`, or empty (stack default). Invalid values are rejected with an error.
-- `--recheck` forces a full check re-run even if the machine is already healthy.
 - `--json` emits a `CommandResult` JSON envelope and suppresses interactive output.
-- `--no-tui` forces plain-text output. `--tui` forces TUI mode.
-- `--non-interactive` suppresses prompts; implies `--no-tui`.
+- `--notui` and `--cli` force plain-text output for the current invocation.
+- `--non-interactive` suppresses prompts and uses plain-text output.
 - Does not mutate machine state on its own — flags state that is not ready and provides `remediation` strings.
 
 ### `stage doctor`
@@ -88,7 +88,7 @@ This document locks the StageServe command semantics and state model.
 - Runs Docker binary, Docker daemon, state directory, port 80/443, DNS, and mkcert checks.
 - Does not attempt repairs or prompt for elevated privileges.
 - Exit codes follow the same 0-1-2-3 convention as `setup`.
-- `--json`, `--no-tui`, `--non-interactive` flags behave the same as `setup`.
+- `--json`, `--notui`, `--cli`, and `--non-interactive` flags behave the same as `setup`.
 
 ### `stage init`
 
@@ -98,7 +98,7 @@ This document locks the StageServe command semantics and state model.
 - Without `--force`, skips writing if `.env.stageserve` already exists.
 - With `--force`, overwrites the existing file.
 - `--site-name` sets `STAGESERVE_SITE_NAME` in the generated file.
-- `--json`, `--no-tui`, `--non-interactive` flags behave the same as `setup`.
+- `--json`, `--notui`, `--cli`, and `--non-interactive` flags behave the same as `setup`.
 - Emits a `CommandResult` envelope (step `init.env_file`) with action in the message.
 
 ### Output modes
@@ -106,10 +106,9 @@ This document locks the StageServe command semantics and state model.
 All three onboarding commands resolve output mode using the same precedence:
 
 1. `--json` → JSON envelope (exit code still conveys overall status)
-2. `--no-tui` → plain text
-3. `--tui` → forced TUI
-4. `--non-interactive` → plain text
-5. TTY auto-detect → TUI on TTY, text otherwise
+2. `--notui` or `--cli` → plain text
+3. `--non-interactive` or `STAGESERVE_NO_TUI=1` → plain text
+4. TTY auto-detect → TUI on TTY, text otherwise
 
 ### CommandResult envelope (JSON)
 
@@ -163,7 +162,7 @@ Selecting a different installed StageServe copy remains outside the project file
 - Override source: `SITE_NAME`
 - Full override: `SITE_HOSTNAME`
 - Default suffix: `.test`
-- `.dev` uses HTTPS on port `8443` by default and requires `mkcert` (`brew install mkcert && mkcert -install`); a local wildcard TLS cert is generated automatically by `stage dns-setup`
+- `.dev` uses HTTPS on port `8443` by default and requires `mkcert` (`brew install mkcert && mkcert -install`); `stage up` and `stage attach` refresh the shared gateway certificate bundle when `.dev` is active.
 
 ## Document Root Contract
 
@@ -190,7 +189,7 @@ step <name> failed for project <slug>: <cause>
   next: <remediation>
 ```
 
-The lifecycle layer rolls back partial progress before returning. A failed `stage up` never leaves a half-attached project: the state file is not written and any compose-up that completed is reversed.
+The lifecycle layer rolls back partial progress before returning. A failed `stage up` never leaves a half-attached project: the state file is not written, any compose-up that completed is reversed, and any route written before the failure is removed from the regenerated shared gateway config.
 
 ## Runtime Identity Mapping
 
@@ -217,6 +216,7 @@ The lifecycle layer rolls back partial progress before returning. A failed `stag
 - Active 20i project compose file: `docker-compose.20i.yml`
 - StageServe keeps one shared routing layer available across attached projects and repairs it when the layer is missing or unhealthy.
 - Shared gateway host ports: `80/443` by default; `.dev` runtime resolution moves HTTPS to `8443` when needed
+- `.dev` routing uses `platform/tls` to refresh a mkcert bundle under `<state-dir>/shared/certs` and passes `SHARED_GATEWAY_CERTS_DIR` to the shared compose file.
 - Per-project web containers no longer publish host ports directly for normal site access
 - phpMyAdmin runs only when the `debug` compose profile is enabled (`stage up --profile debug`); it still publishes its own host port when active
 - MariaDB remains per project and resolves database name, user, password, and root password from the project-specific runtime config
@@ -234,7 +234,7 @@ Exact shared resource names remain part of the lower-level workflow contract and
 - Listen address: `127.0.0.1`
 - Listen port: `53535`
 - Resolver file: `/etc/resolver/test` by default
-- Status reports DNS readiness separately from Docker/gateway health
+- Setup and doctor report DNS readiness separately from Docker and port readiness
 - Missing Homebrew, missing `dnsmasq`, missing resolver privileges, resolver mismatch, and stopped service are surfaced as explicit named codes (`brew-missing`, `dnsmasq-missing`, `resolver-missing`, `resolver-mismatch`, `dnsmasq-stopped`, `config-missing`)
 - On Linux, `stage dns-setup` returns the named `unsupported-os` code rather than silently no-op’ing
 

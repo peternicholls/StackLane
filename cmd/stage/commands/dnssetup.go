@@ -15,7 +15,7 @@ import (
 func NewDNSSetup(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "dns-setup",
-		Short: "Configure local DNS for .test hostnames",
+		Short: "Configure local DNS for project hostnames",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

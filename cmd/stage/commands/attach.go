@@ -9,7 +9,7 @@ import (
 func NewAttach(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "attach",
-		Short: "Route a running project through the shared gateway",
+		Short: "Add this project to StageServe",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {
@@ -32,7 +32,7 @@ func NewAttach(flags *SharedFlags) *cobra.Command {
 func NewDetach(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "detach",
-		Short: "Stop a project and remove its routing/state record",
+		Short: "Remove this project from StageServe",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

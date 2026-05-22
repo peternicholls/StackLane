@@ -12,7 +12,7 @@ func NewDown(flags *SharedFlags) *cobra.Command {
 	var removeVolumes bool
 	cmd := &cobra.Command{
 		Use:   "down",
-		Short: "Stop a project's stack",
+		Short: "Stop this project",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

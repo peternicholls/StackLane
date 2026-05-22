@@ -12,6 +12,8 @@ import (
 type doctorFlags struct {
 	JSON           bool
 	NonInteractive bool
+	NotUI          bool
+	CLI            bool
 	NoTUI          bool
 }
 
@@ -19,10 +21,10 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 	f := &doctorFlags{}
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Diagnose machine-readiness drift and suggest targeted fixes",
-		Long:  "Read-only diagnostics: checks Docker, DNS, ports, state dir, and shared gateway. Reports ready/needs_action/error with exact remediation. Does not mutate machine state.",
+		Short: "Diagnose local readiness issues",
+		Long:  "Read-only diagnostics for Docker, local DNS, ports, the StageServe state directory, and mkcert. Reports exact fixes and does not change machine settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mode := resolveOutputMode(f.JSON, f.NoTUI, false, f.NonInteractive)
+			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
 			stateDir, err := resolveOnboardingStateDir(shared)
 			if err != nil {
@@ -63,7 +65,7 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&f.JSON, "json", false, "Emit JSON envelope only")
 	cmd.Flags().BoolVar(&f.NonInteractive, "non-interactive", false, "Suppress interactive prompts")
-	cmd.Flags().BoolVar(&f.NoTUI, "no-tui", false, "Force plain-text output")
+	addPlainTextOutputFlags(cmd, &f.NotUI, &f.CLI, &f.NoTUI)
 	return cmd
 }
 

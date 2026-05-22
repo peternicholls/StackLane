@@ -30,7 +30,7 @@ func checkDNS(suffix string) StepResult {
 			Message: st.Message,
 		}
 	}
-	rem := remediationPtr("stage setup")
+	rem := remediationPtr(fmt.Sprintf("stage dns-setup --site-suffix %s", suffix))
 	return StepResult{
 		ID:          "dns.resolver",
 		Label:       label,
