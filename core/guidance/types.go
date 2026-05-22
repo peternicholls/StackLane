@@ -2,7 +2,10 @@
 // context, classifies the user's situation, and returns a renderer-neutral plan.
 package guidance
 
-import "github.com/peternicholls/stageserve/core/state"
+import (
+	"github.com/peternicholls/stageserve/core/onboarding"
+	"github.com/peternicholls/stageserve/core/state"
+)
 
 // Situation is the planner's stable classification of the current context.
 type Situation string
@@ -55,25 +58,26 @@ type RuntimeSummary struct {
 
 // GuidedContext is a no-mutation snapshot of the current StageServe situation.
 type GuidedContext struct {
-	CWD              string
-	ProjectRoot      string
-	ProjectEnvPath   string
-	ProjectEnvExists bool
-	ProjectEnvValid  bool
-	StackHome        string
-	StackID          string
-	StateDir         string
-	Hostname         string
-	LocalURL         string
-	WebFolder        string
-	SiteName         string
-	MachineReadiness MachineReadinessSummary
-	ProjectState     *state.Record
-	Runtime          RuntimeSummary
-	Capability       TUICapability
-	NotProject       bool
-	Warnings         []string
-	Err              error
+	CWD               string
+	ProjectRoot       string
+	ProjectEnvPath    string
+	ProjectEnvExists  bool
+	ProjectEnvValid   bool
+	StackHome         string
+	StackID           string
+	StateDir          string
+	Hostname          string
+	LocalURL          string
+	WebFolder         string
+	SiteName          string
+	ProjectEnvPreview *onboarding.ProjectEnvPreview
+	MachineReadiness  MachineReadinessSummary
+	ProjectState      *state.Record
+	Runtime           RuntimeSummary
+	Capability        TUICapability
+	NotProject        bool
+	Warnings          []string
+	Err               error
 }
 
 // NextActionPlan is the renderer-neutral plan consumed by TUI and text output.

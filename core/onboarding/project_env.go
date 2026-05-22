@@ -19,6 +19,17 @@ const (
 
 const projectEnvFile = ".env.stageserve"
 
+// ProjectEnvPreview is the no-mutation plan for a project-local StageServe
+// settings file.
+type ProjectEnvPreview struct {
+	Path        string
+	ProjectRoot string
+	SiteName    string
+	DocRoot     string
+	Body        string
+	Exists      bool
+}
+
 // ValidateProjectRoot verifies that root is a non-empty, existing directory
 // and returns its clean absolute path.
 func ValidateProjectRoot(root string) (string, error) {
@@ -61,6 +72,33 @@ func ValidateDocroot(projectRoot, docroot string) error {
 	return nil
 }
 
+// PreviewProjectEnv validates the target and returns the exact file content
+// WriteProjectEnv would use, without writing anything.
+func PreviewProjectEnv(projectRoot, siteName, docroot string) (ProjectEnvPreview, error) {
+	root, err := ValidateProjectRoot(projectRoot)
+	if err != nil {
+		return ProjectEnvPreview{}, err
+	}
+	if docroot != "" {
+		if err := ValidateDocroot(root, docroot); err != nil {
+			return ProjectEnvPreview{}, err
+		}
+	}
+	path := filepath.Join(root, projectEnvFile)
+	_, statErr := os.Stat(path)
+	if statErr != nil && !os.IsNotExist(statErr) {
+		return ProjectEnvPreview{}, fmt.Errorf("check %s: %w", projectEnvFile, statErr)
+	}
+	return ProjectEnvPreview{
+		Path:        path,
+		ProjectRoot: root,
+		SiteName:    siteName,
+		DocRoot:     docroot,
+		Body:        renderEnv(siteName, docroot),
+		Exists:      statErr == nil,
+	}, nil
+}
+
 // WriteProjectEnv writes a starter .env.stageserve in projectRoot.
 // If the file already exists and force is false, it returns InitActionSkipped.
 // Returns the action taken or an error.
@@ -89,10 +127,14 @@ func renderEnv(siteName, docroot string) string {
 	b.WriteString("# Keep project-specific overrides here.\n\n")
 	b.WriteString("STAGESERVE_STACK=20i\n\n")
 	if siteName != "" {
-		b.WriteString("SITE_NAME=" + shellDoubleQuote(siteName) + "\n")
+		b.WriteString("SITE_NAME=")
+		b.WriteString(shellDoubleQuote(siteName))
+		b.WriteString("\n")
 	}
 	if docroot != "" {
-		b.WriteString("DOCROOT=" + shellDoubleQuote(docroot) + "\n")
+		b.WriteString("DOCROOT=")
+		b.WriteString(shellDoubleQuote(docroot))
+		b.WriteString("\n")
 	}
 	return b.String()
 }

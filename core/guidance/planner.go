@@ -100,7 +100,11 @@ func visibleDefaults(ctx GuidedContext) []VisibleDefault {
 	add("Project", ctx.SiteName, "")
 	add("Web folder", ctx.WebFolder, "")
 	add("Local URL", ctx.LocalURL, "")
-	add("Settings file", ctx.ProjectEnvPath, "")
+	if ctx.ProjectEnvPreview != nil {
+		add("Settings file", ctx.ProjectEnvPreview.Path, "will be created after confirmation")
+	} else {
+		add("Settings file", ctx.ProjectEnvPath, "")
+	}
 	add("Stack", ctx.StackID, "")
 	return defaults
 }

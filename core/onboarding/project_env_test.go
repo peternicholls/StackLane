@@ -3,6 +3,7 @@ package onboarding_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/peternicholls/stageserve/core/onboarding"
@@ -88,6 +89,27 @@ func TestWriteProjectEnv_CreatesNewFile(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".env.stageserve")); err != nil {
 		t.Error("expected .env.stageserve to exist")
+	}
+}
+
+// TestPreviewProjectEnv_DoesNotWriteFile verifies that project setup previews
+// share the env renderer without creating .env.stageserve.
+func TestPreviewProjectEnv_DoesNotWriteFile(t *testing.T) {
+	dir := t.TempDir()
+	preview, err := onboarding.PreviewProjectEnv(dir, "mysite", "public_html")
+	if err != nil {
+		t.Fatalf("PreviewProjectEnv returned error: %v", err)
+	}
+	if preview.Exists {
+		t.Fatal("preview reported existing file for empty temp directory")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".env.stageserve")); !os.IsNotExist(err) {
+		t.Fatalf("preview should not create .env.stageserve, got err=%v", err)
+	}
+	for _, want := range []string{"STAGESERVE_STACK=20i", `SITE_NAME="mysite"`, `DOCROOT="public_html"`} {
+		if !strings.Contains(preview.Body, want) {
+			t.Fatalf("preview body missing %q:\n%s", want, preview.Body)
+		}
 	}
 }
 

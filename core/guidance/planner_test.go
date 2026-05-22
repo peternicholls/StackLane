@@ -137,6 +137,12 @@ func TestCollectDoesNotCreateProjectOrStateFiles(t *testing.T) {
 	if _, err := os.Stat(stateDir); !os.IsNotExist(err) {
 		t.Fatalf("Collect should not create state dir, stat err=%v", err)
 	}
+	if ctx.ProjectEnvPreview == nil {
+		t.Fatal("Collect did not build project settings preview")
+	}
+	if !strings.Contains(ctx.ProjectEnvPreview.Body, "STAGESERVE_STACK=20i") {
+		t.Fatalf("preview body did not use shared env renderer:\n%s", ctx.ProjectEnvPreview.Body)
+	}
 }
 
 func TestShellViewRendersCoreSurfaces(t *testing.T) {

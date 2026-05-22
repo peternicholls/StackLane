@@ -118,7 +118,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 - [x] T047 Build the first guided TUI shell with status header, decision bar, tool work panel, details view, and persistent footer.
 - [ ] T048 Route setup checks through existing onboarding result semantics.
-- [ ] T049 Implement guided project config preview using the shared project-env model.
+- [x] T049 Implement guided project config preview using the shared project-env model.
 - [ ] T050 Add confirmation before writing `.env.stageserve`.
 - [ ] T051 Add inline editing for project name, web folder, and local suffix/address preview.
 - [ ] T052 Recompute the planner after config creation and offer the next safe action.

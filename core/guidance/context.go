@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/peternicholls/stageserve/core/state"
 )
 
@@ -52,6 +53,11 @@ func Collect(ctx context.Context, cfg config.ProjectConfig, opts CollectOptions)
 	} else if !os.IsNotExist(err) {
 		context.ProjectEnvValid = false
 		context.Warnings = append(context.Warnings, fmt.Sprintf("Project settings could not be checked: %v", err))
+	} else if preview, err := onboarding.PreviewProjectEnv(cfg.Dir, cfg.Name, cfg.DocRootRelative); err == nil {
+		context.ProjectEnvPreview = &preview
+	} else {
+		context.ProjectEnvValid = false
+		context.Warnings = append(context.Warnings, fmt.Sprintf("Project settings preview could not be built: %v", err))
 	}
 
 	record, err := readRecord(cfg.StateDir, cfg.Slug)
