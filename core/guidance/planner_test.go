@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/peternicholls/stageserve/core/state"
 )
 
@@ -155,5 +156,36 @@ func TestShellViewRendersCoreSurfaces(t *testing.T) {
 	}
 	if strings.Contains(view, "\x1b") {
 		t.Fatalf("no-color shell view contains ANSI escape sequences:\n%s", view)
+	}
+}
+
+func TestMachineReadinessFromResultUsesOnboardingSemantics(t *testing.T) {
+	result := onboarding.BuildResult([]onboarding.StepResult{
+		{ID: "docker.binary", Label: "Docker CLI", Status: onboarding.StatusReady, Message: "docker found"},
+		{ID: "docker.daemon", Label: "Docker daemon", Status: onboarding.StatusNeedsAction, Message: "Docker daemon is not reachable"},
+		{ID: "state.dir", Label: "State directory", Status: onboarding.StatusError, Message: "state dir cannot be read"},
+	}, nil, nil)
+
+	summary := MachineReadinessFromResult(result)
+	if !summary.Checked || !summary.Blocked {
+		t.Fatalf("summary checked=%v blocked=%v", summary.Checked, summary.Blocked)
+	}
+	if summary.Status != string(onboarding.OverallError) {
+		t.Fatalf("status=%q want %q", summary.Status, onboarding.OverallError)
+	}
+	if summary.NextFixLabel != "Docker daemon" || summary.NextCommand != "stage setup" {
+		t.Fatalf("next fix=%q command=%q", summary.NextFixLabel, summary.NextCommand)
+	}
+	if len(summary.WorkItems) != 3 {
+		t.Fatalf("work items=%d want 3", len(summary.WorkItems))
+	}
+	if summary.WorkItems[0].Status != "ready" {
+		t.Fatalf("first status=%q want ready", summary.WorkItems[0].Status)
+	}
+	if summary.WorkItems[1].Status != "needs attention" || summary.WorkItems[1].DirectCommand != "stage setup" {
+		t.Fatalf("second item=%+v", summary.WorkItems[1])
+	}
+	if summary.WorkItems[2].Status != "error" {
+		t.Fatalf("third status=%q want error", summary.WorkItems[2].Status)
 	}
 }

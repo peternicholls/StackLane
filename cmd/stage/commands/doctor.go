@@ -26,22 +26,10 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
-			stateDir, err := resolveOnboardingStateDir(shared)
+			result, err := buildMachineReadinessResult(shared, "")
 			if err != nil {
 				return err
 			}
-
-			steps := []onboarding.StepResult{
-				onboarding.CheckDockerBinary(""),
-				onboarding.CheckDockerDaemon(),
-				onboarding.CheckStateDir(stateDir),
-				onboarding.CheckPort("port.80", 80),
-				onboarding.CheckPort("port.443", 443),
-				onboarding.CheckDNS(""),
-				onboarding.CheckMkcert(),
-			}
-
-			result := onboarding.BuildResult(steps, nil, nil)
 
 			switch mode {
 			case onboarding.OutputModeJSON:

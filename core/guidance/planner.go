@@ -20,7 +20,10 @@ func Plan(ctx GuidedContext) NextActionPlan {
 	case SituationMachineNotReady:
 		plan.StatusHeader = "Your computer isn't ready yet."
 		plan.Summary = "Fix the next setup item, then StageServe can plan the project step."
-		plan.WorkItems = []WorkItem{{Label: ctx.MachineReadiness.NextFixLabel, Status: "needs attention", DirectCommand: commandOr(ctx.MachineReadiness.NextCommand, "stage setup")}}
+		plan.WorkItems = ctx.MachineReadiness.WorkItems
+		if len(plan.WorkItems) == 0 {
+			plan.WorkItems = []WorkItem{{Label: ctx.MachineReadiness.NextFixLabel, Status: "needs attention", DirectCommand: commandOr(ctx.MachineReadiness.NextCommand, "stage setup")}}
+		}
 		plan.DirectCommands = []string{"stage setup"}
 	case SituationNotProject:
 		plan.StatusHeader = "This folder isn't a StageServe project yet."

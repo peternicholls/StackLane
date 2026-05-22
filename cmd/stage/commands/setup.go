@@ -40,23 +40,10 @@ func NewSetup(shared *SharedFlags) *cobra.Command {
 
 			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
-			stateDir, err := resolveOnboardingStateDir(shared)
+			result, err := buildMachineReadinessResult(shared, f.Suffix)
 			if err != nil {
 				return err
 			}
-
-			// Run ordered readiness checks.
-			steps := []onboarding.StepResult{
-				onboarding.CheckDockerBinary(""),
-				onboarding.CheckDockerDaemon(),
-				onboarding.CheckStateDir(stateDir),
-				onboarding.CheckPort("port.80", 80),
-				onboarding.CheckPort("port.443", 443),
-				onboarding.CheckDNS(f.Suffix),
-				onboarding.CheckMkcert(),
-			}
-
-			result := onboarding.BuildResult(steps, nil, nil)
 
 			switch mode {
 			case onboarding.OutputModeJSON:

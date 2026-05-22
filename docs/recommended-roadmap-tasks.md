@@ -117,7 +117,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 ### First-Run Flow
 
 - [x] T047 Build the first guided TUI shell with status header, decision bar, tool work panel, details view, and persistent footer.
-- [ ] T048 Route setup checks through existing onboarding result semantics.
+- [x] T048 Route setup checks through existing onboarding result semantics.
 - [x] T049 Implement guided project config preview using the shared project-env model.
 - [ ] T050 Add confirmation before writing `.env.stageserve`.
 - [ ] T051 Add inline editing for project name, web folder, and local suffix/address preview.
@@ -131,6 +131,7 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [ ] T054 Route guided status through existing status reporting.
 - [ ] T055 Route guided logs through existing logs behavior with a clear exit path.
 - [ ] T056 Route guided stop/remove actions through `down` and `detach` with explicit confirmation.
+- [ ] T056a Clarify or wrap shared-gateway reload output after `stage down`/`stage detach` so Docker Compose's internal `up` output is not mistaken for a project restart.
 - [ ] T057 Route diagnostics/recovery through doctor/readiness/status seams without exposing `doctor` as a first-level peer action.
 - [ ] T058 Order recovery actions from least invasive to most invasive and rerun planning after each step.
 - [ ] T059 Ensure primary guided labels use user-goal language before command terminology.

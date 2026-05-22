@@ -47,6 +47,7 @@ type MachineReadinessSummary struct {
 	Status       string
 	NextFixLabel string
 	NextCommand  string
+	WorkItems    []WorkItem
 }
 
 // RuntimeSummary is the cheap runtime view used by the planner.
