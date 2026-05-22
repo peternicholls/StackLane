@@ -9,21 +9,43 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// RunShell starts the first guided TUI shell. It renders the existing plan and
-// supports navigation/details/quit; action execution is wired in later phases.
-func RunShell(plan NextActionPlan, capability TUICapability, input io.Reader, output io.Writer) error {
+// RunShell starts the guided TUI shell. It renders the current plan and owns
+// navigation, details, confirmation, and optional action dispatch.
+func RunShell(plan NextActionPlan, capability TUICapability, input io.Reader, output io.Writer, opts ...ShellOption) error {
+	config := shellConfig{}
+	for _, opt := range opts {
+		opt(&config)
+	}
 	model := newShellModel(plan, capability.NoColor)
+	model.actionHandler = config.actionHandler
 	program := tea.NewProgram(model, tea.WithInput(input), tea.WithOutput(output))
 	_, err := program.Run()
 	return err
 }
 
+type ActionHandler func(GuidedAction) (NextActionPlan, string, error)
+
+type ShellOption func(*shellConfig)
+
+type shellConfig struct {
+	actionHandler ActionHandler
+}
+
+func WithActionHandler(handler ActionHandler) ShellOption {
+	return func(config *shellConfig) {
+		config.actionHandler = handler
+	}
+}
+
 type shellModel struct {
-	plan        NextActionPlan
-	cursor      int
-	showDetails bool
-	width       int
-	noColor     bool
+	plan          NextActionPlan
+	cursor        int
+	showDetails   bool
+	confirming    bool
+	message       string
+	width         int
+	noColor       bool
+	actionHandler ActionHandler
 }
 
 func newShellModel(plan NextActionPlan, noColor bool) shellModel {
@@ -39,6 +61,9 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.width = msg.Width
 		}
 	case tea.KeyMsg:
+		if m.confirming {
+			return m.updateConfirmation(msg.String())
+		}
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
@@ -52,16 +77,75 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "?":
 			m.showDetails = !m.showDetails
+		case "enter":
+			action, ok := m.selectedAction()
+			if !ok {
+				return m, nil
+			}
+			if action.RequiresConfirmation {
+				m.confirming = true
+				m.message = ""
+				return m, nil
+			}
+			return m.runAction(action)
 		}
 	}
 	return m, nil
 }
 
 func (m shellModel) View() string {
-	return renderShellView(m.plan, m.width, m.cursor, m.showDetails, m.noColor)
+	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming)
+}
+
+func (m shellModel) selectedAction() (GuidedAction, bool) {
+	if m.cursor < 0 || m.cursor >= len(m.plan.DecisionItems) {
+		return GuidedAction{}, false
+	}
+	return m.plan.DecisionItems[m.cursor], true
+}
+
+func (m shellModel) updateConfirmation(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "ctrl+c":
+		return m, tea.Quit
+	case "esc", "n":
+		m.confirming = false
+		m.message = "No changes made."
+		return m, nil
+	case "enter", "y":
+		action, ok := m.selectedAction()
+		if !ok {
+			m.confirming = false
+			return m, nil
+		}
+		m.confirming = false
+		return m.runAction(action)
+	}
+	return m, nil
+}
+
+func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
+	if m.actionHandler == nil {
+		m.message = "This action is not available in guided mode yet."
+		return m, nil
+	}
+	nextPlan, message, err := m.actionHandler(action)
+	if err != nil {
+		m.message = err.Error()
+		return m, nil
+	}
+	m.plan = nextPlan
+	m.cursor = 0
+	m.showDetails = false
+	m.message = message
+	return m, nil
 }
 
 func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColor bool) string {
+	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false)
+}
+
+func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, noColor bool, message string, confirming bool) string {
 	styles := shellStylesFor(noColor)
 	var b strings.Builder
 	lineWidth := clampInt(width-4, 42, 96)
@@ -71,6 +155,9 @@ func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColo
 	fmt.Fprintf(&b, "  %s\n", styles.verdict.Render(plan.StatusHeader))
 	if plan.Summary != "" {
 		fmt.Fprintf(&b, "  %s\n", styles.muted.Render(plan.Summary))
+	}
+	if message != "" {
+		fmt.Fprintf(&b, "  %s\n", styles.muted.Render(message))
 	}
 
 	if len(plan.VisibleDefaults) > 0 {
@@ -84,7 +171,15 @@ func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColo
 		}
 	}
 
-	if len(plan.DecisionItems) > 0 {
+	if confirming {
+		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Confirm change", lineWidth, styles))
+		if action, ok := selectedAction(plan, cursor); ok {
+			fmt.Fprintf(&b, "  %s\n", styles.label.Render(action.Label))
+			fmt.Fprintf(&b, "    %s\n", styles.muted.Render(action.Description))
+		}
+		b.WriteString("\n  StageServe will update the settings file shown above.\n")
+		b.WriteString("  It will not start containers or change your application files.\n")
+	} else if len(plan.DecisionItems) > 0 {
 		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("What you can do", lineWidth, styles))
 		for i, item := range plan.DecisionItems {
 			marker := " "
@@ -126,8 +221,19 @@ func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColo
 	}
 
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render("↑/↓ inspect • ? details • q quit"))
+	footer := "↑/↓ inspect • enter choose • ? details • q quit"
+	if confirming {
+		footer = "enter confirm • n cancel • esc cancel"
+	}
+	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
+}
+
+func selectedAction(plan NextActionPlan, cursor int) (GuidedAction, bool) {
+	if cursor < 0 || cursor >= len(plan.DecisionItems) {
+		return GuidedAction{}, false
+	}
+	return plan.DecisionItems[cursor], true
 }
 
 type shellStyles struct {

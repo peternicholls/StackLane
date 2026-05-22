@@ -119,9 +119,9 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [x] T047 Build the first guided TUI shell with status header, decision bar, tool work panel, details view, and persistent footer.
 - [x] T048 Route setup checks through existing onboarding result semantics.
 - [x] T049 Implement guided project config preview using the shared project-env model.
-- [ ] T050 Add confirmation before writing `.env.stageserve`.
+- [x] T050 Add confirmation before writing `.env.stageserve`.
 - [ ] T051 Add inline editing for project name, web folder, and local suffix/address preview.
-- [ ] T052 Recompute the planner after config creation and offer the next safe action.
+- [x] T052 Recompute the planner after config creation and offer the next safe action.
 - [ ] T052a Make `stage init` open the guided project-config form by default in interactive terminals.
 - [ ] T052b Keep `stage init --notui`, `stage init --cli`, `stage init --json`, and non-TTY `stage init` non-guided and automation-safe.
 

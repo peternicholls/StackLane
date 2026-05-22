@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/peternicholls/stageserve/core/config"
 	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/peternicholls/stageserve/core/state"
@@ -187,5 +188,76 @@ func TestMachineReadinessFromResultUsesOnboardingSemantics(t *testing.T) {
 	}
 	if summary.WorkItems[2].Status != "error" {
 		t.Fatalf("third status=%q want error", summary.WorkItems[2].Status)
+	}
+}
+
+func TestShellConfirmationRequiresExplicitConfirm(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectEnvExists = false
+	plan := Plan(ctx)
+	called := false
+
+	model := newShellModel(plan, true)
+	model.actionHandler = func(action GuidedAction) (NextActionPlan, string, error) {
+		called = true
+		return Plan(baseContext()), "Created project settings.", nil
+	}
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("opening confirmation should not quit")
+	}
+	next, ok := updated.(shellModel)
+	if !ok {
+		t.Fatalf("updated model type %T", updated)
+	}
+	if called {
+		t.Fatal("action ran before confirmation")
+	}
+	if !next.confirming {
+		t.Fatal("expected confirmation state")
+	}
+	if view := next.View(); !strings.Contains(view, "Confirm change") || !strings.Contains(view, "enter confirm") {
+		t.Fatalf("confirmation view missing expected copy:\n%s", view)
+	}
+
+	updated, cmd = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("confirmed action should not quit")
+	}
+	next, ok = updated.(shellModel)
+	if !ok {
+		t.Fatalf("updated model type %T", updated)
+	}
+	if !called {
+		t.Fatal("action did not run after confirmation")
+	}
+	if next.confirming {
+		t.Fatal("confirmation state should close after action")
+	}
+	if next.plan.Situation != SituationProjectReadyToRun {
+		t.Fatalf("situation=%s want %s", next.plan.Situation, SituationProjectReadyToRun)
+	}
+}
+
+func TestShellConfirmationCanCancelWithoutAction(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectEnvExists = false
+	model := newShellModel(Plan(ctx), true)
+	model.actionHandler = func(action GuidedAction) (NextActionPlan, string, error) {
+		t.Fatal("action should not run after cancel")
+		return NextActionPlan{}, "", nil
+	}
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	next = updated.(shellModel)
+
+	if next.confirming {
+		t.Fatal("confirmation state should close after cancel")
+	}
+	if !strings.Contains(next.View(), "No changes made.") {
+		t.Fatalf("cancel message missing:\n%s", next.View())
 	}
 }

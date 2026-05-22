@@ -109,9 +109,9 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 - [ ] T032 [US2] Implement the first TUI surfaces: status header, decision bar, tool work panel, and persistent footer, with diagnostics/direct commands kept out of the primary decision list.
 - [ ] T033 [US2] Wire setup action through existing onboarding setup checks and result projection.
-- [ ] T034 [US2] Wire init action through `core/onboarding.WriteProjectEnv` with preview and confirmation.
+- [X] T034 [US2] Wire init action through `core/onboarding.WriteProjectEnv` with preview and confirmation.
 - [ ] T035 [US2] Add Huh form or equivalent prompt for site name, web folder, suffix, and local URL preview edits.
-- [ ] T036 [US2] After init, recompute planner state and offer run action.
+- [X] T036 [US2] After init, recompute planner state and offer run action.
 - [ ] T037 [US2] Validate first-run TUI manually and record evidence in `quickstart.md`.
 
 **Checkpoint**: New users can use guided path for setup and config creation.
