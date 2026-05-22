@@ -74,31 +74,41 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 ### Planner Foundation
 
-- [ ] T030 [P] Create `core/guidance/types.go` with TUI capability, guided context, next action plan, action, visible defaults, warnings, and direct command equivalents.
-- [ ] T031 [P] Create `core/guidance/context.go` with cheap context collection and injected seams for config, state, readiness, and status checks.
-- [ ] T032 Implement `core/guidance/planner.go` for `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error`.
-- [ ] T033 Add `core/guidance` tests for pure planner decisions and no-mutation context collection.
-- [ ] T034 Add a terminal-verifiable planner inspection path or debug command that does not mutate project config or state.
+- [x] T030 [P] Create `core/guidance/types.go` with TUI capability, guided context, next action plan, action, visible defaults, warnings, and direct command equivalents.
+- [x] T031 [P] Create `core/guidance/context.go` with cheap context collection and injected seams for config, state, readiness, and status checks.
+- [x] T032 Implement `core/guidance/planner.go` for `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error`.
+- [x] T033 Add `core/guidance` tests for pure planner decisions and no-mutation context collection.
+- [x] T034 Add a terminal-verifiable planner inspection path or debug command that does not mutate project config or state. Bare `stage` now renders the planner's text fallback without writing project config or state.
 
 ### Root Routing
 
-- [ ] T035 Add injectable terminal/mode detection for root interaction in [cmd/stage/commands](../cmd/stage/commands).
-- [ ] T036 Add root no-args `RunE` in [cmd/stage/commands/root.go](../cmd/stage/commands/root.go).
-- [ ] T037 Implement non-TTY text fallback rendering for `core/guidance.NextActionPlan`.
-- [ ] T038 Implement `STAGESERVE_NO_TUI=1`, `--notui`, and `--cli` handling for bare `stage`.
-- [ ] T039 Ensure `stage --help` and direct subcommands bypass guided routing.
-- [ ] T040 Keep JSON output modes free of guided copy.
-- [ ] T040a Honor `NO_COLOR=1` in text fallback and any projected output that would otherwise use color.
+- [x] T035 Add injectable terminal/mode detection for root interaction in [cmd/stage/commands](../cmd/stage/commands).
+- [x] T036 Add root no-args `RunE` in [cmd/stage/commands/root.go](../cmd/stage/commands/root.go).
+- [x] T037 Implement non-TTY text fallback rendering for `core/guidance.NextActionPlan`.
+- [x] T038 Implement `STAGESERVE_NO_TUI=1`, `--notui`, and `--cli` handling for bare `stage`.
+- [x] T039 Ensure `stage --help` and direct subcommands bypass guided routing.
+- [x] T040 Keep JSON output modes free of guided copy.
+- [x] T040a Honor `NO_COLOR=1` in text fallback and any projected output that would otherwise use color.
 
 ### Phase 2 Validation
 
-- [ ] T041 Run `go test ./core/guidance ./cmd/stage/commands`.
-- [ ] T042 Verify bare `stage` in a real TTY opens the guided path or initial guided shell.
-- [ ] T043 Verify `stage > /tmp/stage-guidance.txt` exits without prompting.
-- [ ] T044 Verify `STAGESERVE_NO_TUI=1 stage` uses text fallback.
-- [ ] T045 Verify `stage --notui` and `stage --cli` use text fallback.
-- [ ] T046 Verify `stage --help` and `stage up --help` remain direct help paths.
-- [ ] T046a Verify `NO_COLOR=1 stage --notui` or equivalent captured output contains no color styling.
+- [x] T041 Run `go test ./core/guidance ./cmd/stage/commands`.
+- [x] T042 Verify bare `stage` in a real TTY opens the guided path or initial guided shell.
+- [x] T043 Verify `stage > /tmp/stage-guidance.txt` exits without prompting.
+- [x] T044 Verify `STAGESERVE_NO_TUI=1 stage` uses text fallback.
+- [x] T045 Verify `stage --notui` and `stage --cli` use text fallback.
+- [x] T046 Verify `stage --help` and `stage up --help` remain direct help paths.
+- [x] T046a Verify `NO_COLOR=1 stage --notui` or equivalent captured output contains no color styling.
+
+### Phase 2 Validation Evidence
+
+- 2026-05-22: `go test ./core/guidance ./cmd/stage/commands` passed.
+- 2026-05-22: `go run ./cmd/stage` rendered the initial guided text shell.
+- 2026-05-22: `go run ./cmd/stage > /tmp/stage-guidance.txt` exited and wrote plain guidance without prompting.
+- 2026-05-22: `STAGESERVE_NO_TUI=1 go run ./cmd/stage` used text fallback.
+- 2026-05-22: `go run ./cmd/stage --notui` and `go run ./cmd/stage --cli` used text fallback.
+- 2026-05-22: `go run ./cmd/stage --help` and `go run ./cmd/stage up --help` stayed on direct help paths.
+- 2026-05-22: `NO_COLOR=1 go run ./cmd/stage --notui` captured no ANSI styling.
 
 ## Phase 3: Guided First-Run And Day-2 Actions
 

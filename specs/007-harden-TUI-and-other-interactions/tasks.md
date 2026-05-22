@@ -34,7 +34,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 - [ ] T001 [P] Add or update spec 007 contract references in `specs/007-harden-TUI-and-other-interactions/contracts/guided-tui-contract.md`.
 - [ ] T002 [P] Add terminal verification checklist scaffolding to `specs/007-harden-TUI-and-other-interactions/quickstart.md`.
 - [ ] T003 [P] Confirm `go.mod` has only the Charm dependencies already introduced by spec 005; do not add new UI dependencies.
-- [ ] T004 Add a short implementation note in `docs/runtime-contract.md` that direct command semantics remain authoritative under the guided TUI.
+- [X] T004 Add a short implementation note in `docs/runtime-contract.md` that direct command semantics remain authoritative under the guided TUI.
 - [ ] T004a Record in `specs/007-harden-TUI-and-other-interactions/recovery-plan.md` whether spec 004 carryover validation tasks T029/T031/T032 are migrated into spec 007 or explicitly deferred.
 - [ ] T004b Add the plain-language label map from the guided TUI contract to the implementation notes for planner/TUI work.
 
@@ -44,14 +44,14 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Purpose**: Build the non-UI decision layer that the TUI and text fallback will use.
 
-- [ ] T005 [P] Create `core/guidance/types.go` with `TUICapability`, `GuidedContext`, `NextActionPlan`, and `GuidedAction`.
+- [X] T005 [P] Create `core/guidance/types.go` with `TUICapability`, `GuidedContext`, `NextActionPlan`, and `GuidedAction`.
 - [ ] T006 [P] Add terminal planner-inspection command or debug output so `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error` can be verified from real `stage` invocations.
-- [ ] T007 Implement `core/guidance/planner.go` to produce status header copy, visible defaults, decision items, tool-owned work items, footer affordances, and direct command equivalents for each situation.
-- [ ] T008 Add cheap context collection seams in `core/guidance/context.go` without running long Docker checks before first render; include `stack_id` resolved from `STAGESERVE_STACK`.
-- [ ] T009 Add terminal verification steps proving planner collection does not write `.env.stageserve` or mutate `.stageserve-state`.
-- [ ] T009a [P] Add terminal planner verification proving first-level action labels use plain language while command names remain available through direct command equivalents.
+- [X] T007 Implement `core/guidance/planner.go` to produce status header copy, visible defaults, decision items, tool-owned work items, footer affordances, and direct command equivalents for each situation.
+- [X] T008 Add cheap context collection seams in `core/guidance/context.go` without running long Docker checks before first render; include `stack_id` resolved from `STAGESERVE_STACK`.
+- [X] T009 Add terminal verification steps proving planner collection does not write `.env.stageserve` or mutate `.stageserve-state`.
+- [X] T009a [P] Add terminal planner verification proving first-level action labels use plain language while command names remain available through direct command equivalents.
 - [ ] T009b [P] Add an architectural verification step proving the planner, TUI, and text fallback reuse existing lifecycle/config precedence seams rather than duplicating lifecycle or config logic.
-- [ ] T010 Run focused supporting checks for `core/guidance` after terminal planner scenarios are green.
+- [X] T010 Run focused supporting checks for `core/guidance` after terminal planner scenarios are green.
 
 **Checkpoint**: Planner can decide the guided path without a terminal UI.
 
@@ -77,18 +77,18 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 ### Terminal Verification
 
-- [ ] T018 [P] [US1] Verify bare `stage` in a real TTY opens the guided path and record evidence in `quickstart.md`.
-- [ ] T019 [P] [US1] Verify `stage > /tmp/stage-guidance.txt` does not hang and records plain guidance.
-- [ ] T020 [P] [US1] Verify `stage --help` bypasses the guided path.
-- [ ] T021 [P] [US1] Verify `STAGESERVE_NO_TUI=1 stage` uses text fallback.
-- [ ] T021a [P] [US1] Verify `stage --notui` and `stage --cli` both use text fallback.
+- [X] T018 [P] [US1] Verify bare `stage` in a real TTY opens the guided path and record evidence in `quickstart.md`.
+- [X] T019 [P] [US1] Verify `stage > /tmp/stage-guidance.txt` does not hang and records plain guidance.
+- [X] T020 [P] [US1] Verify `stage --help` bypasses the guided path.
+- [X] T021 [P] [US1] Verify `STAGESERVE_NO_TUI=1 stage` uses text fallback.
+- [X] T021a [P] [US1] Verify `stage --notui` and `stage --cli` both use text fallback.
 - [X] T022 [P] [US1] Verify direct subcommand help paths such as `stage up --help` remain direct and no spec 007 help path advertises `--tui`.
 
 ### Implementation
 
-- [ ] T023 [US1] Add injectable TTY/mode detection seam in `cmd/stage/commands/onboarding_mode.go` or a new root interaction helper.
-- [ ] T024 [US1] Add root no-args `RunE` wiring in `cmd/stage/commands/root.go`.
-- [ ] T025 [US1] Add text fallback renderer for `core/guidance.NextActionPlan`.
+- [X] T023 [US1] Add injectable TTY/mode detection seam in `cmd/stage/commands/onboarding_mode.go` or a new root interaction helper.
+- [X] T024 [US1] Add root no-args `RunE` wiring in `cmd/stage/commands/root.go`.
+- [X] T025 [US1] Add text fallback renderer for `core/guidance.NextActionPlan`.
 - [ ] T026 [US1] Add thin TUI adapter entrypoint in `cmd/stage/commands/tui.go`.
 - [ ] T027 [US1] Run focused supporting checks for `cmd/stage/commands` and `core/guidance`.
 

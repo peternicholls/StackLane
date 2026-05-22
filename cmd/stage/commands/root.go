@@ -3,9 +3,12 @@
 package commands
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/guidance"
 	"github.com/peternicholls/stageserve/core/lifecycle"
 	"github.com/peternicholls/stageserve/core/state"
 	"github.com/peternicholls/stageserve/infra/compose"
@@ -36,17 +39,29 @@ type SharedFlags struct {
 	StackHome       string
 }
 
+type rootInteractionFlags struct {
+	NotUI bool
+	CLI   bool
+}
+
 // NewRoot returns the configured root command.
 func NewRoot(version string) *cobra.Command {
 	flags := &SharedFlags{}
+	interaction := &rootInteractionFlags{}
 	root := &cobra.Command{
 		Use:           "stage",
 		Short:         "Run local projects with StageServe",
 		Long:          "StageServe runs local project environments and keeps their browser URLs routed consistently.",
+		Args:          cobra.NoArgs,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runRootGuidance(cmd, flags, interaction)
+		},
 	}
+	root.Flags().BoolVar(&interaction.NotUI, "notui", false, "Use plain text output")
+	root.Flags().BoolVar(&interaction.CLI, "cli", false, "Use plain text output")
 	pf := root.PersistentFlags()
 	pf.StringVar(&flags.ProjectDir, "project-dir", "", "Project directory (defaults to cwd)")
 	pf.StringVar(&flags.SiteName, "site-name", "", "Project name (defaults to project dir basename)")
@@ -78,6 +93,22 @@ func NewRoot(version string) *cobra.Command {
 	root.AddCommand(NewInit(flags))
 	root.AddCommand(NewVersion(version))
 	return root
+}
+
+func runRootGuidance(cmd *cobra.Command, flags *SharedFlags, interaction *rootInteractionFlags) error {
+	capability := guidance.DetectCapability(os.Stdin, os.Stdout, os.Stderr, interaction.NotUI, interaction.CLI)
+	cfg, err := loadConfig(flags)
+	if err != nil {
+		cwd, cwdErr := os.Getwd()
+		if cwdErr != nil {
+			cwd = "."
+		}
+		plan := guidance.Plan(guidance.ContextFromError(cwd, capability, err))
+		return guidance.RenderText(cmd.OutOrStdout(), plan)
+	}
+	context := guidance.Collect(cmd.Context(), cfg, guidance.CollectOptions{Capability: capability})
+	plan := guidance.Plan(context)
+	return guidance.RenderText(cmd.OutOrStdout(), plan)
 }
 
 // loadConfig produces a ProjectConfig honouring the precedence chain.
