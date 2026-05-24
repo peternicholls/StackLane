@@ -120,10 +120,10 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [x] T048 Route setup checks through existing onboarding result semantics.
 - [x] T049 Implement guided project config preview using the shared project-env model.
 - [x] T050 Add confirmation before writing `.env.stageserve`.
-- [ ] T051 Add inline editing for project name, web folder, and local suffix/address preview.
+- [x] T051 Add inline editing for project name, web folder, and local suffix/address preview.
 - [x] T052 Recompute the planner after config creation and offer the next safe action.
-- [ ] T052a Make `stage init` open the guided project-config form by default in interactive terminals.
-- [ ] T052b Keep `stage init --notui`, `stage init --cli`, `stage init --json`, and non-TTY `stage init` non-guided and automation-safe.
+- [x] T052a Make `stage init` open the guided project-config form by default in interactive terminals.
+- [x] T052b Keep `stage init --notui`, `stage init --cli`, `stage init --json`, and non-TTY `stage init` non-guided and automation-safe.
 
 ### Day-2 Flow
 
@@ -157,6 +157,10 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [ ] T070 Validate stop/detach/overwrite/recovery confirmations.
 - [ ] T071 Validate text fallback parity with the guided situation and default action.
 - [ ] T072 Run `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
+
+### Phase 3 Progress Evidence
+
+- 2026-05-23: `go test ./core/guidance ./core/onboarding ./cmd/stage/commands` passed after T051/T052a/T052b.
 
 ## Phase 4: Process Hardening
 

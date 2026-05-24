@@ -37,6 +37,7 @@ func Collect(ctx context.Context, cfg config.ProjectConfig, opts CollectOptions)
 		LocalURL:        localURL(cfg),
 		WebFolder:       webFolder(cfg),
 		SiteName:        cfg.Name,
+		SiteSuffix:      cfg.SiteSuffix,
 		Capability:      opts.Capability,
 	}
 
@@ -53,7 +54,7 @@ func Collect(ctx context.Context, cfg config.ProjectConfig, opts CollectOptions)
 	} else if !os.IsNotExist(err) {
 		context.ProjectEnvValid = false
 		context.Warnings = append(context.Warnings, fmt.Sprintf("Project settings could not be checked: %v", err))
-	} else if preview, err := onboarding.PreviewProjectEnv(cfg.Dir, cfg.Name, cfg.DocRootRelative); err == nil {
+	} else if preview, err := onboarding.PreviewProjectEnvWithSettings(cfg.Dir, onboarding.ProjectEnvSettings{SiteName: cfg.Name, DocRoot: cfg.DocRootRelative, SiteSuffix: cfg.SiteSuffix}); err == nil {
 		context.ProjectEnvPreview = &preview
 	} else {
 		context.ProjectEnvValid = false

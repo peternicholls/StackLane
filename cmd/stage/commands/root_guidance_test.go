@@ -84,6 +84,13 @@ func TestGuidedInitActionWritesEnvAndReplans(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(projectDir, ".env.stageserve")); err != nil {
 		t.Fatalf("expected .env.stageserve to be written: %v", err)
 	}
+	body, err := os.ReadFile(filepath.Join(projectDir, ".env.stageserve"))
+	if err != nil {
+		t.Fatalf("read env file: %v", err)
+	}
+	if !strings.Contains(string(body), `SITE_SUFFIX="test"`) {
+		t.Fatalf("expected site suffix in env file:\n%s", string(body))
+	}
 	if plan.Situation != guidance.SituationProjectReadyToRun {
 		t.Fatalf("situation=%s want %s", plan.Situation, guidance.SituationProjectReadyToRun)
 	}

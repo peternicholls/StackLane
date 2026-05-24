@@ -51,6 +51,46 @@ func TestInit_CreatesEnvFile(t *testing.T) {
 	}
 }
 
+func TestInit_WritesSiteSuffixInPlainMode(t *testing.T) {
+	dir := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--site-suffix", "develop", "init", "--project-dir", dir, "--non-interactive", "--notui"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, ".env.stageserve"))
+	if err != nil {
+		t.Fatalf("read env file: %v", err)
+	}
+	if !strings.Contains(string(body), `SITE_SUFFIX="develop"`) {
+		t.Fatalf("env file missing site suffix:\n%s", string(body))
+	}
+}
+
+func TestInit_CLIPlainModeDoesNotRenderGuidedChoices(t *testing.T) {
+	dir := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"init", "--project-dir", dir, "--cli"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := buf.String()
+	for _, unwanted := range []string{"What you can do", "Project settings", "Edit before writing"} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("plain mode rendered guided copy %q:\n%s", unwanted, out)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".env.stageserve")); err != nil {
+		t.Fatalf("expected .env.stageserve to be created: %v", err)
+	}
+}
+
 // TestInit_SkipsExistingWithoutForce verifies that init without --force does
 // not overwrite an existing .env.stageserve.
 func TestInit_SkipsExistingWithoutForce(t *testing.T) {

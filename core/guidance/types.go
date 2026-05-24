@@ -71,6 +71,7 @@ type GuidedContext struct {
 	LocalURL          string
 	WebFolder         string
 	SiteName          string
+	SiteSuffix        string
 	ProjectEnvPreview *onboarding.ProjectEnvPreview
 	MachineReadiness  MachineReadinessSummary
 	ProjectState      *state.Record
@@ -106,6 +107,7 @@ type GuidedAction struct {
 	RequiresConfirmation bool
 	DirectCommand        string
 	ExpectedResult       string
+	Inputs               map[string]string
 }
 
 // WorkItem is a tool-owned setup, blocker, progress, or recovery row.

@@ -100,8 +100,9 @@ func visibleDefaults(ctx GuidedContext) []VisibleDefault {
 			defaults = append(defaults, VisibleDefault{Label: label, Value: value, Note: note})
 		}
 	}
-	add("Project", ctx.SiteName, "")
+	add("Site name", ctx.SiteName, "")
 	add("Web folder", ctx.WebFolder, "")
+	add("Domain suffix", displaySuffix(ctx.SiteSuffix), "")
 	add("Local URL", ctx.LocalURL, "")
 	if ctx.ProjectEnvPreview != nil {
 		add("Settings file", ctx.ProjectEnvPreview.Path, "will be created after confirmation")
@@ -110,6 +111,16 @@ func visibleDefaults(ctx GuidedContext) []VisibleDefault {
 	}
 	add("Stack", ctx.StackID, "")
 	return defaults
+}
+
+func displaySuffix(suffix string) string {
+	if suffix == "" {
+		return ""
+	}
+	if suffix[0] == '.' {
+		return suffix
+	}
+	return "." + suffix
 }
 
 func action(id, label, description, directCommand string, mutates bool) GuidedAction {

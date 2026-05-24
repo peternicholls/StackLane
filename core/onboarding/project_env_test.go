@@ -92,6 +92,24 @@ func TestWriteProjectEnv_CreatesNewFile(t *testing.T) {
 	}
 }
 
+func TestWriteProjectEnvWithSettings_WritesSiteSuffix(t *testing.T) {
+	dir := t.TempDir()
+	action, err := onboarding.WriteProjectEnvWithSettings(dir, onboarding.ProjectEnvSettings{SiteName: "mysite", DocRoot: "public_html", SiteSuffix: "develop"}, false)
+	if err != nil {
+		t.Fatalf("WriteProjectEnvWithSettings returned error: %v", err)
+	}
+	if action != onboarding.InitActionCreated {
+		t.Fatalf("action=%s want %s", action, onboarding.InitActionCreated)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, ".env.stageserve"))
+	if err != nil {
+		t.Fatalf("read env file: %v", err)
+	}
+	if !strings.Contains(string(body), `SITE_SUFFIX="develop"`) {
+		t.Fatalf("env file missing site suffix:\n%s", string(body))
+	}
+}
+
 // TestPreviewProjectEnv_DoesNotWriteFile verifies that project setup previews
 // share the env renderer without creating .env.stageserve.
 func TestPreviewProjectEnv_DoesNotWriteFile(t *testing.T) {

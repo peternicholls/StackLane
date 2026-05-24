@@ -19,6 +19,7 @@ func baseContext() GuidedContext {
 		ProjectEnvValid:  true,
 		StackID:          "20i",
 		SiteName:         "demo",
+		SiteSuffix:       "test",
 		WebFolder:        "public_html",
 		LocalURL:         "http://demo.test",
 		ProjectEnvPath:   "/sites/demo/.env.stageserve",
@@ -259,5 +260,68 @@ func TestShellConfirmationCanCancelWithoutAction(t *testing.T) {
 	}
 	if !strings.Contains(next.View(), "No changes made.") {
 		t.Fatalf("cancel message missing:\n%s", next.View())
+	}
+}
+
+func TestShellProjectSettingsEditorUpdatesPreviewAndActionInputs(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectEnvExists = false
+	model := newShellModel(Plan(ctx), true)
+	model.cursor = 1
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("opening edit form should not quit")
+	}
+	next, ok := updated.(shellModel)
+	if !ok {
+		t.Fatalf("updated model type %T", updated)
+	}
+	if !next.editing {
+		t.Fatal("expected edit state")
+	}
+	if view := next.View(); !strings.Contains(view, "Project settings") || !strings.Contains(view, "Local URL") {
+		t.Fatalf("edit view missing expected copy:\n%s", view)
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	next = updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyTab})
+	next = updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyTab})
+	next = updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("-local")})
+	next = updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next = updated.(shellModel)
+
+	if next.editing {
+		t.Fatal("edit state should close after save")
+	}
+	if view := next.View(); !strings.Contains(view, "http://demox.test-local") || !strings.Contains(view, "Nothing has been written yet") {
+		t.Fatalf("saved preview missing expected values:\n%s", view)
+	}
+
+	var captured GuidedAction
+	next.actionHandler = func(action GuidedAction) (NextActionPlan, string, error) {
+		captured = action
+		return Plan(baseContext()), "Created project settings.", nil
+	}
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next = updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next = updated.(shellModel)
+
+	if captured.Inputs["site_name"] != "demox" {
+		t.Fatalf("site_name input=%q", captured.Inputs["site_name"])
+	}
+	if captured.Inputs["docroot"] != "public_html" {
+		t.Fatalf("docroot input=%q", captured.Inputs["docroot"])
+	}
+	if captured.Inputs["site_suffix"] != "test-local" {
+		t.Fatalf("site_suffix input=%q", captured.Inputs["site_suffix"])
+	}
+	if next.plan.Situation != SituationProjectReadyToRun {
+		t.Fatalf("situation=%s want %s", next.plan.Situation, SituationProjectReadyToRun)
 	}
 }

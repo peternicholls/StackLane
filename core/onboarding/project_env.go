@@ -26,8 +26,17 @@ type ProjectEnvPreview struct {
 	ProjectRoot string
 	SiteName    string
 	DocRoot     string
+	SiteSuffix  string
 	Body        string
 	Exists      bool
+}
+
+// ProjectEnvSettings contains the user-owned values StageServe writes to the
+// project-local settings file.
+type ProjectEnvSettings struct {
+	SiteName   string
+	DocRoot    string
+	SiteSuffix string
 }
 
 // ValidateProjectRoot verifies that root is a non-empty, existing directory
@@ -75,12 +84,18 @@ func ValidateDocroot(projectRoot, docroot string) error {
 // PreviewProjectEnv validates the target and returns the exact file content
 // WriteProjectEnv would use, without writing anything.
 func PreviewProjectEnv(projectRoot, siteName, docroot string) (ProjectEnvPreview, error) {
+	return PreviewProjectEnvWithSettings(projectRoot, ProjectEnvSettings{SiteName: siteName, DocRoot: docroot})
+}
+
+// PreviewProjectEnvWithSettings validates the target and returns the exact file
+// content WriteProjectEnvWithSettings would use, without writing anything.
+func PreviewProjectEnvWithSettings(projectRoot string, settings ProjectEnvSettings) (ProjectEnvPreview, error) {
 	root, err := ValidateProjectRoot(projectRoot)
 	if err != nil {
 		return ProjectEnvPreview{}, err
 	}
-	if docroot != "" {
-		if err := ValidateDocroot(root, docroot); err != nil {
+	if settings.DocRoot != "" {
+		if err := ValidateDocroot(root, settings.DocRoot); err != nil {
 			return ProjectEnvPreview{}, err
 		}
 	}
@@ -92,9 +107,10 @@ func PreviewProjectEnv(projectRoot, siteName, docroot string) (ProjectEnvPreview
 	return ProjectEnvPreview{
 		Path:        path,
 		ProjectRoot: root,
-		SiteName:    siteName,
-		DocRoot:     docroot,
-		Body:        renderEnv(siteName, docroot),
+		SiteName:    settings.SiteName,
+		DocRoot:     settings.DocRoot,
+		SiteSuffix:  settings.SiteSuffix,
+		Body:        renderEnv(settings),
 		Exists:      statErr == nil,
 	}, nil
 }
@@ -103,15 +119,30 @@ func PreviewProjectEnv(projectRoot, siteName, docroot string) (ProjectEnvPreview
 // If the file already exists and force is false, it returns InitActionSkipped.
 // Returns the action taken or an error.
 func WriteProjectEnv(projectRoot, siteName, docroot string, force bool) (InitAction, error) {
-	path := filepath.Join(projectRoot, projectEnvFile)
+	return WriteProjectEnvWithSettings(projectRoot, ProjectEnvSettings{SiteName: siteName, DocRoot: docroot}, force)
+}
 
-	_, err := os.Stat(path)
+// WriteProjectEnvWithSettings writes a starter .env.stageserve in projectRoot
+// using the supplied project-local settings.
+func WriteProjectEnvWithSettings(projectRoot string, settings ProjectEnvSettings, force bool) (InitAction, error) {
+	root, err := ValidateProjectRoot(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	if settings.DocRoot != "" {
+		if err := ValidateDocroot(root, settings.DocRoot); err != nil {
+			return "", err
+		}
+	}
+	path := filepath.Join(root, projectEnvFile)
+
+	_, err = os.Stat(path)
 	exists := err == nil
 	if exists && !force {
 		return InitActionSkipped, nil
 	}
 
-	body := renderEnv(siteName, docroot)
+	body := renderEnv(settings)
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		return "", fmt.Errorf("write %s: %w", projectEnvFile, err)
 	}
@@ -121,19 +152,24 @@ func WriteProjectEnv(projectRoot, siteName, docroot string, force bool) (InitAct
 	return InitActionCreated, nil
 }
 
-func renderEnv(siteName, docroot string) string {
+func renderEnv(settings ProjectEnvSettings) string {
 	var b strings.Builder
 	b.WriteString("# StageServe project config — created by `stage init`\n")
 	b.WriteString("# Keep project-specific overrides here.\n\n")
 	b.WriteString("STAGESERVE_STACK=20i\n\n")
-	if siteName != "" {
+	if settings.SiteName != "" {
 		b.WriteString("SITE_NAME=")
-		b.WriteString(shellDoubleQuote(siteName))
+		b.WriteString(shellDoubleQuote(settings.SiteName))
 		b.WriteString("\n")
 	}
-	if docroot != "" {
+	if settings.SiteSuffix != "" {
+		b.WriteString("SITE_SUFFIX=")
+		b.WriteString(shellDoubleQuote(settings.SiteSuffix))
+		b.WriteString("\n")
+	}
+	if settings.DocRoot != "" {
 		b.WriteString("DOCROOT=")
-		b.WriteString(shellDoubleQuote(docroot))
+		b.WriteString(shellDoubleQuote(settings.DocRoot))
 		b.WriteString("\n")
 	}
 	return b.String()

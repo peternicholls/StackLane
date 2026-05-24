@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/peternicholls/stageserve/core/config"
+	"github.com/peternicholls/stageserve/core/guidance"
 	"github.com/peternicholls/stageserve/core/onboarding"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +34,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
 			// Determine project directory.
-			projectDir := f.ProjectDir
+			projectDir := initProjectDir(shared, f)
 			if projectDir == "" {
 				var err error
 				projectDir, err = os.Getwd()
@@ -48,14 +50,26 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 			}
 
 			// Validate docroot (only if supplied).
-			if f.DocRoot != "" {
-				if err := onboarding.ValidateDocroot(root, f.DocRoot); err != nil {
+			docRoot := initDocRoot(shared, f)
+			if docRoot != "" {
+				if err := onboarding.ValidateDocroot(root, docRoot); err != nil {
 					return err
 				}
 			}
 
+			capability := guidance.DetectCapability(os.Stdin, os.Stdout, os.Stderr, f.NotUI || f.NoTUI, f.CLI)
+			if mode == onboarding.OutputModeTUI && capability.AllowsTUI() && !f.Force {
+				cfg, err := loadInitGuidedConfig(shared, f)
+				if err != nil {
+					return err
+				}
+				context := guidance.Collect(cmd.Context(), cfg, guidance.CollectOptions{Capability: capability})
+				plan := guidance.Plan(context)
+				return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout())
+			}
+
 			// Write the project env file.
-			action, writeErr := onboarding.WriteProjectEnv(root, f.SiteName, f.DocRoot, f.Force)
+			action, writeErr := onboarding.WriteProjectEnvWithSettings(root, projectEnvSettingsFromInitFlags(shared, f), f.Force)
 
 			// Build a result step from the write outcome.
 			var step onboarding.StepResult
@@ -113,6 +127,43 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	addPlainTextOutputFlags(cmd, &f.NotUI, &f.CLI, &f.NoTUI)
 	cmd.Flags().BoolVar(&f.JSON, "json", false, "Emit JSON envelope only")
 	return cmd
+}
+
+func initProjectDir(shared *SharedFlags, flags *initFlags) string {
+	if flags.ProjectDir != "" {
+		return flags.ProjectDir
+	}
+	return shared.ProjectDir
+}
+
+func initSiteName(shared *SharedFlags, flags *initFlags) string {
+	if flags.SiteName != "" {
+		return flags.SiteName
+	}
+	return shared.SiteName
+}
+
+func initDocRoot(shared *SharedFlags, flags *initFlags) string {
+	if flags.DocRoot != "" {
+		return flags.DocRoot
+	}
+	return shared.DocRoot
+}
+
+func loadInitGuidedConfig(shared *SharedFlags, flags *initFlags) (config.ProjectConfig, error) {
+	merged := *shared
+	merged.ProjectDir = initProjectDir(shared, flags)
+	merged.SiteName = initSiteName(shared, flags)
+	merged.DocRoot = initDocRoot(shared, flags)
+	return loadConfig(&merged)
+}
+
+func projectEnvSettingsFromInitFlags(shared *SharedFlags, flags *initFlags) onboarding.ProjectEnvSettings {
+	return onboarding.ProjectEnvSettings{
+		SiteName:   initSiteName(shared, flags),
+		DocRoot:    normalizeProjectEnvDocRoot(initDocRoot(shared, flags)),
+		SiteSuffix: normalizeProjectEnvSuffix(shared.SiteSuffix),
+	}
 }
 
 // initExitError wraps a non-zero exit code for the init command.

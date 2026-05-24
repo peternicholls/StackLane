@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/peternicholls/stageserve/core/project"
 )
 
 // RunShell starts the guided TUI shell. It renders the current plan and owns
@@ -43,6 +44,10 @@ type shellModel struct {
 	showDetails   bool
 	confirming    bool
 	message       string
+	editing       bool
+	editCursor    int
+	editDraft     projectSettingsDraft
+	hasEditDraft  bool
 	width         int
 	noColor       bool
 	actionHandler ActionHandler
@@ -61,6 +66,9 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.width = msg.Width
 		}
 	case tea.KeyMsg:
+		if m.editing {
+			return m.updateEditing(msg)
+		}
 		if m.confirming {
 			return m.updateConfirmation(msg.String())
 		}
@@ -82,6 +90,9 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !ok {
 				return m, nil
 			}
+			if action.ID == "edit_config" {
+				return m.startEditing(), nil
+			}
 			if action.RequiresConfirmation {
 				m.confirming = true
 				m.message = ""
@@ -94,7 +105,7 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m shellModel) View() string {
-	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming)
+	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming, m.editing, m.editCursor, m.editDraft)
 }
 
 func (m shellModel) selectedAction() (GuidedAction, bool) {
@@ -129,6 +140,7 @@ func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
 		m.message = "This action is not available in guided mode yet."
 		return m, nil
 	}
+	action = m.actionWithDraft(action)
 	nextPlan, message, err := m.actionHandler(action)
 	if err != nil {
 		m.message = err.Error()
@@ -137,15 +149,246 @@ func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
 	m.plan = nextPlan
 	m.cursor = 0
 	m.showDetails = false
+	m.editing = false
+	m.hasEditDraft = false
 	m.message = message
 	return m, nil
 }
 
-func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColor bool) string {
-	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false)
+func (m shellModel) startEditing() shellModel {
+	m.editing = true
+	m.confirming = false
+	m.showDetails = false
+	m.message = ""
+	m.editCursor = 0
+	m.editDraft = m.activeProjectSettingsDraft()
+	return m
 }
 
-func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, noColor bool, message string, confirming bool) string {
+func (m shellModel) updateEditing(message tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch message.String() {
+	case "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		m.editing = false
+		m.message = "No changes made."
+		return m, nil
+	case "tab", "down":
+		m.editCursor = nextProjectSettingsField(m.editCursor)
+		return m, nil
+	case "shift+tab", "up":
+		m.editCursor = previousProjectSettingsField(m.editCursor)
+		return m, nil
+	case "enter":
+		return m.applyEditDraft(), nil
+	case "backspace", "ctrl+h":
+		m.editDraft.deleteLast(m.editCursor)
+		return m, nil
+	case "ctrl+u":
+		m.editDraft.setValue(m.editCursor, "")
+		return m, nil
+	}
+	if len(message.Runes) > 0 {
+		m.editDraft.appendText(m.editCursor, string(message.Runes))
+	}
+	return m, nil
+}
+
+func (m shellModel) applyEditDraft() shellModel {
+	m.editDraft = m.editDraft.normalized()
+	m.plan = applyProjectSettingsDraft(m.plan, m.editDraft)
+	m.hasEditDraft = true
+	m.editing = false
+	m.cursor = indexOfAction(m.plan.DecisionItems, "init")
+	m.message = "Settings preview updated. Nothing has been written yet."
+	return m
+}
+
+func (m shellModel) actionWithDraft(action GuidedAction) GuidedAction {
+	if action.ID != "init" && action.ID != "init_here" {
+		return action
+	}
+	draft := m.activeProjectSettingsDraft().normalized()
+	action.Inputs = map[string]string{
+		"site_name":   draft.SiteName,
+		"docroot":     docRootInputValue(draft.WebFolder),
+		"site_suffix": draft.SiteSuffix,
+	}
+	return action
+}
+
+func (m shellModel) activeProjectSettingsDraft() projectSettingsDraft {
+	if m.hasEditDraft {
+		return m.editDraft
+	}
+	return projectSettingsDraftFromPlan(m.plan)
+}
+
+const projectSettingsFieldCount = 3
+
+type projectSettingsDraft struct {
+	SiteName   string
+	WebFolder  string
+	SiteSuffix string
+}
+
+func projectSettingsDraftFromPlan(plan NextActionPlan) projectSettingsDraft {
+	draft := projectSettingsDraft{SiteSuffix: "test"}
+	for _, item := range plan.VisibleDefaults {
+		switch item.Label {
+		case "Project", "Site name":
+			draft.SiteName = item.Value
+		case "Web folder":
+			draft.WebFolder = item.Value
+		case "Domain suffix":
+			draft.SiteSuffix = strings.TrimPrefix(item.Value, ".")
+		}
+	}
+	return draft.normalized()
+}
+
+func (draft projectSettingsDraft) normalized() projectSettingsDraft {
+	draft.SiteName = strings.TrimSpace(draft.SiteName)
+	if draft.SiteName == "" {
+		draft.SiteName = "site"
+	}
+	draft.WebFolder = strings.TrimSpace(draft.WebFolder)
+	if draft.WebFolder == "" {
+		draft.WebFolder = "."
+	}
+	draft.SiteSuffix = normalizeDraftSuffix(draft.SiteSuffix)
+	return draft
+}
+
+func (draft projectSettingsDraft) localURL() string {
+	draft = draft.normalized()
+	scheme := "http"
+	if draft.SiteSuffix == "dev" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s.%s", scheme, project.Slugify(draft.SiteName), draft.SiteSuffix)
+}
+
+func (draft *projectSettingsDraft) appendText(field int, value string) {
+	draft.setValue(field, draft.value(field)+value)
+}
+
+func (draft *projectSettingsDraft) deleteLast(field int) {
+	value := []rune(draft.value(field))
+	if len(value) == 0 {
+		return
+	}
+	draft.setValue(field, string(value[:len(value)-1]))
+}
+
+func (draft *projectSettingsDraft) setValue(field int, value string) {
+	switch field {
+	case 0:
+		draft.SiteName = value
+	case 1:
+		draft.WebFolder = value
+	case 2:
+		draft.SiteSuffix = value
+	}
+}
+
+func (draft projectSettingsDraft) value(field int) string {
+	switch field {
+	case 0:
+		return draft.SiteName
+	case 1:
+		return draft.WebFolder
+	case 2:
+		return draft.SiteSuffix
+	default:
+		return ""
+	}
+}
+
+func normalizeDraftSuffix(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.TrimPrefix(value, ".")
+	if value == "" {
+		return "test"
+	}
+	return project.Slugify(value)
+}
+
+func nextProjectSettingsField(current int) int {
+	return (current + 1) % projectSettingsFieldCount
+}
+
+func previousProjectSettingsField(current int) int {
+	if current <= 0 {
+		return projectSettingsFieldCount - 1
+	}
+	return current - 1
+}
+
+func applyProjectSettingsDraft(plan NextActionPlan, draft projectSettingsDraft) NextActionPlan {
+	draft = draft.normalized()
+	updated := []VisibleDefault{
+		{Label: "Site name", Value: draft.SiteName},
+		{Label: "Web folder", Value: draft.WebFolder},
+		{Label: "Domain suffix", Value: displaySuffix(draft.SiteSuffix)},
+		{Label: "Local URL", Value: draft.localURL()},
+	}
+	for _, item := range plan.VisibleDefaults {
+		switch item.Label {
+		case "Project", "Site name", "Web folder", "Domain suffix", "Local URL":
+			continue
+		default:
+			updated = append(updated, item)
+		}
+	}
+	plan.VisibleDefaults = updated
+	return plan
+}
+
+func renderProjectSettingsEditor(builder *strings.Builder, draft projectSettingsDraft, editCursor, lineWidth int, styles shellStyles) {
+	draft = draft.normalized()
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("Project settings", lineWidth, styles))
+	fields := []struct {
+		label string
+		value string
+	}{
+		{label: "Site name", value: draft.SiteName},
+		{label: "Web folder", value: draft.WebFolder},
+		{label: "Domain suffix", value: draft.SiteSuffix},
+	}
+	for fieldIndex, field := range fields {
+		marker := " "
+		if fieldIndex == editCursor {
+			marker = "▶"
+		}
+		fmt.Fprintf(builder, "  %s %s  %s\n", styles.accent.Render(marker), styles.label.Render(fmt.Sprintf("%-13s", field.label)), field.value)
+	}
+	fmt.Fprintf(builder, "\n  %s  %s\n", styles.label.Render(fmt.Sprintf("%-13s", "Local URL")), draft.localURL())
+	fmt.Fprintf(builder, "  %s\n", styles.muted.Render("Saving updates the preview only; confirm project settings to write the file."))
+}
+
+func docRootInputValue(webFolder string) string {
+	webFolder = strings.TrimSpace(webFolder)
+	if webFolder == "." {
+		return ""
+	}
+	return webFolder
+}
+
+func indexOfAction(actions []GuidedAction, id string) int {
+	for actionIndex, action := range actions {
+		if action.ID == id {
+			return actionIndex
+		}
+	}
+	return 0
+}
+
+func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColor bool) string {
+	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false, false, 0, projectSettingsDraft{})
+}
+
+func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, noColor bool, message string, confirming bool, editing bool, editCursor int, editDraft projectSettingsDraft) string {
 	styles := shellStylesFor(noColor)
 	var b strings.Builder
 	lineWidth := clampInt(width-4, 42, 96)
@@ -160,62 +403,66 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 		fmt.Fprintf(&b, "  %s\n", styles.muted.Render(message))
 	}
 
-	if len(plan.VisibleDefaults) > 0 {
-		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Key facts", lineWidth, styles))
-		for _, item := range plan.VisibleDefaults {
-			fmt.Fprintf(&b, "  %s  %s", styles.label.Render(fmt.Sprintf("%-13s", item.Label)), item.Value)
-			if item.Note != "" {
-				fmt.Fprintf(&b, "  %s", styles.muted.Render(item.Note))
+	if editing {
+		renderProjectSettingsEditor(&b, editDraft, editCursor, lineWidth, styles)
+	} else {
+		if len(plan.VisibleDefaults) > 0 {
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Key facts", lineWidth, styles))
+			for _, item := range plan.VisibleDefaults {
+				fmt.Fprintf(&b, "  %s  %s", styles.label.Render(fmt.Sprintf("%-13s", item.Label)), item.Value)
+				if item.Note != "" {
+					fmt.Fprintf(&b, "  %s", styles.muted.Render(item.Note))
+				}
+				b.WriteByte('\n')
 			}
-			b.WriteByte('\n')
 		}
-	}
 
-	if confirming {
-		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Confirm change", lineWidth, styles))
-		if action, ok := selectedAction(plan, cursor); ok {
-			fmt.Fprintf(&b, "  %s\n", styles.label.Render(action.Label))
-			fmt.Fprintf(&b, "    %s\n", styles.muted.Render(action.Description))
-		}
-		b.WriteString("\n  StageServe will update the settings file shown above.\n")
-		b.WriteString("  It will not start containers or change your application files.\n")
-	} else if len(plan.DecisionItems) > 0 {
-		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("What you can do", lineWidth, styles))
-		for i, item := range plan.DecisionItems {
-			marker := " "
-			if i == cursor {
-				marker = "▶"
+		if confirming {
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Confirm change", lineWidth, styles))
+			if action, ok := selectedAction(plan, cursor); ok {
+				fmt.Fprintf(&b, "  %s\n", styles.label.Render(action.Label))
+				fmt.Fprintf(&b, "    %s\n", styles.muted.Render(action.Description))
 			}
-			fmt.Fprintf(&b, "  %s %s\n", styles.accent.Render(marker), styles.label.Render(item.Label))
-			fmt.Fprintf(&b, "    %s\n\n", styles.muted.Render(item.Description))
+			b.WriteString("\n  StageServe will update the settings file shown above.\n")
+			b.WriteString("  It will not start containers or change your application files.\n")
+		} else if len(plan.DecisionItems) > 0 {
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("What you can do", lineWidth, styles))
+			for i, item := range plan.DecisionItems {
+				marker := " "
+				if i == cursor {
+					marker = "▶"
+				}
+				fmt.Fprintf(&b, "  %s %s\n", styles.accent.Render(marker), styles.label.Render(item.Label))
+				fmt.Fprintf(&b, "    %s\n\n", styles.muted.Render(item.Description))
+			}
 		}
-	}
 
-	if len(plan.WorkItems) > 0 {
-		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Next step", lineWidth, styles))
-		for _, item := range plan.WorkItems {
-			fmt.Fprintf(&b, "  %s\n", styles.label.Render(item.Label))
-			if item.Description != "" {
-				fmt.Fprintf(&b, "    %s\n", styles.muted.Render(item.Description))
-			}
-			if item.DirectCommand != "" {
-				fmt.Fprintf(&b, "    Direct command: %s\n", styles.command.Render(item.DirectCommand))
+		if len(plan.WorkItems) > 0 {
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Next step", lineWidth, styles))
+			for _, item := range plan.WorkItems {
+				fmt.Fprintf(&b, "  %s\n", styles.label.Render(item.Label))
+				if item.Description != "" {
+					fmt.Fprintf(&b, "    %s\n", styles.muted.Render(item.Description))
+				}
+				if item.DirectCommand != "" {
+					fmt.Fprintf(&b, "    Direct command: %s\n", styles.command.Render(item.DirectCommand))
+				}
 			}
 		}
-	}
 
-	if showDetails || len(plan.DecisionItems) == 0 {
-		fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Details", lineWidth, styles))
-		if len(plan.Warnings) == 0 {
-			fmt.Fprintf(&b, "  %s\n", styles.muted.Render("No extra warnings for this plan."))
-		}
-		for _, warning := range plan.Warnings {
-			fmt.Fprintf(&b, "  %s\n", warning)
-		}
-		if len(plan.DirectCommands) > 0 {
-			b.WriteByte('\n')
-			for _, command := range plan.DirectCommands {
-				fmt.Fprintf(&b, "  %s\n", styles.command.Render(command))
+		if showDetails || len(plan.DecisionItems) == 0 {
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Details", lineWidth, styles))
+			if len(plan.Warnings) == 0 {
+				fmt.Fprintf(&b, "  %s\n", styles.muted.Render("No extra warnings for this plan."))
+			}
+			for _, warning := range plan.Warnings {
+				fmt.Fprintf(&b, "  %s\n", warning)
+			}
+			if len(plan.DirectCommands) > 0 {
+				b.WriteByte('\n')
+				for _, command := range plan.DirectCommands {
+					fmt.Fprintf(&b, "  %s\n", styles.command.Render(command))
+				}
 			}
 		}
 	}
@@ -224,6 +471,8 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 	footer := "↑/↓ inspect • enter choose • ? details • q quit"
 	if confirming {
 		footer = "enter confirm • n cancel • esc cancel"
+	} else if editing {
+		footer = "type edit • tab/↑/↓ move • enter save • esc cancel"
 	}
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
