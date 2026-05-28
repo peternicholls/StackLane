@@ -64,7 +64,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 					return err
 				}
 				context := collectGuidedContext(cmd.Context(), cfg, capability)
-				plan := guidance.Plan(context)
+				plan := buildInitGuidedPlan(context)
 				return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout())
 			}
 
@@ -127,6 +127,41 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	addPlainTextOutputFlags(cmd, &f.NotUI, &f.CLI, &f.NoTUI)
 	cmd.Flags().BoolVar(&f.JSON, "json", false, "Emit JSON envelope only")
 	return cmd
+}
+
+func buildInitGuidedPlan(ctx guidance.GuidedContext) guidance.NextActionPlan {
+	plan := guidance.Plan(ctx)
+	if !ctx.ProjectEnvExists {
+		return plan
+	}
+
+	plan.StatusHeader = "This folder already has StageServe settings."
+	plan.Summary = "StageServe can update .env.stageserve with the values shown here."
+	plan.DecisionItems = []guidance.GuidedAction{
+		{
+			ID:                   "overwrite_init",
+			Kind:                 "choose",
+			Label:                "Update project settings",
+			Description:          "Overwrite .env.stageserve with the values shown here.",
+			MutatesState:         true,
+			RequiresConfirmation: true,
+			DirectCommand:        "stage init --force",
+		},
+		{
+			ID:            "edit_config",
+			Kind:          "choose",
+			Label:         "Edit before updating",
+			Description:   "Change the project name, web folder, or local address first.",
+			DirectCommand: "stage init --force",
+		},
+	}
+	plan.DirectCommands = []string{"stage init --force"}
+	for itemIndex := range plan.VisibleDefaults {
+		if plan.VisibleDefaults[itemIndex].Label == "Settings file" {
+			plan.VisibleDefaults[itemIndex].Note = "will be updated after confirmation"
+		}
+	}
+	return plan
 }
 
 func initProjectDir(shared *SharedFlags, flags *initFlags) string {

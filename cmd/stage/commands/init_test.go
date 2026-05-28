@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/peternicholls/stageserve/core/guidance"
 	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
@@ -89,6 +90,40 @@ func TestInit_CLIPlainModeDoesNotRenderGuidedChoices(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".env.stageserve")); err != nil {
 		t.Fatalf("expected .env.stageserve to be created: %v", err)
 	}
+}
+
+func TestBuildInitGuidedPlanUsesOverwriteFlowWhenEnvExists(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".env.stageserve"), []byte("STAGESERVE_STACK=20i\n"), 0o600); err != nil {
+		t.Fatalf("seed env file: %v", err)
+	}
+	ctx := guidance.GuidedContext{
+		ProjectRoot:      dir,
+		ProjectEnvPath:   filepath.Join(dir, ".env.stageserve"),
+		ProjectEnvExists: true,
+		SiteName:         "demo",
+		WebFolder:        "public_html",
+		SiteSuffix:       "test",
+		LocalURL:         "http://demo.test",
+		StackID:          "20i",
+	}
+
+	plan := buildInitGuidedPlan(ctx)
+	if plan.StatusHeader != "This folder already has StageServe settings." {
+		t.Fatalf("status header=%q", plan.StatusHeader)
+	}
+	if len(plan.DecisionItems) < 2 || plan.DecisionItems[0].ID != "overwrite_init" || plan.DecisionItems[1].ID != "edit_config" {
+		t.Fatalf("unexpected decision items: %+v", plan.DecisionItems)
+	}
+	if len(plan.DirectCommands) != 1 || plan.DirectCommands[0] != "stage init --force" {
+		t.Fatalf("direct commands=%v", plan.DirectCommands)
+	}
+	for _, item := range plan.VisibleDefaults {
+		if item.Label == "Settings file" && item.Note == "will be updated after confirmation" {
+			return
+		}
+	}
+	t.Fatal("settings file note did not change to overwrite guidance")
 }
 
 // TestInit_SkipsExistingWithoutForce verifies that init without --force does

@@ -218,13 +218,13 @@ func (m shellModel) applyEditDraft() shellModel {
 	m.plan = applyProjectSettingsDraft(m.plan, m.editDraft)
 	m.hasEditDraft = true
 	m.editing = false
-	m.cursor = indexOfAction(m.plan.DecisionItems, "init")
+	m.cursor = indexOfAction(m.plan.DecisionItems, primaryProjectSettingsActionID(m.plan.DecisionItems))
 	m.message = "Settings preview updated. Nothing has been written yet."
 	return m
 }
 
 func (m shellModel) actionWithDraft(action GuidedAction) GuidedAction {
-	if action.ID != "init" && action.ID != "init_here" {
+	if action.ID != "init" && action.ID != "init_here" && action.ID != "overwrite_init" {
 		return action
 	}
 	draft := m.activeProjectSettingsDraft().normalized()
@@ -403,6 +403,15 @@ func indexOfAction(actions []GuidedAction, id string) int {
 	return 0
 }
 
+func primaryProjectSettingsActionID(actions []GuidedAction) string {
+	for _, action := range actions {
+		if action.ID == "init" || action.ID == "overwrite_init" {
+			return action.ID
+		}
+	}
+	return "init"
+}
+
 func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColor bool) string {
 	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false, false, 0, projectSettingsDraft{}, nil)
 }
@@ -534,6 +543,9 @@ func renderConfirmationBody(builder *strings.Builder, action GuidedAction, plan 
 	localURL := visibleDefaultValue(plan, "Local URL")
 	switch action.ID {
 	case "init", "init_here":
+		builder.WriteString("  StageServe will update the settings file shown above.\n")
+		builder.WriteString("  It will not start containers or change your application files.\n")
+	case "overwrite_init":
 		builder.WriteString("  StageServe will update the settings file shown above.\n")
 		builder.WriteString("  It will not start containers or change your application files.\n")
 	case "down":

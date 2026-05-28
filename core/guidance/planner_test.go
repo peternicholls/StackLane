@@ -310,6 +310,37 @@ func TestShellConfirmationCanCancelWithoutAction(t *testing.T) {
 	}
 }
 
+func TestShellDriftRecoveryStopConfirmationUsesStopCopy(t *testing.T) {
+	ctx := baseContext()
+	ctx.Warnings = []string{"Project settings do not match the recorded project path."}
+	model := newShellModel(Plan(ctx), true)
+	model.cursor = 2
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("opening confirmation should not quit")
+	}
+	next := updated.(shellModel)
+	if !next.confirming {
+		t.Fatal("expected confirmation state")
+	}
+	view := next.View()
+	for _, want := range []string{"Confirm change", "StageServe will stop this project.", "Your files will not be touched.", "http://demo.test will no longer respond until you run it again."} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("confirmation view missing %q:\n%s", want, view)
+		}
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	next = updated.(shellModel)
+	if next.confirming {
+		t.Fatal("confirmation state should close after cancel")
+	}
+	if !strings.Contains(next.View(), "No changes made.") {
+		t.Fatalf("cancel message missing after recovery confirmation cancel:\n%s", next.View())
+	}
+}
+
 func TestShellProjectSettingsEditorUpdatesPreviewAndActionInputs(t *testing.T) {
 	ctx := baseContext()
 	ctx.ProjectEnvExists = false

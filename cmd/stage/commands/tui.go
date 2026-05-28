@@ -88,9 +88,10 @@ func runGuidedTUI(ctx context.Context, cfg config.ProjectConfig, plan guidance.N
 
 func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner, capability guidance.TUICapability, action guidance.GuidedAction) (guidance.ActionResult, error) {
 	switch action.ID {
-	case "init", "init_here":
+	case "init", "init_here", "overwrite_init":
 		settings := projectEnvSettingsFromGuidedAction(cfg, action)
-		result, err := onboarding.WriteProjectEnvWithSettings(cfg.Dir, settings, false)
+		force := action.ID == "overwrite_init"
+		result, err := onboarding.WriteProjectEnvWithSettings(cfg.Dir, settings, force)
 		if err != nil {
 			return guidance.ActionResult{}, err
 		}

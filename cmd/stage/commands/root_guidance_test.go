@@ -142,6 +142,45 @@ func TestGuidedInitActionWritesEnvAndReplans(t *testing.T) {
 	}
 }
 
+func TestGuidedOverwriteInitActionOverwritesEnvAndReplans(t *testing.T) {
+	projectDir := t.TempDir()
+	envFile := filepath.Join(projectDir, ".env.stageserve")
+	if err := os.WriteFile(envFile, []byte("# old settings\n"), 0o600); err != nil {
+		t.Fatalf("seed env file: %v", err)
+	}
+	cfg := config.ProjectConfig{
+		Name:            "demo",
+		Slug:            "demo",
+		Dir:             projectDir,
+		StateDir:        filepath.Join(t.TempDir(), "state"),
+		StackKind:       "20i",
+		StackHome:       t.TempDir(),
+		Hostname:        "demo.test",
+		SiteSuffix:      "test",
+		DocRoot:         filepath.Join(projectDir, "public_html"),
+		DocRootRelative: "public_html",
+		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
+	}
+
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "overwrite_init"})
+	if err != nil {
+		t.Fatalf("handleGuidedAction: %v", err)
+	}
+	if !strings.Contains(result.Message, "Updated project settings") {
+		t.Fatalf("message=%q", result.Message)
+	}
+	body, err := os.ReadFile(envFile)
+	if err != nil {
+		t.Fatalf("read env file: %v", err)
+	}
+	if strings.Contains(string(body), "# old settings") {
+		t.Fatalf("expected .env.stageserve to be overwritten, got:\n%s", string(body))
+	}
+	if result.Plan.Situation != guidance.SituationProjectReadyToRun {
+		t.Fatalf("situation=%s want %s", result.Plan.Situation, guidance.SituationProjectReadyToRun)
+	}
+}
+
 func TestExecuteGuidedActionRouting(t *testing.T) {
 	projectDir := t.TempDir()
 	cfg := config.ProjectConfig{
