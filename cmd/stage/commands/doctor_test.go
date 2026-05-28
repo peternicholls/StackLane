@@ -89,7 +89,10 @@ func TestDoctor_TextOutputShape(t *testing.T) {
 // config contract for state-dir resolution via --stack-home.
 func TestDoctor_UsesConfigResolvedStateDir(t *testing.T) {
 	stackHome := t.TempDir()
-	if err := os.WriteFile(filepath.Join(stackHome, "docker-compose.shared.yml"), []byte("services: {}\n"), 0o644); err != nil {
+	if err := os.MkdirAll(filepath.Join(stackHome, "stacks", "20i"), 0o755); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stackHome, "stacks", "20i", "docker-compose.shared.yml"), []byte("services: {}\n"), 0o644); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 

@@ -46,8 +46,23 @@ func TestLoader_DefaultsApplied(t *testing.T) {
 	if cfg.StackKind != "20i" {
 		t.Errorf("default STAGESERVE_STACK=%q want 20i", cfg.StackKind)
 	}
-	if want := filepath.Join(cfg.StackHome, "docker-compose.20i.yml"); cfg.StackFile != want {
+	if cfg.Stack.Kind != "20i" {
+		t.Errorf("Stack.Kind=%q want 20i", cfg.Stack.Kind)
+	}
+	if want := filepath.Join(cfg.StackHome, "stacks", "20i", "docker-compose.20i.yml"); cfg.StackFile != want {
 		t.Errorf("StackFile=%q want %q", cfg.StackFile, want)
+	}
+	if want := filepath.Join(cfg.StackHome, "stacks", "20i", "docker-compose.shared.yml"); cfg.SharedFile != want {
+		t.Errorf("SharedFile=%q want %q", cfg.SharedFile, want)
+	}
+	if !cfg.Stack.Capabilities.SharedGateway || !cfg.Stack.Capabilities.ProjectDatabase {
+		t.Fatalf("stack capabilities=%+v want shared gateway and project database enabled", cfg.Stack.Capabilities)
+	}
+	if got := len(cfg.Stack.Requirements); got != 3 {
+		t.Fatalf("stack requirements=%d want 3", got)
+	}
+	if got := cfg.Stack.Compatibility.SupportedSuffixes; len(got) != 3 || got[0] != "test" {
+		t.Fatalf("stack supported suffixes=%v want [test dev develop]", got)
 	}
 	if cfg.PHPVersion != "8.5" {
 		t.Errorf("default PHP_VERSION=%q want 8.5", cfg.PHPVersion)
@@ -218,6 +233,34 @@ func TestLoader_RejectsUnsupportedStackKind(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unsupported STAGESERVE_STACK") {
 		t.Fatalf("error=%q want unsupported STAGESERVE_STACK message", err)
+	}
+}
+
+func TestStackCatalogRootExists(t *testing.T) {
+	stackHome := t.TempDir()
+	writeFile(t, filepath.Join(stackHome, "stacks", "20i", "docker-compose.shared.yml"), "services: {}\n")
+
+	if !stackCatalogRootExists(stackHome) {
+		t.Fatal("stackCatalogRootExists=false want true")
+	}
+	if stackCatalogRootExists(t.TempDir()) {
+		t.Fatal("stackCatalogRootExists=true want false for empty dir")
+	}
+}
+
+func TestLookupStackDefinition_ExposesMetadata(t *testing.T) {
+	def, ok := lookupStackDefinition("20i")
+	if !ok {
+		t.Fatal("lookupStackDefinition=false want true")
+	}
+	if def.AssetDir != filepath.Join("stacks", "20i") {
+		t.Fatalf("AssetDir=%q want %q", def.AssetDir, filepath.Join("stacks", "20i"))
+	}
+	if !def.Capabilities.ManagedTLS || !def.Capabilities.DebugProfile {
+		t.Fatalf("capabilities=%+v want managed TLS and debug profile enabled", def.Capabilities)
+	}
+	if len(def.Compatibility.SupportedProfiles) != 1 || def.Compatibility.SupportedProfiles[0] != "debug" {
+		t.Fatalf("supported profiles=%v want [debug]", def.Compatibility.SupportedProfiles)
 	}
 }
 

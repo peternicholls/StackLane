@@ -96,6 +96,13 @@ type NextActionPlan struct {
 	VisibleDefaults []VisibleDefault
 }
 
+// ActionResult is the shell-visible result of running one guided action.
+type ActionResult struct {
+	Plan    NextActionPlan
+	Message string
+	Utility *UtilitySurface
+}
+
 // GuidedAction is one user-selectable or footer operation.
 type GuidedAction struct {
 	ID                   string
@@ -123,4 +130,12 @@ type VisibleDefault struct {
 	Label string
 	Value string
 	Note  string
+}
+
+// UtilitySurface is a temporary read-only panel such as status or logs.
+type UtilitySurface struct {
+	Title           string
+	Body            string
+	Footer          string
+	DismissOnAnyKey bool
 }

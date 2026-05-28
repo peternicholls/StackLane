@@ -60,12 +60,51 @@ type PortAllocation struct {
 	PMAPort   int
 }
 
+// StackCapabilities describes the product behaviors a stack implementation
+// exposes once selected by STAGESERVE_STACK.
+type StackCapabilities struct {
+	SharedGateway   bool
+	LocalDNS        bool
+	ManagedTLS      bool
+	ProjectDatabase bool
+	DebugProfile    bool
+}
+
+// StackRequirement describes a dependency the selected stack expects StageServe
+// to provide or configure.
+type StackRequirement struct {
+	Name        string
+	Scope       string
+	Description string
+}
+
+// StackCompatibility records coarse constraints for a stack definition so new
+// stack kinds can describe where they are expected to work.
+type StackCompatibility struct {
+	SupportedOS       []string
+	SupportedSuffixes []string
+	SupportedProfiles []string
+}
+
+// StackMetadata is the typed view of one catalog entry under stacks/<kind>/.
+// It is product-owned metadata, not mutable runtime state.
+type StackMetadata struct {
+	Kind               string
+	AssetDir           string
+	SharedComposeFile  string
+	ProjectComposeFile string
+	Capabilities       StackCapabilities
+	Requirements       []StackRequirement
+	Compatibility      StackCompatibility
+}
+
 // ProjectConfig is the resolved view of a single project's settings after the
 // precedence chain has been applied. Replaces the loose set of global shell
 // values for the current project.
 type ProjectConfig struct {
 	// Identity
 	StackKind          string // STAGESERVE_STACK
+	Stack              StackMetadata
 	Name               string // PROJECT_NAME
 	Slug               string // PROJECT_SLUG
 	Dir                string // PROJECT_DIR (absolute)

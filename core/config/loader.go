@@ -28,7 +28,7 @@ type Loader struct {
 	// Env supplies the shell environment. nil means os.LookupEnv.
 	Env func(string) (string, bool)
 	// StackHomeOverride forces the stack home (used by tests). When empty the
-	// loader uses STACK_HOME or the directory holding docker-compose.shared.yml.
+	// loader uses STACK_HOME or the directory holding the bundled stack catalog.
 	StackHomeOverride string
 }
 
@@ -128,6 +128,8 @@ func loadStackEnv(stackHome string) (map[string]string, error) {
 	return loadEnvFile(filepath.Join(stackHome, ".env.stageserve"))
 }
 
+var osStat = os.Stat
+
 func applyProjectRuntimeDBFallback(merged, runtimeEnv map[string]string) {
 	defaults := defaults()
 	for projectKey, stageserveKey := range map[string]string{
@@ -154,16 +156,16 @@ func (l *Loader) resolveStackHome() (string, error) {
 	if v := l.envOrDefault("STACK_HOME", ""); v != "" {
 		return project.AbsDir(v)
 	}
-	// Walk up from this binary's location to find docker-compose.shared.yml.
+	// Walk up from this binary's location to find the bundled stack catalog.
 	exe, err := os.Executable()
 	if err == nil {
 		dir := filepath.Dir(exe)
-		if _, statErr := os.Stat(filepath.Join(dir, "docker-compose.shared.yml")); statErr == nil {
+		if stackCatalogRootExists(dir) {
 			return dir, nil
 		}
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		if _, statErr := os.Stat(filepath.Join(cwd, "docker-compose.shared.yml")); statErr == nil {
+		if stackCatalogRootExists(cwd) {
 			return cwd, nil
 		}
 	}
@@ -204,7 +206,6 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	cfg.StackHome = stackHome
 	stateDir := l.envOrDefault("STAGESERVE_STATE_DIR", defaultStateDir(stackHome))
 	cfg.StateDir = project.AbsPathFromBase(stackHome, stateDir)
-	cfg.SharedFile = filepath.Join(stackHome, "docker-compose.shared.yml")
 
 	// 3. Build the precedence-merged map. Lower precedence first; higher
 	// precedence overwrites by key. Order: defaults -> stageserve .env ->
@@ -284,11 +285,14 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	if stackKind == "" {
 		stackKind = "20i"
 	}
-	if stackKind != "20i" {
+	stackDef, ok := lookupStackDefinition(stackKind)
+	if !ok {
 		return cfg, fmt.Errorf("unsupported STAGESERVE_STACK %q: only 20i is implemented today", stackKind)
 	}
-	cfg.StackKind = stackKind
-	cfg.StackFile = filepath.Join(stackHome, stackComposeFileName(stackKind))
+	cfg.StackKind = stackDef.Kind
+	cfg.Stack = stackDef
+	cfg.StackFile = stackDef.projectFilePath(stackHome)
+	cfg.SharedFile = stackDef.sharedFilePath(stackHome)
 	cfg.Name = strOr(merged["SITE_NAME"], filepath.Base(pdAbs))
 	cfg.Slug = project.Slugify(cfg.Name)
 	cfg.SiteSuffix = strOr(merged["SITE_SUFFIX"], "test")
@@ -404,10 +408,6 @@ func defaults() map[string]string {
 
 func normalizeStackKind(v string) string {
 	return strings.ToLower(strings.TrimSpace(v))
-}
-
-func stackComposeFileName(stackKind string) string {
-	return "docker-compose." + stackKind + ".yml"
 }
 
 func strOr(v, fallback string) string {

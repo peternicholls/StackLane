@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -175,30 +176,32 @@ func runtimeProfiles(cfg config.ProjectConfig) []string {
 	return []string{cfg.Profile}
 }
 
-// Down stops the project, keeps its record, and removes any active route.
+// Down stops the project, removes project-owned runtime state, and clears any active route.
 func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 
 	if err := o.stopProject(ctx, cfg, removeVolumes); err != nil {
 		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
 	}
-	rec, err := o.D.State.Load(cfg.Slug)
-	if err != nil {
-		rec = state.Record{Project: cfg}
+	rec := state.Record{
+		SchemaVersion:   state.SchemaVersion,
+		Project:         cfg,
+		AttachmentState: state.StateDown,
 	}
-	rec.Project = cfg
-	rec.AttachmentState = state.StateDown
 	if err := o.D.State.Save(rec); err != nil {
 		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
 		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d gateway", "."))
 	}
+	if err := removeEnvFile(cfg); err != nil {
+		return Wrap("remove-env-file", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
+	}
 	return nil
 }
 
 // DownAll stops every recorded project runtime, removes all state records, and
-// clears the shared gateway route set.
+// clears the shared gateway route set plus any generated per-project envfiles.
 func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 
@@ -206,20 +209,29 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 	if err != nil {
 		return Wrap("registry", "", err, "Inspect the state directory for unreadable JSON files.")
 	}
+	projects := make([]config.ProjectConfig, 0, len(registry))
 	for _, row := range registry {
 		rec, err := o.D.State.Load(row.Slug)
 		if err != nil {
 			return Wrap("load-state", row.Slug, err, "Inspect the recorded state for this project.")
 		}
+		projects = append(projects, rec.Project)
 		if err := o.stopProject(ctx, rec.Project, removeVolumes); err != nil {
 			return Wrap("compose-down", row.Slug, err, "Inspect docker compose output above.")
 		}
-		if err := o.D.State.Remove(row.Slug); err != nil {
-			return Wrap("remove-state", row.Slug, err, "Inspect permissions on the state directory.")
+		rec.AttachmentState = state.StateDown
+		rec.Runtime = state.RuntimeIdentity{}
+		if err := o.D.State.Save(rec); err != nil {
+			return Wrap("save-state", row.Slug, err, "Inspect permissions on the state directory.")
 		}
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
 		return Wrap("gateway-reload", "", err, sharedComposeRemedy(cfg, "up -d gateway", "."))
+	}
+	for _, project := range projects {
+		if err := removeEnvFile(project); err != nil {
+			return Wrap("remove-env-file", project.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
+		}
 	}
 	return nil
 }
@@ -260,7 +272,7 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 	return o.reloadSharedGateway(ctx, cfg)
 }
 
-// Detach stops the project, removes its state record, and clears its route.
+// Detach stops the project, removes its runtime state, and clears its route.
 func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
 
@@ -272,6 +284,9 @@ func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) err
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
 		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d gateway", "."))
+	}
+	if err := removeEnvFile(cfg); err != nil {
+		return Wrap("remove-env-file", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
 	}
 	return nil
 }
@@ -394,6 +409,7 @@ func (o *Orchestrator) rollbackProject(ctx context.Context, cfg config.ProjectCo
 		EnvFile:     envFile,
 	})
 	o.rollbackGatewayRoute(ctx, cfg)
+	_ = removeEnvFile(cfg)
 }
 
 func (o *Orchestrator) rollbackGatewayRoute(ctx context.Context, cfg config.ProjectConfig) {
@@ -409,6 +425,14 @@ func (o *Orchestrator) rollbackGatewayRoute(ctx context.Context, cfg config.Proj
 
 func envFilePath(cfg config.ProjectConfig) string {
 	return filepath.Join(cfg.StateDir, "envfiles", cfg.Slug+".env")
+}
+
+func removeEnvFile(cfg config.ProjectConfig) error {
+	err := os.Remove(envFilePath(cfg))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func writeEnvFile(cfg config.ProjectConfig) (string, error) {

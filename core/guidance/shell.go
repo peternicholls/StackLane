@@ -24,7 +24,7 @@ func RunShell(plan NextActionPlan, capability TUICapability, input io.Reader, ou
 	return err
 }
 
-type ActionHandler func(GuidedAction) (NextActionPlan, string, error)
+type ActionHandler func(GuidedAction) (ActionResult, error)
 
 type ShellOption func(*shellConfig)
 
@@ -43,6 +43,7 @@ type shellModel struct {
 	cursor        int
 	showDetails   bool
 	confirming    bool
+	utility       *UtilitySurface
 	message       string
 	editing       bool
 	editCursor    int
@@ -68,6 +69,9 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if m.editing {
 			return m.updateEditing(msg)
+		}
+		if m.utility != nil {
+			return m.updateUtility(msg)
 		}
 		if m.confirming {
 			return m.updateConfirmation(msg.String())
@@ -105,7 +109,7 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m shellModel) View() string {
-	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming, m.editing, m.editCursor, m.editDraft)
+	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming, m.editing, m.editCursor, m.editDraft, m.utility)
 }
 
 func (m shellModel) selectedAction() (GuidedAction, bool) {
@@ -129,8 +133,22 @@ func (m shellModel) updateConfirmation(key string) (tea.Model, tea.Cmd) {
 			m.confirming = false
 			return m, nil
 		}
+		if action.ID == "stop_here" {
+			return m, tea.Quit
+		}
 		m.confirming = false
 		return m.runAction(action)
+	}
+	return m, nil
+}
+
+func (m shellModel) updateUtility(message tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if message.String() == "ctrl+c" {
+		return m, tea.Quit
+	}
+	if m.utility != nil && (m.utility.DismissOnAnyKey || message.String() == "q" || message.String() == "esc" || message.String() == "enter") {
+		m.utility = nil
+		return m, nil
 	}
 	return m, nil
 }
@@ -141,17 +159,18 @@ func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	action = m.actionWithDraft(action)
-	nextPlan, message, err := m.actionHandler(action)
+	result, err := m.actionHandler(action)
 	if err != nil {
 		m.message = err.Error()
 		return m, nil
 	}
-	m.plan = nextPlan
+	m.plan = result.Plan
 	m.cursor = 0
 	m.showDetails = false
 	m.editing = false
 	m.hasEditDraft = false
-	m.message = message
+	m.utility = result.Utility
+	m.message = result.Message
 	return m, nil
 }
 
@@ -385,10 +404,10 @@ func indexOfAction(actions []GuidedAction, id string) int {
 }
 
 func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColor bool) string {
-	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false, false, 0, projectSettingsDraft{})
+	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false, false, 0, projectSettingsDraft{}, nil)
 }
 
-func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, noColor bool, message string, confirming bool, editing bool, editCursor int, editDraft projectSettingsDraft) string {
+func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, noColor bool, message string, confirming bool, editing bool, editCursor int, editDraft projectSettingsDraft, utility *UtilitySurface) string {
 	styles := shellStylesFor(noColor)
 	var b strings.Builder
 	lineWidth := clampInt(width-4, 42, 96)
@@ -401,6 +420,12 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 	}
 	if message != "" {
 		fmt.Fprintf(&b, "  %s\n", styles.muted.Render(message))
+	}
+	if utility != nil {
+		renderUtilitySurface(&b, *utility, lineWidth, styles)
+		fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
+		fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(utilityFooter(*utility)))
+		return b.String()
 	}
 
 	if editing {
@@ -422,9 +447,8 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 			if action, ok := selectedAction(plan, cursor); ok {
 				fmt.Fprintf(&b, "  %s\n", styles.label.Render(action.Label))
 				fmt.Fprintf(&b, "    %s\n", styles.muted.Render(action.Description))
+				renderConfirmationBody(&b, action, plan, styles)
 			}
-			b.WriteString("\n  StageServe will update the settings file shown above.\n")
-			b.WriteString("  It will not start containers or change your application files.\n")
 		} else if len(plan.DecisionItems) > 0 {
 			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("What you can do", lineWidth, styles))
 			for i, item := range plan.DecisionItems {
@@ -438,9 +462,14 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 		}
 
 		if len(plan.WorkItems) > 0 {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Next step", lineWidth, styles))
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle(workSectionTitle(plan), lineWidth, styles))
 			for _, item := range plan.WorkItems {
-				fmt.Fprintf(&b, "  %s\n", styles.label.Render(item.Label))
+				marker := workItemMarker(item.Status)
+				fmt.Fprintf(&b, "  %s %s", styles.accent.Render(marker), styles.label.Render(item.Label))
+				if item.Status != "" {
+					fmt.Fprintf(&b, "  %s", styles.muted.Render(item.Status))
+				}
+				b.WriteByte('\n')
 				if item.Description != "" {
 					fmt.Fprintf(&b, "    %s\n", styles.muted.Render(item.Description))
 				}
@@ -476,6 +505,85 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 	}
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
+}
+
+func workSectionTitle(plan NextActionPlan) string {
+	switch plan.Situation {
+	case SituationMachineNotReady:
+		return "Setup steps"
+	case SituationDriftDetected, SituationUnknownError:
+		return "Recovery steps"
+	default:
+		return "Next step"
+	}
+}
+
+func workItemMarker(status string) string {
+	switch status {
+	case "ready":
+		return "✓"
+	case "next", "needs attention", "error":
+		return "▶"
+	default:
+		return "•"
+	}
+}
+
+func renderConfirmationBody(builder *strings.Builder, action GuidedAction, plan NextActionPlan, styles shellStyles) {
+	builder.WriteByte('\n')
+	localURL := visibleDefaultValue(plan, "Local URL")
+	switch action.ID {
+	case "init", "init_here":
+		builder.WriteString("  StageServe will update the settings file shown above.\n")
+		builder.WriteString("  It will not start containers or change your application files.\n")
+	case "down":
+		builder.WriteString("  StageServe will stop this project.\n")
+		builder.WriteString("  Your files will not be touched.\n")
+		if localURL != "" {
+			fmt.Fprintf(builder, "  %s will no longer respond until you run it again.\n", localURL)
+		}
+	case "detach":
+		builder.WriteString("  StageServe will remove this project from StageServe.\n")
+		builder.WriteString("  .env.stageserve and your application files will stay as they are.\n")
+		if localURL != "" {
+			fmt.Fprintf(builder, "  %s will no longer be routed by StageServe.\n", localURL)
+		}
+	case "stop_here":
+		builder.WriteString("  StageServe will leave this project as it is.\n")
+		builder.WriteString("  No file or runtime change will be made.\n")
+	default:
+		fmt.Fprintf(builder, "  %s\n", styles.muted.Render("StageServe will apply the selected change after confirmation."))
+	}
+}
+
+func visibleDefaultValue(plan NextActionPlan, label string) string {
+	for _, item := range plan.VisibleDefaults {
+		if item.Label == label {
+			return item.Value
+		}
+	}
+	return ""
+}
+
+func renderUtilitySurface(builder *strings.Builder, utility UtilitySurface, lineWidth int, styles shellStyles) {
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle(utility.Title, lineWidth, styles))
+	for _, line := range strings.Split(strings.TrimSuffix(utility.Body, "\n"), "\n") {
+		if strings.TrimSpace(line) == "" {
+			builder.WriteByte('\n')
+			continue
+		}
+		fmt.Fprintf(builder, "  %s\n", line)
+	}
+}
+
+func utilityFooter(utility UtilitySurface) string {
+	if utility.Footer != "" {
+		return utility.Footer
+	}
+	if utility.DismissOnAnyKey {
+		return "press any key to return • q quit"
+	}
+	return "q return • esc return"
 }
 
 func selectedAction(plan NextActionPlan, cursor int) (GuidedAction, bool) {

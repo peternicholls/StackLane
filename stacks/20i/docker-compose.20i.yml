@@ -17,7 +17,7 @@ services:
       CONTAINER_DOCROOT: ${CONTAINER_DOCROOT:?err}
     volumes:
       - ${PROJECT_ROOT:?err}:${CONTAINER_SITE_ROOT:?err}:ro
-      - ./docker/nginx.conf.tmpl:/etc/nginx/templates/default.conf.template:ro
+      - ../../docker/nginx.conf.tmpl:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       apache:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
 
   apache:
     build:
-      context: ./docker/apache
+      context: ../../docker/apache
       args:
         PHP_VERSION: ${PHP_VERSION:-8.5}
     expose: ["9000"]

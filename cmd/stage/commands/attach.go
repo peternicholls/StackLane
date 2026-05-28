@@ -1,5 +1,4 @@
-// stage attach / detach: route a project through the shared gateway or
-// tear it down and remove its record.
+// stage attach: route a project through the shared gateway.
 package commands
 
 import (
@@ -25,26 +24,6 @@ func NewAttach(flags *SharedFlags) *cobra.Command {
 			ctx, cancel := contextWithSignal(cmd.Context())
 			defer cancel()
 			return orch.Attach(ctx, cfg)
-		},
-	}
-}
-
-func NewDetach(flags *SharedFlags) *cobra.Command {
-	return &cobra.Command{
-		Use:   "detach",
-		Short: "Remove this project from StageServe",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig(flags)
-			if err != nil {
-				return err
-			}
-			orch, err := buildOrchestrator(cfg)
-			if err != nil {
-				return err
-			}
-			ctx, cancel := contextWithSignal(cmd.Context())
-			defer cancel()
-			return orch.Detach(ctx, cfg)
 		},
 	}
 }

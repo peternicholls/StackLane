@@ -48,26 +48,51 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.StatusHeader = "This project is running at " + ctx.LocalURL + "."
 		plan.DecisionItems = []GuidedAction{
 			action("logs", "View project logs", "Watch what your project is doing right now.", "stage logs", false),
+			action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
 			action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
 		}
 		plan.DirectCommands = []string{"stage logs", "stage status", "stage down"}
 	case SituationProjectDown:
+		if ctx.Runtime.Checked && ctx.Runtime.Running {
+			plan.StatusHeader = "This project isn't added to StageServe right now."
+			plan.Summary = "Your project is already running. StageServe can add the local URL back without restarting it."
+			plan.DecisionItems = []GuidedAction{
+				action("attach", "Add this project to StageServe", "Add the local URL back without restarting the project.", "stage attach", true),
+				action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
+				action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
+			}
+			plan.DirectCommands = []string{"stage attach", "stage status", "stage down"}
+			break
+		}
 		plan.StatusHeader = "This project is stopped."
 		plan.DecisionItems = []GuidedAction{
 			action("up", "Run this project again", "Start the project and open it in your browser.", "stage up", true),
-			action("detach", "Remove this project from StageServe", "Forget the stopped project after confirmation.", "stage detach", true),
+			action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
+			action("detach", "Remove this project from StageServe", "Stop tracking this project. Your files will not be touched.", "stage detach", true),
 		}
-		plan.DirectCommands = []string{"stage up", "stage detach"}
+		plan.DirectCommands = []string{"stage up", "stage status", "stage detach"}
 	case SituationDriftDetected:
 		plan.StatusHeader = "This project doesn't match what StageServe expects."
-		plan.Summary = "Review the mismatch before starting or changing anything."
-		plan.DecisionItems = []GuidedAction{action("diagnose", "Troubleshoot this problem", "Check the project and show the safest next step.", "stage doctor", false)}
-		plan.DirectCommands = []string{"stage status", "stage doctor"}
+		plan.Summary = "StageServe can walk through the safest checks first, then you can decide what to do next."
+		plan.WorkItems = recoveryWorkItems()
+		plan.DecisionItems = []GuidedAction{
+			action("status", "Run step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("logs", "Run step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
+			action("down", "Run step 3: stop this project", "Stop the project after confirmation.", "stage down", true),
+			action("up", "Run step 4: try this project again", "Start the project again with the current settings.", "stage up", true),
+		}
+		plan.DirectCommands = []string{"stage status", "stage logs", "stage down", "stage up"}
 	case SituationUnknownError:
 		plan.StatusHeader = "StageServe couldn't safely choose a next step."
-		plan.Summary = "Use the recovery commands below, starting with the read-only check."
-		plan.WorkItems = []WorkItem{{Label: "Troubleshoot this problem", Status: "next", DirectCommand: "stage doctor"}}
-		plan.DirectCommands = []string{"stage doctor", "stage status"}
+		plan.Summary = "StageServe doesn't want to guess. Here is what it can try, in order."
+		plan.WorkItems = recoveryWorkItems()
+		plan.DecisionItems = []GuidedAction{
+			action("status", "Run step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("logs", "Run step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
+			action("down", "Run step 3: stop this project", "Stop the project after confirmation.", "stage down", true),
+			action("up", "Run step 4: run this project from scratch", "Start the project again with the current settings.", "stage up", true),
+		}
+		plan.DirectCommands = []string{"stage status", "stage logs", "stage down", "stage up"}
 	}
 	return plan
 }
@@ -104,6 +129,7 @@ func visibleDefaults(ctx GuidedContext) []VisibleDefault {
 	add("Web folder", ctx.WebFolder, "")
 	add("Domain suffix", displaySuffix(ctx.SiteSuffix), "")
 	add("Local URL", ctx.LocalURL, "")
+	add("Status", displayProjectStatus(ctx), "")
 	if ctx.ProjectEnvPreview != nil {
 		add("Settings file", ctx.ProjectEnvPreview.Path, "will be created after confirmation")
 	} else {
@@ -111,6 +137,31 @@ func visibleDefaults(ctx GuidedContext) []VisibleDefault {
 	}
 	add("Stack", ctx.StackID, "")
 	return defaults
+}
+
+func displayProjectStatus(ctx GuidedContext) string {
+	switch {
+	case ctx.ProjectState != nil && ctx.ProjectState.AttachmentState == state.StateAttached:
+		return "running"
+	case ctx.ProjectState != nil && ctx.ProjectState.AttachmentState == state.StateDown:
+		if ctx.Runtime.Checked && ctx.Runtime.Running {
+			return "running without local routing"
+		}
+		return "stopped"
+	case ctx.ProjectEnvExists:
+		return "not running yet"
+	default:
+		return ""
+	}
+}
+
+func recoveryWorkItems() []WorkItem {
+	return []WorkItem{
+		{Label: "Step 1: look at this project's current state", Status: "read-only", Description: "Shows what StageServe and Docker currently know about this project.", DirectCommand: "stage status"},
+		{Label: "Step 2: look at the latest project log", Status: "read-only", Description: "Shows the latest log output without changing anything.", DirectCommand: "stage logs"},
+		{Label: "Step 3: stop this project", Status: "confirmed change", Description: "Stops the project and frees up its local URL after confirmation.", DirectCommand: "stage down"},
+		{Label: "Step 4: run this project again", Status: "uses current settings", Description: "Starts the project again with the settings shown above.", DirectCommand: "stage up"},
+	}
 }
 
 func displaySuffix(suffix string) string {

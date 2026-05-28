@@ -6,6 +6,7 @@ package lifecycle_test
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -48,8 +49,8 @@ func newCfg(t *testing.T) config.ProjectConfig {
 		Dir:                dir,
 		StackHome:          stack,
 		StateDir:           stateDir,
-		StackFile:          stack + "/docker-compose.20i.yml",
-		SharedFile:         stack + "/docker-compose.shared.yml",
+		StackFile:          stack + "/stacks/20i/docker-compose.20i.yml",
+		SharedFile:         stack + "/stacks/20i/docker-compose.shared.yml",
 		Hostname:           "demo.test",
 		ComposeProjectName: "stage-demo",
 		WebNetworkAlias:    "stage-demo-web",
@@ -427,13 +428,19 @@ func TestOrchestrator_UpSharedGatewayFailureIncludesSharedComposeFile(t *testing
 	}
 }
 
-func TestOrchestrator_DownSavesDownStateAndReloadsGateway(t *testing.T) {
+func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 	cfg := newCfg(t)
 	composer := mocks.NewComposer()
 	gw := mocks.NewGateway()
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
 	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	if err := os.MkdirAll(filepath.Join(cfg.StateDir, "envfiles"), 0o755); err != nil {
+		t.Fatalf("mkdir envfiles: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.StateDir, "envfiles", cfg.Slug+".env"), []byte("PROJECT_SLUG=demo\n"), 0o644); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
 
 	orch := lifecycle.New(lifecycle.Deps{
 		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
@@ -450,10 +457,13 @@ func TestOrchestrator_DownSavesDownStateAndReloadsGateway(t *testing.T) {
 	}
 	rec, err := st.Load(cfg.Slug)
 	if err != nil {
-		t.Fatalf("load after down: %v", err)
+		t.Fatalf("state should be retained as down, got %v", err)
 	}
 	if rec.AttachmentState != state.StateDown {
-		t.Fatalf("attachment state=%s want down", rec.AttachmentState)
+		t.Fatalf("attachment state=%s want %s", rec.AttachmentState, state.StateDown)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.StateDir, "envfiles", cfg.Slug+".env")); !os.IsNotExist(err) {
+		t.Fatalf("env file should be removed, got %v", err)
 	}
 	if len(gw.Routes) != 0 {
 		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)
@@ -467,6 +477,12 @@ func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 	st := mocks.NewState()
 	pa := mocks.NewPorts(ports.Allocation{})
 	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+	if err := os.MkdirAll(filepath.Join(cfg.StateDir, "envfiles"), 0o755); err != nil {
+		t.Fatalf("mkdir envfiles: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.StateDir, "envfiles", cfg.Slug+".env"), []byte("PROJECT_SLUG=demo\n"), 0o644); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
 
 	orch := lifecycle.New(lifecycle.Deps{
 		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
@@ -483,6 +499,9 @@ func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 	}
 	if _, err := st.Load(cfg.Slug); !errors.Is(err, state.ErrNotFound) {
 		t.Fatalf("state should be removed, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.StateDir, "envfiles", cfg.Slug+".env")); !os.IsNotExist(err) {
+		t.Fatalf("env file should be removed, got %v", err)
 	}
 	if len(gw.Routes) != 0 {
 		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)
@@ -504,6 +523,14 @@ func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 	pa := mocks.NewPorts(ports.Allocation{})
 	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
 	_ = st.Save(state.Record{Project: other, AttachmentState: state.StateAttached})
+	if err := os.MkdirAll(filepath.Join(cfg.StateDir, "envfiles"), 0o755); err != nil {
+		t.Fatalf("mkdir envfiles: %v", err)
+	}
+	for _, project := range []config.ProjectConfig{cfg, other} {
+		if err := os.WriteFile(filepath.Join(project.StateDir, "envfiles", project.Slug+".env"), []byte("PROJECT_SLUG="+project.Slug+"\n"), 0o644); err != nil {
+			t.Fatalf("write env file for %s: %v", project.Slug, err)
+		}
+	}
 
 	orch := lifecycle.New(lifecycle.Deps{
 		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
@@ -523,11 +550,16 @@ func TestOrchestrator_DownAllStopsEveryRecordedProject(t *testing.T) {
 	if len(composer.UpCalls) != 1 || !composer.UpCalls[0].ForceRecreate {
 		t.Fatalf("gateway reload not requested with force recreate: %+v", composer.UpCalls)
 	}
-	if _, err := st.Load(cfg.Slug); !errors.Is(err, state.ErrNotFound) {
-		t.Fatalf("demo state should be removed, got %v", err)
+	if rec, err := st.Load(cfg.Slug); err != nil || rec.AttachmentState != state.StateDown {
+		t.Fatalf("demo state should be retained as down, got rec=%+v err=%v", rec, err)
 	}
-	if _, err := st.Load(other.Slug); !errors.Is(err, state.ErrNotFound) {
-		t.Fatalf("beta state should be removed, got %v", err)
+	if rec, err := st.Load(other.Slug); err != nil || rec.AttachmentState != state.StateDown {
+		t.Fatalf("beta state should be retained as down, got rec=%+v err=%v", rec, err)
+	}
+	for _, project := range []config.ProjectConfig{cfg, other} {
+		if _, err := os.Stat(filepath.Join(project.StateDir, "envfiles", project.Slug+".env")); !os.IsNotExist(err) {
+			t.Fatalf("env file for %s should be removed, got %v", project.Slug, err)
+		}
 	}
 	if len(gw.Routes) != 0 {
 		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)

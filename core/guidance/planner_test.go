@@ -114,6 +114,53 @@ func TestPlanClassifiesCoreSituations(t *testing.T) {
 	}
 }
 
+func TestPlanProjectDownUsesAttachWhenRuntimeAlreadyRunning(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateDown}
+	ctx.Runtime = RuntimeSummary{Checked: true, Running: true, Status: "running"}
+
+	plan := Plan(ctx)
+
+	if plan.Situation != SituationProjectDown {
+		t.Fatalf("situation=%s want %s", plan.Situation, SituationProjectDown)
+	}
+	if plan.StatusHeader != "This project isn't added to StageServe right now." {
+		t.Fatalf("status header=%q", plan.StatusHeader)
+	}
+	if len(plan.DecisionItems) < 2 {
+		t.Fatalf("decision items=%+v", plan.DecisionItems)
+	}
+	if plan.DecisionItems[0].ID != "attach" || plan.DecisionItems[0].Label != "Add this project to StageServe" {
+		t.Fatalf("primary action=%+v", plan.DecisionItems[0])
+	}
+	if plan.DecisionItems[0].DirectCommand != "stage attach" {
+		t.Fatalf("attach direct command=%q", plan.DecisionItems[0].DirectCommand)
+	}
+	if plan.DecisionItems[1].ID != "status" || plan.DecisionItems[1].DirectCommand != "stage status" {
+		t.Fatalf("secondary action=%+v", plan.DecisionItems[1])
+	}
+	if len(plan.DirectCommands) < 2 || plan.DirectCommands[0] != "stage attach" || plan.DirectCommands[2] != "stage down" {
+		t.Fatalf("direct commands=%+v", plan.DirectCommands)
+	}
+}
+
+func TestPlanUnknownErrorExposesOrderedRecoverySteps(t *testing.T) {
+	plan := Plan(ContextFromError("/tmp/demo", TUICapability{}, os.ErrInvalid))
+
+	if plan.Situation != SituationUnknownError {
+		t.Fatalf("situation=%s want %s", plan.Situation, SituationUnknownError)
+	}
+	if len(plan.WorkItems) != 4 {
+		t.Fatalf("work items=%+v", plan.WorkItems)
+	}
+	if plan.WorkItems[0].DirectCommand != "stage status" || plan.WorkItems[1].DirectCommand != "stage logs" {
+		t.Fatalf("recovery order=%+v", plan.WorkItems)
+	}
+	if len(plan.DecisionItems) != 4 || plan.DecisionItems[0].ID != "status" || plan.DecisionItems[1].ID != "logs" {
+		t.Fatalf("decision items=%+v", plan.DecisionItems)
+	}
+}
+
 func TestCollectDoesNotCreateProjectOrStateFiles(t *testing.T) {
 	projectDir := t.TempDir()
 	stateDir := filepath.Join(t.TempDir(), "state")
@@ -199,9 +246,9 @@ func TestShellConfirmationRequiresExplicitConfirm(t *testing.T) {
 	called := false
 
 	model := newShellModel(plan, true)
-	model.actionHandler = func(action GuidedAction) (NextActionPlan, string, error) {
+	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
 		called = true
-		return Plan(baseContext()), "Created project settings.", nil
+		return ActionResult{Plan: Plan(baseContext()), Message: "Created project settings."}, nil
 	}
 
 	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -245,9 +292,9 @@ func TestShellConfirmationCanCancelWithoutAction(t *testing.T) {
 	ctx := baseContext()
 	ctx.ProjectEnvExists = false
 	model := newShellModel(Plan(ctx), true)
-	model.actionHandler = func(action GuidedAction) (NextActionPlan, string, error) {
+	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
 		t.Fatal("action should not run after cancel")
-		return NextActionPlan{}, "", nil
+		return ActionResult{}, nil
 	}
 
 	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -303,9 +350,9 @@ func TestShellProjectSettingsEditorUpdatesPreviewAndActionInputs(t *testing.T) {
 	}
 
 	var captured GuidedAction
-	next.actionHandler = func(action GuidedAction) (NextActionPlan, string, error) {
+	next.actionHandler = func(action GuidedAction) (ActionResult, error) {
 		captured = action
-		return Plan(baseContext()), "Created project settings.", nil
+		return ActionResult{Plan: Plan(baseContext()), Message: "Created project settings."}, nil
 	}
 	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	next = updated.(shellModel)
@@ -323,5 +370,34 @@ func TestShellProjectSettingsEditorUpdatesPreviewAndActionInputs(t *testing.T) {
 	}
 	if next.plan.Situation != SituationProjectReadyToRun {
 		t.Fatalf("situation=%s want %s", next.plan.Situation, SituationProjectReadyToRun)
+	}
+}
+
+func TestShellUtilitySurfaceOpensAndCloses(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	plan := Plan(ctx)
+	model := newShellModel(plan, true)
+	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+		return ActionResult{
+			Plan: plan,
+			Utility: &UtilitySurface{
+				Title:  "demo logs",
+				Body:   "10:42:13 GET / 200 12ms",
+				Footer: "q exit logs • esc exit logs",
+			},
+		}, nil
+	}
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := updated.(shellModel)
+	if next.utility == nil || !strings.Contains(next.View(), "demo logs") {
+		t.Fatalf("utility view missing:\n%s", next.View())
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	next = updated.(shellModel)
+	if next.utility != nil {
+		t.Fatal("utility surface should close after esc")
 	}
 }
