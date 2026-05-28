@@ -7,7 +7,7 @@ This document locks the StageServe command semantics and state model.
 - Preserve an easy shell-first workflow.
 - Make repeated command runs reliable and predictable.
 - Keep the stack robust under partial failure and stale state.
-- Make `up`, `attach`, `down`, `detach`, and status behavior explicit.
+- Make `up`, `attach`, `down`, and status behavior explicit.
 - Keep the active command surface focused on `stage <subcommand>`.
 
 ## Command Behavior
@@ -45,15 +45,16 @@ This document locks the StageServe command semantics and state model.
 ### `stage down`
 
 - Stops only the current project runtime by default.
-- Retains the project record and marks it `down`.
+- Keeps the project recorded as `down` after shutdown so guided and direct resume paths can offer restart or re-attach behavior.
+- Removes the generated runtime envfile after shutdown.
 - Repoints the shared gateway to another attached project when one exists, otherwise leaves the gateway on a no-route response.
 - Supports `stage down --all` for global teardown.
 
 ### `stage detach`
 
-- Stops only the current project runtime.
-- Removes the project record entirely.
-- Repoints the shared gateway to another attached project when one exists.
+- Stops tracking the current project in StageServe.
+- Removes the project record and generated runtime envfile after shutdown.
+- Clears the local route without touching project files or `.env.stageserve`.
 
 ### `stage status`
 
@@ -101,12 +102,13 @@ This document locks the StageServe command semantics and state model.
 ### `stage init`
 
 - Writes a starter `.env.stageserve` in the project root (or `--project-dir`).
+- In an interactive terminal with the default output mode, opens the guided project-config form and preview before writing anything.
 - Validates that the project root exists.
 - Validates `--docroot` is inside the project root when supplied.
 - Without `--force`, skips writing if `.env.stageserve` already exists.
 - With `--force`, overwrites the existing file.
 - `--site-name` sets `STAGESERVE_SITE_NAME` in the generated file.
-- `--json`, `--notui`, `--cli`, and `--non-interactive` flags behave the same as `setup`.
+- `--json`, `--notui`, `--cli`, and `--non-interactive` flags behave the same as `setup` and keep `stage init` automation-safe.
 - Emits a `CommandResult` envelope (step `init.env_file`) with action in the message.
 
 ### Output modes
@@ -184,9 +186,8 @@ Selecting a different installed StageServe copy remains outside the project file
 ## Project State Model
 
 - `attached`: runtime is intended to be active and recorded in state
-- `down`: runtime has been stopped but the record is retained
-- `detached`: record removed from active state storage
-- global teardown: all records removed and all known runtimes stopped
+- `down`: runtime is stopped but still recorded so StageServe can offer restart, attach, status, and removal paths
+- global teardown: all known runtimes are stopped and their project records are retained as `down`
 
 ## Error Model
 
@@ -220,8 +221,9 @@ The lifecycle layer rolls back partial progress before returning. A failed `stag
 
 ## Shared Infrastructure
 
-- Shared routing compose file: `docker-compose.shared.yml`
-- Active 20i project compose file: `docker-compose.20i.yml`
+- Shared routing compose file: `stacks/20i/docker-compose.shared.yml`
+- Active 20i project compose file: `stacks/20i/docker-compose.20i.yml`
+- Static stack definitions are bundled under `stacks/<kind>/` and selected programmatically via `STAGESERVE_STACK`; the catalog carries stack capabilities, requirements, and compatibility constraints while mutable runtime state remains under `.stageserve-state`.
 - StageServe keeps one shared routing layer available across attached projects and repairs it when the layer is missing or unhealthy.
 - Shared gateway host ports: `80/443` by default; `.dev` runtime resolution moves HTTPS to `8443` when needed
 - `.dev` routing uses `platform/tls` to refresh a mkcert bundle under `<state-dir>/shared/certs` and passes `SHARED_GATEWAY_CERTS_DIR` to the shared compose file.

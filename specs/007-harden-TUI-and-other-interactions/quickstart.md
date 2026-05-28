@@ -324,3 +324,10 @@ Check:
 - attach/detach and runtime/state vocabulary do not appear as easy-mode labels.
 - Advanced/troubleshooting sections still contain enough implementation detail for power users.
 - `.env.stageserve` is the only normal user-editable StageServe config file.
+
+## Recorded Evidence
+
+- 2026-05-28: `go run ./cmd/stage --help` kept direct help output and described bare `stage` as the guided next-step entrypoint.
+- 2026-05-28: `go run ./cmd/stage init --help`, `go run ./cmd/stage setup --help`, and `go run ./cmd/stage doctor --help` used plain-language goal copy aligned with the guided surface.
+- 2026-05-28: `STAGESERVE_INSTALL_DIR=$(mktemp -d) STAGESERVE_TEST_ASSET_PATH=/bin/echo ./install.sh` printed the interactive installer handoff `stage`.
+- 2026-05-28: `NONINTERACTIVE=1 STAGESERVE_INSTALL_DIR=$(mktemp -d) STAGESERVE_TEST_ASSET_PATH=/bin/echo ./install.sh` printed explicit next steps: `stage setup`, `stage init`, `stage up`, and `stage doctor`.

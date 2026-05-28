@@ -127,49 +127,71 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 ### Day-2 Flow
 
-- [ ] T053 Route guided run/add actions through existing `up` and `attach` lifecycle semantics.
-- [ ] T054 Route guided status through existing status reporting.
-- [ ] T055 Route guided logs through existing logs behavior with a clear exit path.
-- [ ] T056 Route guided stop/remove actions through `down` and `detach` with explicit confirmation.
-- [ ] T056a Clarify or wrap shared-gateway reload output after `stage down`/`stage detach` so Docker Compose's internal `up` output is not mistaken for a project restart.
-- [ ] T057 Route diagnostics/recovery through doctor/readiness/status seams without exposing `doctor` as a first-level peer action.
-- [ ] T058 Order recovery actions from least invasive to most invasive and rerun planning after each step.
-- [ ] T059 Ensure primary guided labels use user-goal language before command terminology.
-- [ ] T060 Ensure running-project default actions are non-destructive.
+- [x] T053 Route guided run/add actions through existing `up` and `attach` lifecycle semantics.
+- [x] T054 Route guided status through existing status reporting.
+- [x] T055 Route guided logs through existing logs behavior with a clear exit path.
+- [x] T056 Route guided stop actions through `down` and removal through `detach`, each with explicit confirmation.
+- [x] T056a Clarify or wrap shared-gateway reload output after `stage down` so Docker Compose's internal `up` output is not mistaken for a project restart.
+- [x] T057 Route diagnostics/recovery through doctor/readiness/status seams without exposing `doctor` as a first-level peer action.
+- [x] T058 Order recovery actions from least invasive to most invasive and rerun planning after each step.
+- [x] T059 Ensure primary guided labels use user-goal language before command terminology.
+- [x] T060 Ensure running-project default actions are non-destructive.
 
 ### Documentation And Evidence
 
-- [ ] T061 Update [README.md](../README.md) first-run path to start with bare `stage` after implementation lands.
-- [ ] T062 Update [docs/runtime-contract.md](runtime-contract.md) for guided root behavior, no-TUI controls, text fallback, and direct command behavior.
-- [ ] T063 Add or restore an active installer/onboarding doc if still referenced by specs.
-- [ ] T064 Record terminal validation evidence in [specs/007-harden-TUI-and-other-interactions/quickstart.md](../specs/007-harden-TUI-and-other-interactions/quickstart.md).
-- [ ] T064a Update [install.sh](../install.sh) so interactive install handoff points to bare `stage` after guided routing lands, while non-interactive installs keep explicit commands.
-- [ ] T064b Update [.env.stageserve.example](../.env.stageserve.example) comments for guided config creation and active TLS/setup decisions.
-- [ ] T064c Update command `Short` and `Long` strings for guided surfaces so first-level help uses plain user-goal language.
+- [x] T061 Update [README.md](../README.md) first-run path to start with bare `stage` after implementation lands.
+- [x] T062 Update [docs/runtime-contract.md](runtime-contract.md) for guided root behavior, no-TUI controls, text fallback, and direct command behavior.
+- [x] T063 Add or restore an active installer/onboarding doc if still referenced by specs.
+- [x] T064 Record terminal validation evidence in [specs/007-harden-TUI-and-other-interactions/quickstart.md](../specs/007-harden-TUI-and-other-interactions/quickstart.md).
+- [x] T064a Update [install.sh](../install.sh) so interactive install handoff points to bare `stage` after guided routing lands, while non-interactive installs keep explicit commands.
+- [x] T064b Update [.env.stageserve.example](../.env.stageserve.example) comments for guided config creation and active TLS/setup decisions.
+- [x] T064c Update command `Short` and `Long` strings for guided surfaces so first-level help uses plain user-goal language.
 
 ### Phase 3 Validation
 
 - [ ] T065 Validate bare `stage` from a project without `.env.stageserve`.
 - [ ] T066 Validate cancel-before-write leaves no `.env.stageserve` file.
-- [ ] T067 Validate bare `stage` from a configured stopped project.
+- [ ] T067 Validate bare `stage` from a configured project after `stage down` cleanup.
 - [ ] T068 Validate bare `stage` from a running project.
 - [ ] T069 Validate logs action exits cleanly.
-- [ ] T070 Validate stop/detach/overwrite/recovery confirmations.
+- [ ] T070 Validate stop/overwrite/recovery confirmations.
 - [ ] T071 Validate text fallback parity with the guided situation and default action.
-- [ ] T072 Run `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
+- [x] T072 Run `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
 
 ### Phase 3 Progress Evidence
 
 - 2026-05-23: `go test ./core/guidance ./core/onboarding ./cmd/stage/commands` passed after T051/T052a/T052b.
+- 2026-05-24: `go test ./cmd/stage/commands ./core/guidance ./core/lifecycle ./observability/status ./infra/gateway` passed after T053.
+- 2026-05-24: `go test ./core/guidance ./cmd/stage/commands ./core/lifecycle` passed after guided day-2 status/logs/recovery actions, explicit stop/remove confirmations, retained `down` records, and `stage detach` landed.
+- 2026-05-24: `go test -short ./...` passed.
+- 2026-05-24: `go vet ./...` passed.
+- 2026-05-24: `go build ./...` passed.
+- 2026-05-28: README first-run guidance, the runtime contract, `.env.stageserve.example`, and a new active [docs/installer-onboarding.md](installer-onboarding.md) were updated to start from bare `stage` and document the direct-command fallback.
+- 2026-05-28: `go run ./cmd/stage --help`, `go run ./cmd/stage init --help`, `go run ./cmd/stage setup --help`, and `go run ./cmd/stage doctor --help` confirmed plain-language first-level help after the guided-surface copy pass.
+- 2026-05-28: installer smoke runs with `STAGESERVE_TEST_ASSET_PATH=/bin/echo` showed the interactive handoff prints `stage` and the non-interactive path prints `stage setup`, `stage init`, `stage up`, and `stage doctor`.
+- 2026-05-28: `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway` passed.
 
-## Phase 4: Process Hardening
+## Phase 4: Guided TUI Design Polish
+
+**Goal**: Once guided flows are stable, tighten formatting, layout, colour, and component consistency so the TUI makes fuller use of the Charm stack without changing the interaction contract.
+
+### Design And Implementation
+
+- [ ] T072a [P] Audit guided screens against `docs/design/terminal-visual-style-guide.md` and the active terminal instruction set; record intended deltas before polishing code.
+- [ ] T072b Extract or refine reusable Bubble Tea/Lip Gloss helpers for guided headers, facts rows, decision rows, confirmations, details, and footer hints.
+- [ ] T072c Apply a spacing, alignment, and hierarchy pass to guided screens in `cmd/stage/commands/tui.go` and any shared render helpers they use.
+- [ ] T072d Apply a semantic colour/emphasis pass for guided screens while preserving `NO_COLOR` behavior and text fallback parity.
+- [ ] T072e Validate narrower-width and multi-state guided renders (details, confirmation, editing, long-running result) and record any deliberate deferrals.
+- [ ] T072f Record terminal design evidence in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or the active design review surface.
+
+## Phase 5: Process Hardening
 
 **Goal**: Strengthen validation, documentation architecture, and release workflow.
 
 ### Integration And Smoke Tests
 
 - [ ] T073 Add a tagged integration test or script for single-project `up/status/logs/down`.
-- [ ] T074 Add a tagged integration test or script for two-project `up/attach/status/detach/down --all`.
+- [ ] T074 Add a tagged integration test or script for two-project `up/attach/status/project-down/down --all`.
 - [ ] T075 Add integration coverage for failed `STAGESERVE_POST_UP_COMMAND` rollback.
 - [ ] T076 Add integration coverage for `--profile debug` phpMyAdmin activation, or remove the feature from active contract.
 - [ ] T077 Add integration coverage for `.dev` TLS, or record an explicit skipped/deferred case.
@@ -183,6 +205,13 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - [ ] T078d Address the dead `Detach` branch in [infra/compose/compose.go](../infra/compose/compose.go) by honoring the option or removing it from `UpOptions`.
 - [ ] T078e Split non-flow helpers out of [core/lifecycle/orchestrator.go](../core/lifecycle/orchestrator.go) where doing so clarifies ownership without changing behavior, or create follow-up tasks for the split.
 - [ ] T078f Review [cmd/stage/commands/root.go](../cmd/stage/commands/root.go) after guided routing lands and move any remaining command-specific flags off the root command.
+
+### Extensible Stack Registry Planning
+
+- [ ] T078g Decide the ownership split between the shipped stack catalog in `stacks/<kind>/` and any future user-defined stack registry; keep runtime state under `.stageserve-state` out of scope for user-authored definitions.
+- [ ] T078h Design the first user-owned custom stack manifest format and storage location under stack home, including override/preference rules relative to built-in stack kinds.
+- [ ] T078i Decide whether the first custom stack registry should be file-backed or SQLite-backed; default to file-backed unless the required mutation/query workflow clearly justifies SQLite.
+- [ ] T078j Define validation, compatibility, and migration rules for custom stack manifests, including required shared services, supported profiles/suffixes, and operator-facing error reporting.
 
 ### Docs And Command Reference
 

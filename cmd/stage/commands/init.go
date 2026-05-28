@@ -28,8 +28,8 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 	f := &initFlags{}
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Set up this folder as a project",
-		Long:  "Creates a starter .env.stageserve with documented defaults. Validates the web folder and protects existing project settings from accidental overwrite.",
+		Short: "Create project settings for this folder",
+		Long:  "Creates a starter .env.stageserve with documented defaults. In an interactive terminal, stage init opens the guided settings form before it writes anything. It also validates the web folder and protects existing project settings from accidental overwrite.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 
@@ -63,7 +63,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				context := guidance.Collect(cmd.Context(), cfg, guidance.CollectOptions{Capability: capability})
+				context := collectGuidedContext(cmd.Context(), cfg, capability)
 				plan := guidance.Plan(context)
 				return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout())
 			}

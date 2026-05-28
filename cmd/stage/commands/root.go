@@ -51,7 +51,7 @@ func NewRoot(version string) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "stage",
 		Short:         "Run local projects with StageServe",
-		Long:          "StageServe runs local project environments and keeps their browser URLs routed consistently.",
+		Long:          "StageServe runs local project environments and keeps their browser URLs routed consistently. Run stage with no subcommand for guided next steps, or use a direct command when you already know what you want to do.",
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -83,8 +83,8 @@ func NewRoot(version string) *cobra.Command {
 
 	root.AddCommand(NewUp(flags))
 	root.AddCommand(NewDown(flags))
-	root.AddCommand(NewAttach(flags))
 	root.AddCommand(NewDetach(flags))
+	root.AddCommand(NewAttach(flags))
 	root.AddCommand(NewStatus(flags))
 	root.AddCommand(NewLogs(flags))
 	root.AddCommand(NewDNSSetup(flags))
@@ -106,7 +106,7 @@ func runRootGuidance(cmd *cobra.Command, flags *SharedFlags, interaction *rootIn
 		plan := guidance.Plan(guidance.ContextFromError(cwd, capability, err))
 		return guidance.RenderText(cmd.OutOrStdout(), plan)
 	}
-	context := guidance.Collect(cmd.Context(), cfg, guidance.CollectOptions{Capability: capability})
+	context := collectGuidedContext(cmd.Context(), cfg, capability)
 	plan := guidance.Plan(context)
 	if capability.AllowsTUI() {
 		return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout())

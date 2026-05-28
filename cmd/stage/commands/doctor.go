@@ -22,7 +22,7 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Diagnose local readiness issues",
-		Long:  "Read-only diagnostics for Docker, local DNS, ports, the StageServe state directory, and mkcert. Reports exact fixes and does not change machine settings.",
+		Long:  "Checks the same local requirements as stage setup and reports exact fixes without changing machine settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := resolveOutputMode(f.JSON, plainTextOutputRequested(f.NotUI, f.CLI, f.NoTUI), f.NonInteractive)
 

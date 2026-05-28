@@ -31,7 +31,7 @@ func NewSetup(shared *SharedFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Check whether this computer is ready",
-		Long:  "Checks Docker, local DNS, ports, the StageServe state directory, and mkcert. This command reports readiness and exact fixes; it does not change machine settings.",
+		Long:  "Checks whether this computer is ready to run StageServe. It verifies Docker, local DNS, ports, the StageServe state directory, and mkcert, then reports exact fixes without changing machine settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Validate --suffix value.
 			if !validSuffixes[f.Suffix] {

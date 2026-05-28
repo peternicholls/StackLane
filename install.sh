@@ -211,14 +211,20 @@ print_next_steps() {
 
   if [[ "$NONINTERACTIVE" == "1" ]]; then
     info "Next steps:"
-    echo "  stage setup    — run machine-readiness checks and first-run setup"
+    echo "  stage setup    — check machine readiness and follow any fixes"
+    echo "  cd /path/to/project"
+    echo "  stage init     — create project settings when you want to review them first"
+    echo "  stage up       — run the project"
     echo "  stage doctor   — diagnose machine drift at any time"
   elif [[ $is_tty -eq 1 ]]; then
-    info "To complete setup, run:"
-    echo "  stage setup --tui"
+    info "To continue with guided setup, run:"
+    echo "  stage"
   else
     info "Next steps:"
-    echo "  stage setup    — run machine-readiness checks and first-run setup"
+    echo "  stage setup    — check machine readiness and follow any fixes"
+    echo "  cd /path/to/project"
+    echo "  stage init     — create project settings when you want to review them first"
+    echo "  stage up       — run the project"
     echo "  stage doctor   — diagnose machine drift at any time"
   fi
 }

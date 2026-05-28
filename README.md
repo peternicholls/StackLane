@@ -31,7 +31,7 @@ The recommended install path — no source build required:
 curl -fsSL https://raw.githubusercontent.com/peternicholls/StageServe/master/install.sh | bash
 ```
 
-The installer detects your OS and architecture, downloads the matching signed binary from GitHub Releases, verifies the SHA-256 checksum, and places `stage` in `~/.local/bin`. After install it prints the exact next-step command to run.
+The installer detects your OS and architecture, downloads the matching signed binary from GitHub Releases, verifies the SHA-256 checksum, and places `stage` in `~/.local/bin`. After install it hands interactive terminals to bare `stage`; non-interactive installs print the explicit `setup`, `init`, and `up` path instead.
 
 **Verify manually (fallback path)**:
 
@@ -47,35 +47,49 @@ chmod +x stage && mv stage ~/.local/bin/
 **Canonical first-run sequence** (after install):
 
 ```bash
+cd /path/to/project
+stage          # guided setup, project settings, run, and recovery
+stage --notui  # same next-action plan in plain text
+```
+
+If you prefer direct commands instead of the guided entrypoint:
+
+```bash
 stage setup     # machine-readiness checks with exact fixes
-stage init      # initialize project config in your repo root (optional)
+stage init      # create or review project settings explicitly
 stage up        # bring the project stack online
 stage doctor    # diagnose drift at any time
 ```
 
+For the full install and onboarding walkthrough, see [docs/installer-onboarding.md](docs/installer-onboarding.md).
+
 ## Quick Start
 
-From the stack repo itself or a deployed copy of it, add the scripts to your shell path and run StageServe from a project root:
+From a project root, let StageServe pick the next safe step:
 
 ```bash
-export STACK_HOME="$HOME/docker/stage"
-
 cd /path/to/project
-"$STACK_HOME/stage" dns-setup --site-suffix develop
-"$STACK_HOME/stage" up --site-suffix develop
-"$STACK_HOME/stage" status
-"$STACK_HOME/stage" down
+stage
+```
+
+If you prefer the direct-command path:
+
+```bash
+stage dns-setup --site-suffix develop
+stage up --site-suffix develop
+stage status
+stage down
 ```
 
 Optional overrides:
 
 ```bash
-"$STACK_HOME/stage" up --php-version 8.4
-"$STACK_HOME/stage" up --docroot web --site-name marketing-site
-"$STACK_HOME/stage" status --project marketing-site
+stage up --php-version 8.4
+stage up --docroot web --site-name marketing-site
+stage status --project marketing-site
 ```
 
-## First-time Setup
+## Build From Source
 
 Requirements: macOS, Docker Desktop, and Homebrew. Installing the binary requires no language runtime; building from source requires Go 1.26.2+.
 
@@ -91,11 +105,14 @@ make build           # produces ./stage-bin
 export STACK_HOME="$HOME/docker/stage"
 export PATH="$STACK_HOME:$PATH"
 
-# 4. Bootstrap local DNS (once per machine, macOS only)
-stage dns-setup
+# 4. From a project root, start the guided flow
+cd /path/to/project
+stage
 ```
 
 The `stage` shim at the repo root execs `stage-bin`. Invoke commands as `stage <subcommand>`.
+
+If you want the explicit macOS DNS bootstrap path instead of the guided entrypoint, run `stage dns-setup --site-suffix develop` once per machine.
 
 The GitHub repository and the local folder that contains it are separate concerns. The remote repository is now named `StageServe`, but existing local checkout directories do not rename themselves. Keep `STACK_HOME` pointed at the folder you actually run, whether that folder is still named `stage` or you rename it manually.
 
@@ -122,9 +139,9 @@ StageServe treats terminal output as a product interface. The human-facing desig
 
 - `stage up`: Ensure shared routing is available, start the current project runtime, validate the live containers, register it in `.stageserve-state`, and mark it `attached`.
 - `stage attach`: Attach-or-bootstrap the current project runtime, reuse the running shared routing layer when healthy, and repair route generation when it is missing.
-- `stage down`: Stop only the current project runtime and retain its record with state `down`.
-- `stage detach`: Stop only the current project runtime and remove its attachment record.
-- `stage down --all`: Stop every known runtime and remove all recorded attachment state.
+- `stage down`: Stop only the current project runtime, keep a stopped project record for guided resume, and remove its generated runtime envfile.
+- `stage down --all`: Stop every known runtime, keep each project recorded as stopped, and remove generated runtime envfiles.
+- `stage detach`: Stop tracking the current project in StageServe, clear its local route, and remove its recorded state without touching project files.
 - `stage status [--project SELECTOR]`: Show the current recorded project by default, one recorded project selected by slug/name/hostname/path, or every recorded project with `--all`.
 - `stage logs [--project SELECTOR] [service]`: Stream logs for the current project runtime or a selected recorded project. The service can be passed positionally, for example `stage logs apache`, or with `--service apache`.
 - `stage dns-setup`: Bootstrap local suffix resolution on macOS using Homebrew `dnsmasq` on `127.0.0.1:53535` and an `/etc/resolver/<suffix>` file. The documented examples prefer `.develop`.
@@ -253,8 +270,10 @@ stage/
 ├── platform/                 # ports, dns, tls (host integrations)
 ├── observability/            # status, logs (read-only reporting)
 ├── internal/mocks/           # interface mocks for unit tests
-├── docker-compose.20i.yml    # 20i per-project runtime template (with healthchecks; phpMyAdmin under `debug` profile)
-├── docker-compose.shared.yml # shared gateway and network
+├── stacks/
+│   └── 20i/
+│       ├── docker-compose.20i.yml    # 20i per-project runtime template (with healthchecks; phpMyAdmin under `debug` profile)
+│       └── docker-compose.shared.yml # 20i shared gateway and network template
 ├── docker/
 │   └── nginx.conf.tmpl       # reference nginx template (Go renderer is authoritative)
 ├── .env.stageserve.example    # stack-wide defaults reference (copy to <stack-home>/.env.stageserve)
@@ -272,6 +291,8 @@ stage/
 ```
 
 Each attached project creates its own project-root `.env.stageserve`. StageServe still keeps machine-generated envfiles under `.stageserve-state/envfiles/` rather than mixing them into the user-edited config surface.
+
+Static stack definitions are product-owned assets under `stacks/<kind>/`, resolved by the config loader. The stack catalog now carries capability, requirement, and compatibility metadata alongside the compose asset paths. Keep mutable runtime state in `.stageserve-state`; do not move shipped server definitions into SQLite unless they become user-authored data.
 
 ## Shell Integration
 
