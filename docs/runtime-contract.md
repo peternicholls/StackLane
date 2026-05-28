@@ -103,6 +103,7 @@ This document locks the StageServe command semantics and state model.
 
 - Writes a starter `.env.stageserve` in the project root (or `--project-dir`).
 - In an interactive terminal with the default output mode, opens the guided project-config form and preview before writing anything.
+- When `.env.stageserve` already exists, interactive `stage init` switches to the same guided editor but requires explicit confirmation before updating the file.
 - Validates that the project root exists.
 - Validates `--docroot` is inside the project root when supplied.
 - Without `--force`, skips writing if `.env.stageserve` already exists.

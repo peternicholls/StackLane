@@ -81,6 +81,8 @@ StageServe uses the same filename in two user-owned scopes:
 
 The guided first run and `stage init` create or preview the project-local file. If you skip that and run `stage up` or `stage attach` first, StageServe assumes defaults for that run and writes a starter project file afterward.
 
+If the file already exists, interactive `stage init` reopens the guided settings form and asks for confirmation before updating it. For automation or scripts, `stage init --force` remains the explicit overwrite path.
+
 Machine-generated runtime env files live under `.stageserve-state/envfiles/` and are not user-editable inputs.
 
 ## DNS And TLS Choices

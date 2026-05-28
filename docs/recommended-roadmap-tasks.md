@@ -151,10 +151,10 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 - [x] T065 Validate bare `stage` from a project without `.env.stageserve`.
 - [x] T066 Validate cancel-before-write leaves no `.env.stageserve` file.
-- [ ] T067 Validate bare `stage` from a configured project after `stage down` cleanup.
-- [ ] T068 Validate bare `stage` from a running project.
-- [ ] T069 Validate logs action exits cleanly.
-- [ ] T070 Validate stop/overwrite/recovery confirmations.
+- [x] T067 Validate bare `stage` from a configured project after `stage down` cleanup.
+- [x] T068 Validate bare `stage` from a running project.
+- [x] T069 Validate logs action exits cleanly.
+- [x] T070 Validate stop/overwrite/recovery confirmations.
 - [x] T071 Validate text fallback parity with the guided situation and default action.
 - [x] T072 Run `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
 
@@ -173,6 +173,11 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - 2026-05-28: `go run ./cmd/stage --stack-home /tmp/stageserve-guided-stack --project-dir /tmp/stageserve-guided-missing` in a TTY showed the missing-config guided screen with `Create project settings`, previewed the local URL, and did not write project files before confirmation.
 - 2026-05-28: disposable guided runs for `/tmp/stageserve-guided-missing` and `/tmp/stageserve-guided-cancel` left `.env.stageserve` absent when the session exited before any confirmed write.
 - 2026-05-28: `go run ./cmd/stage --stack-home /tmp/stageserve-guided-stack --project-dir /tmp/stageserve-guided-missing --notui` matched the same missing-config situation, key facts, and default action in plain text.
+- 2026-05-28: with `STACK_HOME` set to the repo checkout and `STAGESERVE_STATE_DIR=/tmp/stageserve-live-state`, a disposable live project was created under `/tmp/stageserve-live-project`; `go run ./cmd/stage down --project-dir /tmp/stageserve-live-project` followed by bare `stage` showed the retained stopped-project screen with `Run this project again` and exited through an `expect` script with `expect_exit=0`.
+- 2026-05-28: the same disposable live project, while running, showed the guided running-project screen with `View project logs` as the default action; the guided logs path exited back to the main screen and the scripted session returned cleanly with `expect_exit=0`.
+- 2026-05-28: live guided stop confirmation was validated on the running disposable project: the confirmation copy matched `StageServe will stop this project.` and `Your files will not be touched.`, cancel returned `No changes made.`, and the `expect` session exited 0.
+- 2026-05-28: interactive `go run ./cmd/stage init --project-dir /tmp/stageserve-live-project` on an existing `.env.stageserve` showed the guided overwrite flow with `Update project settings`; its confirmation copy matched the no-runtime-change contract, cancel returned `No changes made.`, and the `expect` session exited 0.
+- 2026-05-28: `go test ./core/guidance ./cmd/stage/commands` passed after adding focused coverage for the drift recovery stop confirmation and the guided `stage init` overwrite flow.
 
 ## Phase 4: Guided TUI Design Polish
 
