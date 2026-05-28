@@ -331,3 +331,6 @@ Check:
 - 2026-05-28: `go run ./cmd/stage init --help`, `go run ./cmd/stage setup --help`, and `go run ./cmd/stage doctor --help` used plain-language goal copy aligned with the guided surface.
 - 2026-05-28: `STAGESERVE_INSTALL_DIR=$(mktemp -d) STAGESERVE_TEST_ASSET_PATH=/bin/echo ./install.sh` printed the interactive installer handoff `stage`.
 - 2026-05-28: `NONINTERACTIVE=1 STAGESERVE_INSTALL_DIR=$(mktemp -d) STAGESERVE_TEST_ASSET_PATH=/bin/echo ./install.sh` printed explicit next steps: `stage setup`, `stage init`, `stage up`, and `stage doctor`.
+- 2026-05-28: `go run ./cmd/stage --stack-home /tmp/stageserve-guided-stack --project-dir /tmp/stageserve-guided-missing` in a TTY opened the guided missing-config screen with `Create project settings`, a local URL preview, and no pre-write mutation.
+- 2026-05-28: quitting disposable guided sessions before any confirmed write left `/tmp/stageserve-guided-missing/.env.stageserve` and `/tmp/stageserve-guided-cancel/.env.stageserve` absent.
+- 2026-05-28: `go run ./cmd/stage --stack-home /tmp/stageserve-guided-stack --project-dir /tmp/stageserve-guided-missing --notui` produced the same situation and default action in the plain-text fallback.

@@ -149,13 +149,13 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 ### Phase 3 Validation
 
-- [ ] T065 Validate bare `stage` from a project without `.env.stageserve`.
-- [ ] T066 Validate cancel-before-write leaves no `.env.stageserve` file.
+- [x] T065 Validate bare `stage` from a project without `.env.stageserve`.
+- [x] T066 Validate cancel-before-write leaves no `.env.stageserve` file.
 - [ ] T067 Validate bare `stage` from a configured project after `stage down` cleanup.
 - [ ] T068 Validate bare `stage` from a running project.
 - [ ] T069 Validate logs action exits cleanly.
 - [ ] T070 Validate stop/overwrite/recovery confirmations.
-- [ ] T071 Validate text fallback parity with the guided situation and default action.
+- [x] T071 Validate text fallback parity with the guided situation and default action.
 - [x] T072 Run `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
 
 ### Phase 3 Progress Evidence
@@ -170,6 +170,9 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - 2026-05-28: `go run ./cmd/stage --help`, `go run ./cmd/stage init --help`, `go run ./cmd/stage setup --help`, and `go run ./cmd/stage doctor --help` confirmed plain-language first-level help after the guided-surface copy pass.
 - 2026-05-28: installer smoke runs with `STAGESERVE_TEST_ASSET_PATH=/bin/echo` showed the interactive handoff prints `stage` and the non-interactive path prints `stage setup`, `stage init`, `stage up`, and `stage doctor`.
 - 2026-05-28: `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway` passed.
+- 2026-05-28: `go run ./cmd/stage --stack-home /tmp/stageserve-guided-stack --project-dir /tmp/stageserve-guided-missing` in a TTY showed the missing-config guided screen with `Create project settings`, previewed the local URL, and did not write project files before confirmation.
+- 2026-05-28: disposable guided runs for `/tmp/stageserve-guided-missing` and `/tmp/stageserve-guided-cancel` left `.env.stageserve` absent when the session exited before any confirmed write.
+- 2026-05-28: `go run ./cmd/stage --stack-home /tmp/stageserve-guided-stack --project-dir /tmp/stageserve-guided-missing --notui` matched the same missing-config situation, key facts, and default action in plain text.
 
 ## Phase 4: Guided TUI Design Polish
 
