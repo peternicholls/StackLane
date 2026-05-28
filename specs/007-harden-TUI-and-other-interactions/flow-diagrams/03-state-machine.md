@@ -72,6 +72,7 @@ These are the events that cause a re-detection.
 | `project_running` | User chose "Stop this project" and confirmed | `project_down` (after `stage down`) |
 | `project_running` | Project becomes unreachable mid-session | `drift_detected` |
 | `project_down` | User chose "Run this project" | `project_running` |
+| `project_down` | User chose "Add this project to StageServe" | `project_running` |
 | `project_down` | User chose "Remove this project from StageServe" | `not_project` (after detach) |
 | `drift_detected` | User chose "Use the safe next step" and confirmed | re-detect (typically `project_down` or `project_ready_to_run`) |
 | `drift_detected` | User chose "Try to run it again" | re-detect (`project_running` or `unknown_error`) |
@@ -89,7 +90,7 @@ This is the action that runs if the user simply presses enter at the first scree
 | `project_missing_config` | Use the proposed defaults and write `.env.stageserve` after one final confirmation. |
 | `project_ready_to_run` | Run this project. |
 | `project_running` | View project logs (no destructive default). |
-| `project_down` | Run this project. |
+| `project_down` | Run this project, or add it back to StageServe if it is already running. |
 | `drift_detected` | Preview the safe recovery, then ask for confirmation before changing StageServe records. |
 | `unknown_error` | Run the first recovery step in the recovery list (typically a read-only check). |
 

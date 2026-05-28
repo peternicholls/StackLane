@@ -124,7 +124,7 @@ Recommended next step: decide whether `setup` is check-only or guided repair. If
 The runtime contract says `.dev` generates local wildcard TLS certs and configures the shared gateway HTTPS port. The code has pieces, but the full path is not connected:
 
 - [platform/tls/mkcert.go](../platform/tls/mkcert.go) exists, but no active lifecycle or `dns-setup` command calls it.
-- [docker-compose.shared.yml](../docker-compose.shared.yml) can mount `SHARED_GATEWAY_CERTS_DIR`, but [core/lifecycle/orchestrator.go](../core/lifecycle/orchestrator.go) does not pass that env var.
+- [stacks/20i/docker-compose.shared.yml](../stacks/20i/docker-compose.shared.yml) can mount `SHARED_GATEWAY_CERTS_DIR`, but [core/lifecycle/orchestrator.go](../core/lifecycle/orchestrator.go) does not pass that env var.
 - [infra/gateway/manager.go](../infra/gateway/manager.go) `AddRoute` calls `WriteConfig` without preserving `TLSEnabled` or `HTTPSPort`, so route additions can render non-TLS config even when `cfg.SiteSuffix == "dev"`.
 
 Recommended next step: either downgrade `.dev` docs to partial support or complete TLS generation, cert-dir env wiring, and route rendering for `.dev` before presenting it as complete.

@@ -27,6 +27,11 @@ You **MUST** consider the user input before proceeding (if not empty).
 - Prefer compact structural formats such as checklists, dependency lists, and parallelization examples over narrative paragraphs.
 - Do not let descriptive prose dilute task specificity; exact file paths and concrete actions remain the priority.
 
+## StageServe TUI Task Note
+
+- For StageServe Bubble Tea/Lip Gloss/Huh work, assume the project-local Charm skill pack in `.github/skills/` is part of the implementation context.
+- If a feature introduces or changes a meaningful TUI flow, generate a dedicated follow-up phase for TUI design polish after the core behavior is working. That phase should cover formatting, spacing, colour, component reuse, width/responsive checks, and terminal UX evidence rather than mixing visual polish into the first behavior slices.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before tasks generation)**:

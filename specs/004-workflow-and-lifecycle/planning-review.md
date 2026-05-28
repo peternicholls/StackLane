@@ -3,7 +3,7 @@
 **Branch**: `004-workflow-and-lifecycle`
 **Reviewed**: 2026-04-25
 **Artifacts in scope**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `handoff.md`, `contracts/workflow-lifecycle-contract.md`, `tasks.md`
-**Cross-checked against**: `core/config/loader.go`, `core/config/types.go`, `core/lifecycle/orchestrator.go`, `core/lifecycle/errors.go`, `observability/status/status.go`, `infra/gateway/`, `docker-compose.shared.yml`, `docker-compose.yml`, `README.md`, `docs/runtime-contract.md`, `.env.example`, `.stackenv.example`.
+**Cross-checked against**: `core/config/loader.go`, `core/config/types.go`, `core/lifecycle/orchestrator.go`, `core/lifecycle/errors.go`, `observability/status/status.go`, `infra/gateway/`, `stacks/20i/docker-compose.shared.yml`, `stacks/20i/docker-compose.20i.yml`, `README.md`, `docs/runtime-contract.md`, `.env.example`, `.stackenv.example`.
 
 This review only flags planning gaps. It does not change code or specs.
 
@@ -41,7 +41,7 @@ Everything else is nits, missing-target enumeration, or scope clarifications.
 
 ### 2.3 `stage-gateway` alias inside the shared compose file is unclassified
 
-`docker-compose.shared.yml` line 13 defines a network alias `stage-gateway` on the gateway service. The contract splits the world into "project-scoped → `stage-`" and "shared → `stage-shared`", but does not say which bucket `stage-gateway` falls into. Today gateway upstream rendering may rely on this exact alias.
+`stacks/20i/docker-compose.shared.yml` line 13 defines a network alias `stage-gateway` on the gateway service. The contract splits the world into "project-scoped → `stage-`" and "shared → `stage-shared`", but does not say which bucket `stage-gateway` falls into. Today gateway upstream rendering may rely on this exact alias.
 
 **Recommendation**: In `contracts/workflow-lifecycle-contract.md`, add one line under "Shared resources" stating that the gateway service network alias remains `stage-gateway` (or moves), and add an assertion to T010 / T028 to confirm the rendered nginx upstream still resolves after rename.
 

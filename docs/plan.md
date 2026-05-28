@@ -1,6 +1,6 @@
 ## Plan: Multi-site Attachable Stack
 
-Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stage` is the canonical entrypoint; `stage up` becomes "ensure shared infra exists, start this project, register its hostname". `stage attach` and `stage detach` then manage additional repos against that same shared layer.
+Refactor the current localhost-centric workflow into a shared front-door model: one persistent gateway and local DNS layer in front of isolated per-project runtimes. `stage` is the canonical entrypoint; `stage up` becomes "ensure shared infra exists, start this project, register its hostname". `stage attach` manages additional repos against that same shared layer, and `stage down` handles project shutdown cleanup.
 
 I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is preferred only if it stays low-friction, and on macOS `.dev` becomes awkward fast because of HSTS and the implied need for local TLS.
 
@@ -8,7 +8,7 @@ I’m recommending `.test` for the first stage, not `.dev`. You said `.dev` is p
 
 - `stage up` works from a project root and exposes that project at a stable local hostname.
 - Multiple projects can coexist concurrently through one shared gateway and DNS layer.
-- `stage attach` and `stage detach` manage project registration without breaking other attached projects.
+- `stage attach` manages project registration without breaking other attached projects.
 - Monitoring reports both Docker state and logical attachment state.
 
 ## Principles
@@ -32,9 +32,9 @@ As a developer, I want each repo to resolve to its own hostname so I can work on
 
 As a developer, I want to attach a second repo while the stack is already running so I can keep multiple sites live at the same time.
 
-### Story 4: Safe detach
+### Story 4: Safe project shutdown
 
-As a developer, I want to detach one project without disturbing others so I can stop work on one site without tearing down the whole environment.
+As a developer, I want to stop one project without disturbing others so I can stop work on one site without tearing down the whole environment.
 
 ### Story 5: Reliable visibility
 
@@ -48,7 +48,7 @@ As a developer, I want the current `stage <subcommand>` workflow to be predictab
 
 ### Phase 1: Runtime contract and CLI semantics
 
-- [x] Define exact command semantics for `stage up`, `stage attach`, `stage detach`, `stage down`, and global teardown.
+- [x] Define exact command semantics for `stage up`, `stage attach`, `stage down`, and global teardown.
 - [x] Decide the canonical hostname derivation rule: folder name by default, project-root `.env.stageserve` override when set.
 - [x] Define the first-stage suffix as `.test` and record `.dev` as a later HTTPS-capable option.
 - [x] Extend the project-root `.env.stageserve` contract with site name override, document root override, PHP version override, and project database settings.
@@ -79,7 +79,7 @@ As a developer, I want the current `stage <subcommand>` workflow to be predictab
 - [x] Store repo path, project name, hostname, document root, runtime settings, and live container identity.
 - [x] Update `stage up` to write registration state and validate it after startup.
 - [x] Implement `stage attach` as attach-or-bootstrap behavior.
-- [x] Implement `stage detach` to remove routing and stop only the targeted project runtime.
+- [x] Implement project-local shutdown cleanup as part of `stage down`.
 - [x] Update `stage down` to remain project-local by default.
 - [x] Add explicit global teardown behavior such as `stage down --all`.
 
@@ -87,7 +87,7 @@ As a developer, I want the current `stage <subcommand>` workflow to be predictab
 
 - [x] Replace single-site `localhost` routing with hostname-aware gateway configuration.
 - [x] Generate or template route definitions from the registry.
-- [x] Reload the gateway safely after attach and detach operations.
+- [x] Reload the gateway safely after attach and project shutdown operations.
 - [x] Validate that one bad project registration cannot break routing for all attached projects.
 - [x] Ensure the gateway can surface a clear error when a project runtime is down but still registered.
 
@@ -111,7 +111,7 @@ As a developer, I want the current `stage <subcommand>` workflow to be predictab
 
 - [x] Update README examples away from `localhost` toward project hostnames.
 - [x] Document project-root `.env.stageserve` additions and override precedence.
-- [x] Add docs for attach, detach, shared teardown, and concurrent project workflows.
+- [x] Add docs for attach, shared teardown, and concurrent project workflows.
 - [x] Add a migration section explaining old versus new behavior.
 - [x] Mark GUI support as deferred or partial if CLI ships first.
 - [x] Tidy up the project structure and docs to reflect the new multi-project focus and follow good practices and patterns for project organization.
@@ -141,7 +141,7 @@ Pass criteria:
 
 - [x] Two projects can run concurrently.
 - [x] Each project has distinct routing and isolated runtime state.
-- [x] Detaching one project does not interrupt the other.
+- [x] Stopping one project does not interrupt the other.
 
 ### Gate D: Operational visibility complete
 
@@ -175,9 +175,9 @@ Pass criteria:
 - [x] Confirm project A and project B route to the correct mounted codebases.
 - [x] Confirm both projects preserve isolated database state.
 
-### Checkpoint 3: Safe detach and local down
+### Checkpoint 3: Safe local down
 
-- [x] Run `stage detach` in one repo.
+- [x] Run `stage down` in one repo.
 - [x] Confirm its hostname stops resolving or routing.
 - [x] Confirm the other project stays healthy.
 - [ ] Run `stage down` from the remaining repo and confirm only that project stops.
@@ -198,7 +198,7 @@ Pass criteria:
 
 **Relevant files**
 
-- `docker-compose.20i.yml` — current 20i runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
+- `stacks/20i/docker-compose.20i.yml` — current 20i runtime definition that needs to be split conceptually into shared infra and project-scoped runtime.
 - `docker/nginx.conf.tmpl` — current single-site `localhost` routing template to evolve into hostname-aware behavior.
 - `previous-version-archive/legacy GUI script` — legacy command semantics and status patterns extended with attach/detach and registry-backed monitoring.
 - `previous-version-archive/` archived AppleScript entrypoint — kept aligned with revised command behavior in `previous-version-archive/`.
@@ -213,13 +213,13 @@ Pass criteria:
 2. Run `stage up` in one repo and confirm it is reachable by hostname rather than `localhost`.
 3. Run `stage attach` in a second repo and confirm both sites remain reachable concurrently.
 4. Run monitoring/status and confirm it reports attached repo path, hostname, container health, and DNS/gateway health together.
-5. Run `stage detach` in one repo and verify only that project disappears while the other stays live.
+5. Run `stage down` in one repo and verify only that project disappears while the other stays live.
 6. Run the global teardown path and verify shared infra and registrations are removed cleanly.
-7. Reattach a previously detached project and verify its database data remains isolated and intact.
+7. Start the previously stopped project again and verify its database data remains isolated and intact.
 
 **Decisions**
 
-- Included now: CLI/runtime architecture, attach/detach semantics, shared gateway, local DNS integration, monitoring/status output, and shell docs.
+- Included now: CLI/runtime architecture, attach/down semantics, shared gateway, local DNS integration, monitoring/status output, and shell docs.
 - Excluded unless you want them pulled in now: full GUI parity, local TLS/cert management for `.dev`, and a full redesign of database admin UX.
 - Recommended hostname policy: folder name by default, override via project-root `.env.stageserve`.
 - Recommended suffix policy: ship `.test` first, leave `.dev` for a later HTTPS-capable phase.
@@ -229,7 +229,7 @@ Pass criteria:
 1. Lock command semantics and config contract.
 2. Split shared gateway from project runtime.
 3. Make one project work behind hostname-based routing.
-4. Add project registry and attach/detach flows.
+4. Add project registry and attach/down flows.
 5. Add DNS bootstrap and health reporting.
 6. Prove multi-project behavior.
 7. Finish monitoring and docs.

@@ -10,7 +10,7 @@ The original stack was built around a simple model: one project at a time, acces
 |---|---|---|
 | Access URL | `http://localhost` or `http://localhost:8080` | `http://project-name.develop` |
 | Multiple projects | Stop one, start another | Attach both concurrently |
-| Gateway ownership | Per-project compose file published to host | Shared `docker-compose.shared.yml` |
+| Gateway ownership | Per-project compose file published to host | Shared `stacks/20i/docker-compose.shared.yml` |
 | DNS | `/etc/hosts` edit or none | `dnsmasq` + `/etc/resolver/develop` (one-time) |
 | Project identity | `COMPOSE_PROJECT_NAME` only | Slug, hostname, state file, registry |
 | State tracking | None (Docker state only) | `.stageserve-state/` JSON project records |
@@ -53,7 +53,7 @@ cd /path/to/project
 stage up --site-suffix develop   # shared gateway starts if not running; project registers at project-name.develop
 # visit http://project-name.develop
 stage status        # shows hostname, container health, gateway and DNS state
-stage down          # stops the project runtime; retains its state record
+stage down          # stops the project runtime and removes generated runtime state
 ```
 
 StageServe's active command surface is `stage <subcommand>`. Root-level `20i-*` wrappers are no longer part of the runtime.
@@ -75,11 +75,8 @@ stage status        # both projects shown
 ### Teardown
 
 ```bash
-# Stop one project and retain its state record
+# Stop one project and remove its generated runtime state
 stage down
-
-# Stop one project and remove its state record entirely
-stage detach
 
 # Stop all projects and clear all state
 stage down --all
@@ -90,11 +87,10 @@ stage down --all
 | Old command | StageServe equivalent | Notes |
 |---|---|---|
 | `docker compose up -d` | `stage up` | Also starts shared gateway, registers hostname |
-| `docker compose down` | `stage down` | Project-scoped; retains record by default |
+| `docker compose down` | `stage down` | Project-scoped; removes generated runtime state |
 | `docker compose logs -f` | `stage logs` | Project-aware; use `--project` to switch scope |
 | `docker compose ps` | `stage status` | Now shows gateway, DNS, hostnames, and drift |
 | Stop A, then start B | `stage attach` from project B | Both run concurrently |
-| _(no equivalent)_ | `stage detach` | Removes project record and routing |
 | _(no equivalent)_ | `stage down --all` | Global teardown |
 | _(no equivalent)_ | `stage dns-setup` | One-time local DNS bootstrap |
 
@@ -131,7 +127,7 @@ export SITE_HOSTNAME=exact.test  # full override, no suffix appended
 - Config resolution order is CLI flags → project `.env.stageserve` → environment → stack-home `.env.stageserve` → defaults.
 - PHP version, database credentials, and document root overrides all work as before.
 - The `public_html` default document root fallback is unchanged.
-- The GUI layer (`StageServe Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach, detach, or per-project hostname reporting. GUI assets and documentation have been moved to `previous-version-archive/GUI-HELP.md`.
+- The GUI layer (`StageServe Manager.app` and the Services menu workflow) still starts and stops a project. It does not yet expose attach or per-project hostname reporting. GUI assets and documentation have been moved to `previous-version-archive/GUI-HELP.md`.
 
 ## Repository Rename vs Local Folder Rename
 

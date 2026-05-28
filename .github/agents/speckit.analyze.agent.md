@@ -18,6 +18,12 @@ You **MUST** consider the user input before proceeding (if not empty).
 - Reserve brief narrative framing only when it helps explain how one artifact creates downstream confusion in another.
 - Favor dense, high-signal tables and summaries over broad descriptive commentary.
 
+## StageServe TUI Analysis Note
+
+- For StageServe Bubble Tea/Lip Gloss/Huh features, treat the project-local Charm skill pack in `.github/skills/` as part of the intended implementation context.
+- Check that spec/plan/tasks include an explicit post-flow TUI design or polish phase once the interaction model is stable, rather than burying formatting, colour, and layout work inside unrelated behavior tasks.
+- Flag missing visual-validation coverage for terminal widths, no-color parity, and keyboard-first interaction when the feature claims meaningful TUI changes.
+
 ## Goal
 
 Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.

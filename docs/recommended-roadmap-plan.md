@@ -12,8 +12,9 @@ The target outcome is a StageServe product that has:
 1. Direct CLI commands whose behavior, help text, docs, and specs agree.
 2. A guided bare `stage` entrypoint built on reusable planning logic.
 3. First-run and day-2 guided workflows that call existing lifecycle/onboarding domains instead of duplicating runtime behavior.
-4. A validation and release process strong enough to prove the Docker, gateway, DNS, state, and TUI claims before release.
-5. A cleaner command and onboarding implementation with known duplication either removed or explicitly deferred.
+4. A dedicated guided-TUI design pass that tightens formatting, colour, and component reuse with the Charm stack once the core flow contract settles.
+5. A validation and release process strong enough to prove the Docker, gateway, DNS, state, and TUI claims before release.
+6. A cleaner command and onboarding implementation with known duplication either removed or explicitly deferred.
 
 ## Guiding Principles
 
@@ -119,7 +120,7 @@ Implement guided surfaces in thin adapters over existing domains:
 
 - Project config preview and confirmation uses the onboarding/project-env seam.
 - Setup and doctor reporting use onboarding result semantics.
-- Up, attach, detach, down, status, and logs use lifecycle/status/logs seams.
+- Up, attach, down, status, and logs use lifecycle/status/logs seams.
 - Recovery actions are ordered from least invasive to most invasive and rerun planning after each action.
 
 The guided experience should use plain goal language first and direct command names only as command equivalents or advanced details.
@@ -128,12 +129,32 @@ The guided experience should use plain goal language first and direct command na
 
 - A project without `.env.stageserve` can be initialized through guided preview and confirmation.
 - `stage init` uses the guided project-config form by default in interactive terminals, while non-guided flags keep automation behavior.
-- A configured stopped project can be run through guided mode.
+- A configured project can be run through guided mode after shutdown cleanup removes runtime-owned state.
 - A running project can be inspected without making destructive actions the default.
-- Stop, detach, overwrite, and state-changing recovery paths require explicit confirmation.
+- Stop, overwrite, and state-changing recovery paths require explicit confirmation.
 - Terminal verification evidence is recorded in spec 007 quickstart.
 
-## Phase 4: Process Hardening
+## Phase 4: Guided TUI Design Polish
+
+### Goal
+
+Use a dedicated visual pass to make the guided shell feel intentional and cohesive once the interaction model is stable.
+
+### Implementation Shape
+
+- Audit the guided TUI against the StageServe terminal design system and current Bubble Tea/Lip Gloss/Huh guidance.
+- Extract or refine reusable Charm-based components for headers, facts, decision rows, confirmations, details, and footer hints.
+- Tighten spacing, formatting, and semantic colour while preserving text fallback parity and `NO_COLOR` behavior.
+- Record design review evidence and any explicitly deferred visual work alongside the guided-flow validation.
+
+### Exit Criteria
+
+- Guided screens use consistent hierarchy, spacing, and semantic colour in a real terminal.
+- Visual polish remains layered on top of the existing planner and command/domain seams rather than reintroducing behavioral duplication.
+- Text fallback still matches the same screen truth even after the TTY presentation improves.
+- Design review notes identify any remaining intentional gaps instead of leaving them implicit.
+
+## Phase 5: Process Hardening
 
 ### Goal
 
@@ -144,6 +165,7 @@ Make the project easier to validate, release, and navigate after the product sur
 - Add tagged Docker integration tests or scripted smoke tests for real runtime behavior.
 - Add command/docs contract checks for common drift cases.
 - Consolidate or explicitly defer cleanup for root shared flags, onboarding projection helpers, project-env rendering, compose detach semantics, and non-flow lifecycle helpers.
+- Plan the future split between the shipped stack catalog and a user-owned custom stack registry before adding non-20i runtime definitions.
 - Declutter docs under spec 009 into user, command-reference, contributor, and archive-oriented surfaces.
 - Align `Makefile`, CI, installer, and release workflow so maintainers have one obvious release path.
 
@@ -153,6 +175,7 @@ Make the project easier to validate, release, and navigate after the product sur
 - README is a user-facing first door, not a contributor-heavy index.
 - Command reference is easy to regenerate or verify against Cobra help.
 - Known code-cleanup findings from the analysis report are either resolved or tracked as explicit follow-up work with rationale.
+- The roadmap names a concrete ownership and storage plan for any future user-defined stack registry instead of leaving SQLite-versus-files undecided.
 - Release workflow is documented and executable without contradictory Makefile targets.
 
 ## Dependencies
@@ -196,7 +219,7 @@ Use the narrowest check that proves the changed slice, then broaden at phase gat
 - `NO_COLOR=1 stage --notui` or equivalent captured output.
 - `stage setup --json` and `stage doctor --json` parsed as JSON.
 - Single-project `up/status/logs/down`.
-- Two-project `up/attach/status/detach/down --all`.
+- Two-project `up/attach/status/project-down/down --all`.
 - Failed post-up hook rollback.
 - `.dev` TLS route or documented skipped case.
 - `stage up --profile debug` phpMyAdmin activation or documented removal.

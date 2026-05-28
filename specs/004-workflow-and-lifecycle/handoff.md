@@ -164,7 +164,7 @@ This handoff covers the runtime and docs work centered on:
 - `infra/gateway/*`
 - `internal/mocks/*`
 - `platform/dns/macos.go`
-- `docker-compose.yml`
+- `stacks/20i/docker-compose.20i.yml`
 - `docker/nginx.conf.tmpl`
 - `.stackenv.example` and `.env.example`
 

@@ -18,6 +18,12 @@ You **MUST** consider the user input before proceeding (if not empty).
 - Use checklist or status-table formats for gating decisions, task progress, and completion summaries.
 - Keep any explanatory narrative short and practical; this agent should sound like an operator carrying out a plan, not drafting a concept note.
 
+## StageServe TUI Implementation Note
+
+- For StageServe Bubble Tea/Lip Gloss/Huh work, consult the project-local Charm skill pack in `.github/skills/` before reshaping the UI.
+- Use `charm-tui-builder` first for overall structure, then the more specific layout/component/forms/motion/QA skill directories as needed.
+- Keep interaction correctness and contract wiring ahead of visual polish, then use the dedicated TUI design phase to tighten formatting, colour, and component consistency.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before implementation)**:

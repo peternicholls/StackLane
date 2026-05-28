@@ -146,7 +146,22 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Checkpoint**: Daily project management works from bare `stage`.
 
-## Phase 7: User Story 4 - Preserve Power-User And Automation Paths (Priority: P1)
+## Phase 7: TUI Visual Design And Charm Polish
+
+**Goal**: Once the guided flows are stable, tighten layout, formatting, and colour so the TUI makes fuller use of Bubble Tea, Lip Gloss, and Huh without changing the core behavior contract.
+
+### Design Review And Implementation
+
+- [ ] T047a [P] Audit the guided shell against `docs/design/terminal-visual-style-guide.md`, `.github/instructions/terminal-design-contract.instructions.md`, and `.github/instructions/terminal-markup-spec.instructions.md`, then record the intended visual deltas in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or a design note linked from it.
+- [ ] T047b Extract or refine reusable Bubble Tea/Lip Gloss rendering helpers for guided headers, key facts, decision rows, confirmations, details, and footer hints.
+- [ ] T047c Apply a spacing, alignment, and hierarchy polish pass to guided screens so the default action, supporting context, and advanced affordances scan cleanly in a real terminal.
+- [ ] T047d Apply a semantic colour and emphasis pass to guided screens, preserving `NO_COLOR`, plain-text parity, and the StageServe colour contract.
+- [ ] T047e Verify guided screens remain usable at narrower terminal widths and after transitions such as details, confirmation, editing, and long-running action results.
+- [ ] T047f Capture terminal evidence for the design pass and note any intentionally deferred visual work.
+
+**Checkpoint**: Guided TUI presentation matches the active StageServe terminal design system closely enough for broader docs and release validation.
+
+## Phase 8: User Story 4 - Preserve Power-User And Automation Paths (Priority: P1)
 
 **Goal**: TUI additions do not break direct commands or automation.
 
@@ -165,7 +180,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Checkpoint**: Power-user and automation paths match the final spec 007 CLI contract.
 
-## Phase 8: Documentation And Abstraction Cleanup
+## Phase 9: Documentation And Abstraction Cleanup
 
 **Purpose**: Make docs reflect the simple-first product model.
 
@@ -181,7 +196,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Checkpoint**: Primary docs teach StageServe usage before implementation internals.
 
-## Phase 9: Final Verification
+## Phase 10: Final Verification
 
 - [ ] T060 Build the binary with `make build` or the repository's canonical build target and record which binary is being exercised.
 - [ ] T061 Run terminal verification matrix from `quickstart.md` and record command, exit code, and observed output.
@@ -204,6 +219,7 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 - Phase 2 blocks all user stories.
 - Phase 3 should finish before Phase 4 to avoid projection drift.
 - US1 root routing blocks US2 and US3 guided workflows.
+- Phase 7 should begin only after the main guided flows in Phases 5 and 6 are stable enough that visual polish will not be invalidated by interaction redesign.
 - US4 direct-command checks run throughout but final verification depends on all implementation phases.
 - Documentation cleanup can start after root behavior is stable, but final wording depends on implemented behavior.
 

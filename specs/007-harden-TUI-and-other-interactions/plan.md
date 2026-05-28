@@ -24,8 +24,9 @@ The implementation should land in thin, reversible slices:
 3. projection cleanup
 4. guided TUI shell
 5. first-run and day-2 actions
-6. documentation abstraction cleanup
-7. validation
+6. guided TUI visual design polish
+7. documentation abstraction cleanup
+8. validation
 
 ## Technical Context
 
@@ -85,6 +86,12 @@ The implementation should land in thin, reversible slices:
 - Decision: the guided TUI, text fallback, installer handoff, and first-run docs use plain goal labels such as "run this project", "stop this project", "add this project to StageServe", and "remove this project from StageServe".
 - Rationale: command words such as attach and detach are precise for lifecycle/state work, but they do not match how a front-end developer or hobbyist normally describes what they want to do.
 - Rejected: using direct command names as first-level labels, because that makes easy mode teach the CLI map instead of guiding the user's next action.
+
+### Guided Design Polish
+
+- Decision: once the planner, flows, and action wiring are stable, run a dedicated Bubble Tea/Lip Gloss/Huh design pass for formatting, spacing, colour, and component consistency.
+- Rationale: interaction correctness and visual polish should evolve in that order, so the final TUI can make fuller use of the Charm stack without destabilizing the behavior contract.
+- Rejected: treating design polish as incidental cleanup at the end, because that tends to leave terminal hierarchy, colour semantics, and reusable components under-specified.
 
 ## Project Structure
 
@@ -185,7 +192,15 @@ README.md
 4. Ensure Ctrl-C and cancel behavior remains coherent during long-running actions.
 5. Show result and next recommended action after each action.
 
-### Phase 6 - Documentation And Abstraction Cleanup
+### Phase 6 - Guided TUI Visual Design Polish
+
+1. Audit the guided shell against `docs/design/terminal-visual-style-guide.md` and the indexed terminal instruction set once the main flows are usable end to end.
+2. Extract or refine reusable Bubble Tea/Lip Gloss view components for headers, decision lists, facts rows, confirmations, details, and footer hints.
+3. Tighten spacing, alignment, hierarchy, and semantic colour so guided screens make fuller use of the Charm stack while preserving the StageServe design contract.
+4. Keep plain-text parity and `NO_COLOR` behavior explicit while polishing TTY presentation.
+5. Record design review notes and terminal evidence for the visual pass in the active spec artifacts.
+
+### Phase 7 - Documentation And Abstraction Cleanup
 
 1. Update README first-run path to start with bare `stage`.
 2. Move Docker/gateway names from primary docs into advanced/troubleshooting sections.
@@ -195,7 +210,7 @@ README.md
 6. Update `install.sh` so interactive handoff points to bare `stage` after the guided entrypoint lands.
 7. Review first-level copy for jargon and rename easy-mode labels while preserving direct command equivalents.
 
-### Phase 7 - Validation
+### Phase 8 - Validation
 
 1. Run terminal verification scenarios first.
 2. Run manual TUI validation in a real TTY.

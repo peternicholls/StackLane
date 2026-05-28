@@ -114,8 +114,8 @@ docs/
 README.md
 .env.example
 .env.stageserve.example
-docker-compose.shared.yml
-docker-compose.yml
+stacks/20i/docker-compose.shared.yml
+stacks/20i/docker-compose.20i.yml
 ```
 
 **Structure Decision**: Keep the existing single-module CLI structure. Implement the feature by updating the existing config loader, lifecycle orchestrator, gateway and state semantics, then align top-level docs and examples. Do not introduce new packages for this feature.

@@ -150,6 +150,7 @@ StageServe 0.7.0  pete-site is stopped
 Notes:
 
 - The default is to run the project again, because that is the most common reason to revisit a stopped project.
+- If StageServe detects that the project runtime is already running, the first action changes to "Add this project to StageServe" and routes through `stage attach` instead of restarting the project.
 - "Remove this project from StageServe" is the easy-mode label for `detach`. It always confirms with a screen explaining that disk files are not deleted.
 
 ### Sub-Flow: Remove This Project From StageServe (Confirm Before Removing)
@@ -182,6 +183,7 @@ Notes:
 | `project_running` | `Stop this project` confirmed | `project_down` |
 | `project_running` | open in browser | stays on `project_running` |
 | `project_down` | `Run this project` | `project_running` |
+| `project_down` | `Add this project to StageServe` | `project_running` |
 | `project_down` | `Remove this project` confirmed | `not_project` |
 | any | `esc` | exit TUI; the project's actual state is unchanged |
 

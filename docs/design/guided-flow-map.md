@@ -34,7 +34,7 @@ Those are product situations, not renderer states.
 | `project_missing_config` | `This folder doesn't have StageServe settings yet.` | Preview and confirm `.env.stageserve` creation. | Show path, values, and resulting local URL before any write. |
 | `project_ready_to_run` | `This project is ready to run.` | Run this project. | The local URL is visible even before the project is started. |
 | `project_running` | `This project is running at <URL>.` | View project logs. | The default must stay non-destructive. |
-| `project_down` | `This project is stopped.` | Run this project again. | Removing the project from StageServe is secondary and confirmed. |
+| `project_down` | `This project is stopped.` | Run this project again, or add it back without restarting when it is already running. | Removing the project from StageServe is secondary and confirmed. |
 | `drift_detected` | `This project doesn't match what StageServe expects.` | Preview the safe recovery step and confirm it. | The user never sees the word `drift`. |
 | `unknown_error` | `StageServe couldn't safely choose a next step.` | Run the first safe recovery step. | Recovery is ordered from read-only to more invasive. |
 

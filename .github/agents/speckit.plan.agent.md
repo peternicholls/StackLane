@@ -26,6 +26,12 @@ You **MUST** consider the user input before proceeding (if not empty).
 - Use blueprint-style bullets or tables for artifacts, phases, contracts, and technical context when structure improves scanability.
 - When describing implementation phases, keep the tone forward-looking and outcome-oriented rather than purely procedural.
 
+## StageServe TUI Planning Note
+
+- For StageServe Bubble Tea/Lip Gloss/Huh work, consult the project-local Charm skill pack in `.github/skills/`.
+- Treat `charm-tui-builder` as the entry reference, then pull in `charm-lipgloss-layout`, `charm-bubbletea-components`, `charm-huh-forms`, `charm-tui-motion-observability`, and `charm-tui-qa` when the plan touches those areas.
+- When the feature includes a meaningful TUI, add an explicit post-flow design/polish phase for formatting, hierarchy, colour, and component consistency after the core interaction behavior is settled.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before planning)**:

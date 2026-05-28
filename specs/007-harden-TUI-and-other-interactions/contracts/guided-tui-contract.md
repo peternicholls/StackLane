@@ -89,7 +89,7 @@ The situations below are planner outputs, not screens the user navigates between
 | `project_missing_config` | "This folder doesn't have StageServe settings yet." | Use these settings / Edit before writing | Config preview with target path, values, URL, and validation notes | Help, show direct commands, plain text output, quit |
 | `project_ready_to_run` | "This project is ready to run." | Run this project / Edit project settings | Hidden unless start fails, then progress or blocker panel | Help, show direct commands, advanced troubleshooting, quit |
 | `project_running` | "This project is running at <URL>." | View project logs / Stop this project | Hidden unless logs or progress are active | Open URL, help, show direct commands, advanced troubleshooting, quit |
-| `project_down` | "This project is stopped." | Run this project / Remove this project from StageServe | Hidden unless start/remove progress is active | Help, show direct commands, advanced troubleshooting, quit |
+| `project_down` | "This project is stopped." | Run this project or Add this project to StageServe / Remove this project from StageServe | Hidden unless start/add/remove progress is active | Help, show direct commands, advanced troubleshooting, quit |
 | `drift_detected` | "This project doesn't match what StageServe expects." | Use the safe next step / Try to start it again / Show what doesn't match | Plain-language comparison and safe-step preview | Help, show direct commands, advanced troubleshooting, quit |
 | `not_project` | "This folder isn't a StageServe project yet." | Set up this folder as a project / Pick a different folder | Proposed defaults and path context when available | Help, show direct commands, plain text output, quit |
 | `unknown_error` | "StageServe couldn't safely choose a next step." | Run next recovery step / Show what went wrong / Stop here | Ordered recovery path from least invasive to most invasive | Help, show direct commands, advanced troubleshooting, quit |
@@ -97,7 +97,7 @@ The situations below are planner outputs, not screens the user navigates between
 Situation semantics:
 
 - `project_ready_to_run`: project config exists and there is no retained down record or active runtime requiring special handling.
-- `project_down`: StageServe has a retained record for the project marked down.
+- `project_down`: StageServe has a retained record for the project marked down. If the project runtime is already running, the primary action becomes `attach` with the easy-mode label "Add this project to StageServe".
 - `unknown_error`: planning/context collection failed and normal action cannot be chosen safely. The recovery panel must list a concrete ordered next-step sequence (typically `stage doctor`, `stage status`, `stage logs`) rather than generic guidance.
 
 ## Visible Defaults And Local URL Rules
