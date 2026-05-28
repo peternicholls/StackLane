@@ -198,13 +198,42 @@ func TestCollectDoesNotCreateProjectOrStateFiles(t *testing.T) {
 func TestShellViewRendersCoreSurfaces(t *testing.T) {
 	plan := Plan(baseContext())
 	view := renderShellView(plan, 80, 0, true, true)
-	for _, want := range []string{"StageServe", "This project is ready to run.", "Key facts", "What you can do", "Details", "stage up", "q quit"} {
+	for _, want := range []string{"StageServe", "Project", "This project is ready to run.", "Key facts", "What you can do", "Details", "stage up", "q quit"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("shell view missing %q:\n%s", want, view)
 		}
 	}
 	if strings.Contains(view, "\x1b") {
 		t.Fatalf("no-color shell view contains ANSI escape sequences:\n%s", view)
+	}
+}
+
+func TestShellRecoveryViewPrioritizesRecoveryStepsBeforeChoices(t *testing.T) {
+	ctx := baseContext()
+	ctx.Warnings = []string{"Project settings do not match the recorded project path."}
+	view := renderShellView(Plan(ctx), 80, 0, false, true)
+
+	headerLine := ""
+	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "StageServe") {
+			headerLine = line
+			break
+		}
+	}
+	if !strings.Contains(headerLine, "Recovery") {
+		t.Fatalf("header missing recovery surface label:\n%s", view)
+	}
+	if recoveryIndex, choicesIndex := strings.Index(view, "Recovery steps"), strings.Index(view, "What you can do"); recoveryIndex == -1 || choicesIndex == -1 || recoveryIndex > choicesIndex {
+		t.Fatalf("recovery checklist should appear before choices:\n%s", view)
+	}
+}
+
+func TestShellNarrowViewStacksKeyFacts(t *testing.T) {
+	view := renderShellView(Plan(baseContext()), 48, 0, false, true)
+	for _, want := range []string{"Project", "Site name\n    demo", "Local URL\n    http://demo.test", "↑/↓ move • enter choose • ? details • q"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("narrow shell view missing %q:\n%s", want, view)
+		}
 	}
 }
 

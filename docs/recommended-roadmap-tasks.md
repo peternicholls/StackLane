@@ -185,12 +185,19 @@ Source: [Project Analysis Report](project-analysis-report.md)
 
 ### Design And Implementation
 
-- [ ] T072a [P] Audit guided screens against `docs/design/terminal-visual-style-guide.md` and the active terminal instruction set; record intended deltas before polishing code.
-- [ ] T072b Extract or refine reusable Bubble Tea/Lip Gloss helpers for guided headers, facts rows, decision rows, confirmations, details, and footer hints.
-- [ ] T072c Apply a spacing, alignment, and hierarchy pass to guided screens in `cmd/stage/commands/tui.go` and any shared render helpers they use.
-- [ ] T072d Apply a semantic colour/emphasis pass for guided screens while preserving `NO_COLOR` behavior and text fallback parity.
-- [ ] T072e Validate narrower-width and multi-state guided renders (details, confirmation, editing, long-running result) and record any deliberate deferrals.
-- [ ] T072f Record terminal design evidence in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or the active design review surface.
+- [x] T072a [P] Audit guided screens against `docs/design/terminal-visual-style-guide.md` and the active terminal instruction set; record intended deltas before polishing code.
+- [x] T072b Extract or refine reusable Bubble Tea/Lip Gloss helpers for guided headers, facts rows, decision rows, confirmations, details, and footer hints.
+- [x] T072c Apply a spacing, alignment, and hierarchy pass to guided screens in `cmd/stage/commands/tui.go` and any shared render helpers they use.
+- [x] T072d Apply a semantic colour/emphasis pass for guided screens while preserving `NO_COLOR` behavior and text fallback parity.
+- [x] T072e Validate narrower-width and multi-state guided renders (details, confirmation, editing, long-running result) and record any deliberate deferrals.
+- [x] T072f Record terminal design evidence in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or the active design review surface.
+
+### Phase 4 Progress Evidence
+
+- 2026-05-28: audited the guided shell against `docs/design/terminal-visual-style-guide.md`, the guided flow map, and the terminal instruction set; the concrete deltas were to name the active surface in the header, make setup and recovery checklists the dominant section, and add semantic emphasis without changing action copy or text fallback.
+- 2026-05-28: `core/guidance/shell.go` now routes the guided renderer through shared helpers for surface headers, key facts, decision rows, work panels, details, and footer hints; setup and recovery screens now render their checklist before the choice list, and narrow renders stack key facts below 58 columns instead of forcing padded inline rows.
+- 2026-05-28: semantic verdict and section-title styling now distinguish ready, warning, and recovery surfaces while preserving `NO_COLOR` behavior; the deliberate deferral for this slice is that very long path/value rows still rely on terminal wrapping rather than a dedicated truncation or viewport treatment.
+- 2026-05-28: `go test ./core/guidance ./cmd/stage/commands` passed after adding deterministic coverage for project, recovery, and 48-column guided renders.
 
 ## Phase 5: Process Hardening
 

@@ -366,7 +366,7 @@ func applyProjectSettingsDraft(plan NextActionPlan, draft projectSettingsDraft) 
 
 func renderProjectSettingsEditor(builder *strings.Builder, draft projectSettingsDraft, editCursor, lineWidth int, styles shellStyles) {
 	draft = draft.normalized()
-	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("Project settings", lineWidth, styles))
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("Project settings", lineWidth, sectionToneNeutral, styles))
 	fields := []struct {
 		label string
 		value string
@@ -421,9 +421,9 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 	var b strings.Builder
 	lineWidth := clampInt(width-4, 42, 96)
 
-	fmt.Fprintf(&b, "\n  %s  %s\n", styles.accent.Render("◆"), styles.title.Render("StageServe"))
+	renderSurfaceHeader(&b, lineWidth, surfaceLabel(plan, cursor, editing, confirming, utility), styles)
 	fmt.Fprintf(&b, "  %s\n\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	fmt.Fprintf(&b, "  %s\n", styles.verdict.Render(plan.StatusHeader))
+	fmt.Fprintf(&b, "  %s\n", verdictStyle(plan, styles).Render(plan.StatusHeader))
 	if plan.Summary != "" {
 		fmt.Fprintf(&b, "  %s\n", styles.muted.Render(plan.Summary))
 	}
@@ -441,79 +441,135 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 		renderProjectSettingsEditor(&b, editDraft, editCursor, lineWidth, styles)
 	} else {
 		if len(plan.VisibleDefaults) > 0 {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Key facts", lineWidth, styles))
-			for _, item := range plan.VisibleDefaults {
-				fmt.Fprintf(&b, "  %s  %s", styles.label.Render(fmt.Sprintf("%-13s", item.Label)), item.Value)
-				if item.Note != "" {
-					fmt.Fprintf(&b, "  %s", styles.muted.Render(item.Note))
-				}
-				b.WriteByte('\n')
-			}
+			renderVisibleDefaultsSection(&b, plan.VisibleDefaults, lineWidth, styles)
 		}
 
 		if confirming {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Confirm change", lineWidth, styles))
+			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Confirm change", lineWidth, sectionToneNeutral, styles))
 			if action, ok := selectedAction(plan, cursor); ok {
 				fmt.Fprintf(&b, "  %s\n", styles.label.Render(action.Label))
 				fmt.Fprintf(&b, "    %s\n", styles.muted.Render(action.Description))
 				renderConfirmationBody(&b, action, plan, styles)
 			}
-		} else if len(plan.DecisionItems) > 0 {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("What you can do", lineWidth, styles))
-			for i, item := range plan.DecisionItems {
-				marker := " "
-				if i == cursor {
-					marker = "▶"
-				}
-				fmt.Fprintf(&b, "  %s %s\n", styles.accent.Render(marker), styles.label.Render(item.Label))
-				fmt.Fprintf(&b, "    %s\n\n", styles.muted.Render(item.Description))
-			}
-		}
-
-		if len(plan.WorkItems) > 0 {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle(workSectionTitle(plan), lineWidth, styles))
-			for _, item := range plan.WorkItems {
-				marker := workItemMarker(item.Status)
-				fmt.Fprintf(&b, "  %s %s", styles.accent.Render(marker), styles.label.Render(item.Label))
-				if item.Status != "" {
-					fmt.Fprintf(&b, "  %s", styles.muted.Render(item.Status))
-				}
-				b.WriteByte('\n')
-				if item.Description != "" {
-					fmt.Fprintf(&b, "    %s\n", styles.muted.Render(item.Description))
-				}
-				if item.DirectCommand != "" {
-					fmt.Fprintf(&b, "    Direct command: %s\n", styles.command.Render(item.DirectCommand))
-				}
+		} else {
+			if workItemsFirst(plan) {
+				renderWorkSection(&b, plan, lineWidth, styles)
+				renderDecisionSection(&b, plan.DecisionItems, cursor, lineWidth, styles)
+			} else {
+				renderDecisionSection(&b, plan.DecisionItems, cursor, lineWidth, styles)
+				renderWorkSection(&b, plan, lineWidth, styles)
 			}
 		}
 
 		if showDetails || len(plan.DecisionItems) == 0 {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Details", lineWidth, styles))
-			if len(plan.Warnings) == 0 {
-				fmt.Fprintf(&b, "  %s\n", styles.muted.Render("No extra warnings for this plan."))
-			}
-			for _, warning := range plan.Warnings {
-				fmt.Fprintf(&b, "  %s\n", warning)
-			}
-			if len(plan.DirectCommands) > 0 {
-				b.WriteByte('\n')
-				for _, command := range plan.DirectCommands {
-					fmt.Fprintf(&b, "  %s\n", styles.command.Render(command))
-				}
-			}
+			renderDetailsSection(&b, plan, lineWidth, styles)
 		}
 	}
 
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	footer := "↑/↓ inspect • enter choose • ? details • q quit"
+	footer := footerHint(lineWidth, utility, confirming, editing)
 	if confirming {
-		footer = "enter confirm • n cancel • esc cancel"
-	} else if editing {
-		footer = "type edit • tab/↑/↓ move • enter save • esc cancel"
+		footer = footerHint(lineWidth, utility, confirming, editing)
 	}
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
+}
+
+func renderSurfaceHeader(builder *strings.Builder, lineWidth int, surface string, styles shellStyles) {
+	left := styles.accent.Render("◆") + "  " + styles.title.Render("StageServe")
+	if surface == "" {
+		fmt.Fprintf(builder, "\n  %s\n", left)
+		return
+	}
+	gap := maximumInt(2, lineWidth-lipgloss.Width("◆  StageServe")-lipgloss.Width(surface))
+	fmt.Fprintf(builder, "\n  %s%s%s\n", left, strings.Repeat(" ", gap), styles.surface.Render(surface))
+}
+
+func renderVisibleDefaultsSection(builder *strings.Builder, defaults []VisibleDefault, lineWidth int, styles shellStyles) {
+	if len(defaults) == 0 {
+		return
+	}
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("Key facts", lineWidth, sectionToneNeutral, styles))
+	stacked := lineWidth < 58
+	for _, item := range defaults {
+		if stacked {
+			fmt.Fprintf(builder, "  %s\n", styles.label.Render(item.Label))
+			fmt.Fprintf(builder, "    %s\n", item.Value)
+			if item.Note != "" {
+				fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Note))
+			}
+			continue
+		}
+		fmt.Fprintf(builder, "  %s  %s", styles.label.Render(fmt.Sprintf("%-13s", item.Label)), item.Value)
+		if item.Note != "" {
+			fmt.Fprintf(builder, "  %s", styles.muted.Render(item.Note))
+		}
+		builder.WriteByte('\n')
+	}
+}
+
+func renderDecisionSection(builder *strings.Builder, items []GuidedAction, cursor, lineWidth int, styles shellStyles) {
+	if len(items) == 0 {
+		return
+	}
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("What you can do", lineWidth, sectionToneAction, styles))
+	for itemIndex, item := range items {
+		marker := " "
+		if itemIndex == cursor {
+			marker = "▶"
+		}
+		fmt.Fprintf(builder, "  %s %s\n", styles.accent.Render(marker), styles.label.Render(item.Label))
+		fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Description))
+		if itemIndex < len(items)-1 {
+			builder.WriteByte('\n')
+		}
+	}
+}
+
+func renderWorkSection(builder *strings.Builder, plan NextActionPlan, lineWidth int, styles shellStyles) {
+	if len(plan.WorkItems) == 0 {
+		return
+	}
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle(workSectionTitle(plan), lineWidth, workSectionTone(plan), styles))
+	for _, item := range plan.WorkItems {
+		marker := workItemMarker(item.Status)
+		fmt.Fprintf(builder, "  %s %s", styles.accent.Render(marker), styles.label.Render(item.Label))
+		if item.Status != "" {
+			fmt.Fprintf(builder, "  %s", styles.muted.Render(item.Status))
+		}
+		builder.WriteByte('\n')
+		if item.Description != "" {
+			fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Description))
+		}
+		if item.DirectCommand != "" {
+			fmt.Fprintf(builder, "    Direct command: %s\n", styles.command.Render(item.DirectCommand))
+		}
+	}
+}
+
+func renderDetailsSection(builder *strings.Builder, plan NextActionPlan, lineWidth int, styles shellStyles) {
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("Details", lineWidth, sectionToneNeutral, styles))
+	if len(plan.Warnings) == 0 {
+		fmt.Fprintf(builder, "  %s\n", styles.muted.Render("No extra warnings for this plan."))
+	}
+	for _, warning := range plan.Warnings {
+		fmt.Fprintf(builder, "  %s\n", warning)
+	}
+	if len(plan.DirectCommands) > 0 {
+		builder.WriteByte('\n')
+		for _, command := range plan.DirectCommands {
+			fmt.Fprintf(builder, "  %s\n", styles.command.Render(command))
+		}
+	}
+}
+
+func workItemsFirst(plan NextActionPlan) bool {
+	switch plan.Situation {
+	case SituationMachineNotReady, SituationDriftDetected, SituationUnknownError:
+		return len(plan.WorkItems) > 0
+	default:
+		return false
+	}
 }
 
 func workSectionTitle(plan NextActionPlan) string {
@@ -578,7 +634,7 @@ func visibleDefaultValue(plan NextActionPlan, label string) string {
 }
 
 func renderUtilitySurface(builder *strings.Builder, utility UtilitySurface, lineWidth int, styles shellStyles) {
-	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle(utility.Title, lineWidth, styles))
+	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle(utility.Title, lineWidth, sectionToneNeutral, styles))
 	for _, line := range strings.Split(strings.TrimSuffix(utility.Body, "\n"), "\n") {
 		if strings.TrimSpace(line) == "" {
 			builder.WriteByte('\n')
@@ -606,53 +662,174 @@ func selectedAction(plan NextActionPlan, cursor int) (GuidedAction, bool) {
 }
 
 type shellStyles struct {
-	accent  lipgloss.Style
-	title   lipgloss.Style
-	rule    lipgloss.Style
-	verdict lipgloss.Style
-	label   lipgloss.Style
-	muted   lipgloss.Style
-	command lipgloss.Style
-	footer  lipgloss.Style
+	accent         lipgloss.Style
+	title          lipgloss.Style
+	surface        lipgloss.Style
+	rule           lipgloss.Style
+	verdict        lipgloss.Style
+	verdictReady   lipgloss.Style
+	verdictWarn    lipgloss.Style
+	verdictError   lipgloss.Style
+	label          lipgloss.Style
+	muted          lipgloss.Style
+	command        lipgloss.Style
+	footer         lipgloss.Style
+	sectionNeutral lipgloss.Style
+	sectionAction  lipgloss.Style
+	sectionWarn    lipgloss.Style
 }
+
+type sectionTone int
+
+const (
+	sectionToneNeutral sectionTone = iota
+	sectionToneAction
+	sectionToneWarning
+)
 
 func shellStylesFor(noColor bool) shellStyles {
 	if noColor {
 		return shellStyles{
-			accent:  lipgloss.NewStyle(),
-			title:   lipgloss.NewStyle(),
-			rule:    lipgloss.NewStyle(),
-			verdict: lipgloss.NewStyle(),
-			label:   lipgloss.NewStyle(),
-			muted:   lipgloss.NewStyle(),
-			command: lipgloss.NewStyle(),
-			footer:  lipgloss.NewStyle(),
+			accent:         lipgloss.NewStyle(),
+			title:          lipgloss.NewStyle(),
+			surface:        lipgloss.NewStyle(),
+			rule:           lipgloss.NewStyle(),
+			verdict:        lipgloss.NewStyle(),
+			verdictReady:   lipgloss.NewStyle(),
+			verdictWarn:    lipgloss.NewStyle(),
+			verdictError:   lipgloss.NewStyle(),
+			label:          lipgloss.NewStyle(),
+			muted:          lipgloss.NewStyle(),
+			command:        lipgloss.NewStyle(),
+			footer:         lipgloss.NewStyle(),
+			sectionNeutral: lipgloss.NewStyle(),
+			sectionAction:  lipgloss.NewStyle(),
+			sectionWarn:    lipgloss.NewStyle(),
 		}
 	}
 	styles := shellStyles{
-		accent:  lipgloss.NewStyle(),
-		title:   lipgloss.NewStyle().Bold(true),
-		rule:    lipgloss.NewStyle(),
-		verdict: lipgloss.NewStyle().Bold(true),
-		label:   lipgloss.NewStyle().Bold(true),
-		muted:   lipgloss.NewStyle(),
-		command: lipgloss.NewStyle().Bold(true),
-		footer:  lipgloss.NewStyle(),
+		accent:         lipgloss.NewStyle(),
+		title:          lipgloss.NewStyle().Bold(true),
+		surface:        lipgloss.NewStyle().Bold(true),
+		rule:           lipgloss.NewStyle(),
+		verdict:        lipgloss.NewStyle().Bold(true),
+		verdictReady:   lipgloss.NewStyle().Bold(true),
+		verdictWarn:    lipgloss.NewStyle().Bold(true),
+		verdictError:   lipgloss.NewStyle().Bold(true),
+		label:          lipgloss.NewStyle().Bold(true),
+		muted:          lipgloss.NewStyle(),
+		command:        lipgloss.NewStyle().Bold(true),
+		footer:         lipgloss.NewStyle(),
+		sectionNeutral: lipgloss.NewStyle().Bold(true),
+		sectionAction:  lipgloss.NewStyle().Bold(true),
+		sectionWarn:    lipgloss.NewStyle().Bold(true),
 	}
 	styles.accent = styles.accent.Foreground(lipgloss.Color("6"))
 	styles.title = styles.title.Foreground(lipgloss.Color("15"))
+	styles.surface = styles.surface.Foreground(lipgloss.Color("7"))
 	styles.rule = styles.rule.Foreground(lipgloss.Color("8"))
 	styles.verdict = styles.verdict.Foreground(lipgloss.Color("15"))
+	styles.verdictReady = styles.verdictReady.Foreground(lipgloss.Color("2"))
+	styles.verdictWarn = styles.verdictWarn.Foreground(lipgloss.Color("3"))
+	styles.verdictError = styles.verdictError.Foreground(lipgloss.Color("1"))
 	styles.label = styles.label.Foreground(lipgloss.Color("15"))
 	styles.muted = styles.muted.Foreground(lipgloss.Color("7"))
 	styles.command = styles.command.Foreground(lipgloss.Color("14"))
 	styles.footer = styles.footer.Foreground(lipgloss.Color("8"))
+	styles.sectionNeutral = styles.sectionNeutral.Foreground(lipgloss.Color("15"))
+	styles.sectionAction = styles.sectionAction.Foreground(lipgloss.Color("6"))
+	styles.sectionWarn = styles.sectionWarn.Foreground(lipgloss.Color("3"))
 	return styles
 }
 
-func sectionTitle(title string, width int, styles shellStyles) string {
+func verdictStyle(plan NextActionPlan, styles shellStyles) lipgloss.Style {
+	switch plan.Situation {
+	case SituationProjectReadyToRun, SituationProjectRunning:
+		return styles.verdictReady
+	case SituationMachineNotReady, SituationDriftDetected:
+		return styles.verdictWarn
+	case SituationUnknownError:
+		return styles.verdictError
+	default:
+		return styles.verdict
+	}
+}
+
+func surfaceLabel(plan NextActionPlan, cursor int, editing, confirming bool, utility *UtilitySurface) string {
+	if editing {
+		return "Project settings"
+	}
+	if confirming {
+		if action, ok := selectedAction(plan, cursor); ok {
+			switch action.ID {
+			case "init", "init_here", "overwrite_init":
+				return "Project setup"
+			}
+		}
+	}
+	if utility != nil {
+		switch plan.Situation {
+		case SituationMachineNotReady:
+			return "Setup"
+		case SituationDriftDetected, SituationUnknownError:
+			return "Recovery"
+		default:
+			return "Project"
+		}
+	}
+	switch plan.Situation {
+	case SituationMachineNotReady:
+		return "Setup"
+	case SituationNotProject, SituationProjectMissingConf:
+		return "Project setup"
+	case SituationDriftDetected, SituationUnknownError:
+		return "Recovery"
+	default:
+		return "Project"
+	}
+}
+
+func workSectionTone(plan NextActionPlan) sectionTone {
+	switch plan.Situation {
+	case SituationMachineNotReady, SituationDriftDetected, SituationUnknownError:
+		return sectionToneWarning
+	default:
+		return sectionToneNeutral
+	}
+}
+
+func footerHint(lineWidth int, utility *UtilitySurface, confirming, editing bool) string {
+	if utility != nil {
+		return utilityFooter(*utility)
+	}
+	if confirming {
+		if lineWidth < 58 {
+			return "enter confirm • n cancel • esc"
+		}
+		return "enter confirm • n cancel • esc cancel"
+	}
+	if editing {
+		if lineWidth < 58 {
+			return "type edit • tab move • enter save • esc"
+		}
+		return "type edit • tab/↑/↓ move • enter save • esc cancel"
+	}
+	if lineWidth < 58 {
+		return "↑/↓ move • enter choose • ? details • q"
+	}
+	return "↑/↓ inspect • enter choose • ? details • q quit"
+}
+
+func sectionTitle(title string, width int, tone sectionTone, styles shellStyles) string {
+	style := styles.sectionNeutral
+	switch tone {
+	case sectionToneAction:
+		style = styles.sectionAction
+	case sectionToneWarning:
+		style = styles.sectionWarn
+	}
 	fill := maximumInt(0, width-lipgloss.Width(title)-5)
-	return "  " + styles.rule.Render("── ") + styles.title.Render(title) + styles.rule.Render(" "+strings.Repeat("─", fill))
+	return "  " + styles.rule.Render("── ") + style.Render(title) + styles.rule.Render(" "+strings.Repeat("─", fill))
 }
 
 func clampInt(value, minimum, maximum int) int {
