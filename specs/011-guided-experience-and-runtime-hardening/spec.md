@@ -152,7 +152,7 @@ As a maintainer, I can extend the guided shell and lifecycle behavior without fi
 - **FR-015**: `STAGESERVE_NO_TUI` truthy parsing MUST have one canonical implementation reused across command and guidance paths.
 - **FR-016**: The `DownAll()` path MUST report partial failures clearly and SHOULD still attempt best-effort shared gateway cleanup.
 - **FR-017**: The `Up()` gateway route write path MUST either refresh registry state before writing routes or explicitly enforce and document a single-instance assumption.
-- **FR-018**: Operator-facing password handling MUST remove command-line password entry for sensitive values such as MySQL password. StageServe MUST accept MySQL password through environment-variable or supported config inputs only.
+- **FR-018**: Operator-facing password handling MUST remove command-line password entry for sensitive values such as MySQL password. StageServe MUST accept `MYSQL_PASSWORD` through the existing shell-environment and `.env.stageserve` config surfaces only; it MUST NOT add a replacement password flag, prompt, or new secret file surface as part of 011.
 - **FR-019**: Docs and command help changed by the merge-gate repair work MUST land with that repair work. Broader docs/help for richer recovery and day-2 actions MUST land with the related follow-up features.
 - **FR-020**: The implementation MUST preserve existing non-TTY, JSON, and direct-command safety guarantees from spec 007.
 

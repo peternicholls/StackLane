@@ -70,7 +70,7 @@ The current branch should not merge until the following outcome set is complete:
 5. Docs/help for the merge-gate repair work land with that work.
 6. Focused Go tests and essential terminal validation cover only the merge-gate repair set.
 
-This maps to tasks `T001a`, `T001` through `T007`, `T011`, `T041`, `T042`, `T043`, and `T044` in [tasks.md](./tasks.md).
+This maps to tasks `T001a` through `T001c`, `T001` through `T007`, `T011`, `T041`, `T042`, `T043`, and `T044` in [tasks.md](./tasks.md).
 
 ### Follow-up After Merge
 
