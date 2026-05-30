@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/peternicholls/stageserve/core/project"
@@ -52,21 +53,59 @@ type shellModel struct {
 	width         int
 	noColor       bool
 	actionHandler ActionHandler
+	// async action execution
+	loading bool
+	spinner spinner.Model
+}
+
+// actionCompleteMsg is sent by the async action goroutine when it finishes.
+type actionCompleteMsg struct {
+	result ActionResult
+	err    error
 }
 
 func newShellModel(plan NextActionPlan, noColor bool) shellModel {
-	return shellModel{plan: plan, width: 80, noColor: noColor}
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	if !noColor {
+		s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	}
+	return shellModel{plan: plan, width: 80, noColor: noColor, spinner: s}
 }
 
 func (m shellModel) Init() tea.Cmd { return nil }
 
 func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case actionCompleteMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.message = msg.err.Error()
+			return m, nil
+		}
+		m.plan = msg.result.Plan
+		m.cursor = 0
+		m.showDetails = false
+		m.editing = false
+		m.hasEditDraft = false
+		m.utility = msg.result.Utility
+		m.message = msg.result.Message
+		return m, nil
+	case spinner.TickMsg:
+		if m.loading {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
 	case tea.WindowSizeMsg:
 		if msg.Width > 0 {
 			m.width = msg.Width
 		}
 	case tea.KeyMsg:
+		if m.loading {
+			// absorb all key input while an action is running
+			return m, nil
+		}
 		if m.editing {
 			return m.updateEditing(msg)
 		}
@@ -109,6 +148,9 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m shellModel) View() string {
+	if m.loading {
+		return renderLoadingView(m.plan, m.width, m.noColor, m.spinner)
+	}
 	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming, m.editing, m.editCursor, m.editDraft, m.utility)
 }
 
@@ -159,19 +201,16 @@ func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	action = m.actionWithDraft(action)
-	result, err := m.actionHandler(action)
-	if err != nil {
-		m.message = err.Error()
-		return m, nil
-	}
-	m.plan = result.Plan
-	m.cursor = 0
-	m.showDetails = false
-	m.editing = false
-	m.hasEditDraft = false
-	m.utility = result.Utility
-	m.message = result.Message
-	return m, nil
+	m.loading = true
+	m.message = ""
+	handler := m.actionHandler
+	return m, tea.Batch(
+		m.spinner.Tick,
+		func() tea.Msg {
+			result, err := handler(action)
+			return actionCompleteMsg{result: result, err: err}
+		},
+	)
 }
 
 func (m shellModel) startEditing() shellModel {
@@ -416,6 +455,53 @@ func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColo
 	return renderShellViewState(plan, width, cursor, showDetails, noColor, "", false, false, 0, projectSettingsDraft{}, nil)
 }
 
+// renderLoadingView shows a spinner screen while an async action is running.
+func renderLoadingView(plan NextActionPlan, width int, noColor bool, spin spinner.Model) string {
+	styles := shellStylesFor(noColor)
+	var b strings.Builder
+	lineWidth := clampInt(width-4, 42, 96)
+	renderSurfaceHeader(&b, lineWidth, surfaceLabel(plan, 0, false, false, nil), styles)
+	fmt.Fprintf(&b, "  %s\n\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
+	fmt.Fprintf(&b, "  %s %s\n", spin.View(), styles.muted.Render("Working…"))
+	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
+	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render("please wait"))
+	return b.String()
+}
+
+// renderConfirmationModal renders a bordered confirmation panel for the given action.
+func renderConfirmationModal(builder *strings.Builder, action GuidedAction, plan NextActionPlan, lineWidth int, styles shellStyles, noColor bool) {
+	var inner strings.Builder
+	fmt.Fprintf(&inner, "%s\n", styles.label.Render(action.Label))
+	fmt.Fprintf(&inner, "%s\n", styles.muted.Render(action.Description))
+	renderConfirmationBody(&inner, action, plan, styles)
+	if lineWidth < 58 {
+		fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[enter] confirm  [n/esc] cancel"))
+	} else {
+		fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[enter] confirm  [n] cancel  [esc] cancel"))
+	}
+
+	panel := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(1, 2).
+		Width(lineWidth)
+	if !noColor {
+		panel = panel.BorderForeground(lipgloss.Color(confirmBorderColor(action)))
+	}
+	fmt.Fprintf(builder, "\n  %s\n", panel.Render(inner.String()))
+}
+
+// confirmBorderColor returns the ANSI color code for the confirmation border.
+func confirmBorderColor(action GuidedAction) string {
+	switch action.ID {
+	case "down", "detach":
+		return "1" // red — destructive
+	case "init", "init_here", "overwrite_init":
+		return "6" // cyan — constructive
+	default:
+		return "8" // dim — neutral
+	}
+}
+
 func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, noColor bool, message string, confirming bool, editing bool, editCursor int, editDraft projectSettingsDraft, utility *UtilitySurface) string {
 	styles := shellStylesFor(noColor)
 	var b strings.Builder
@@ -445,11 +531,8 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 		}
 
 		if confirming {
-			fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Confirm change", lineWidth, sectionToneNeutral, styles))
 			if action, ok := selectedAction(plan, cursor); ok {
-				fmt.Fprintf(&b, "  %s\n", styles.label.Render(action.Label))
-				fmt.Fprintf(&b, "    %s\n", styles.muted.Render(action.Description))
-				renderConfirmationBody(&b, action, plan, styles)
+				renderConfirmationModal(&b, action, plan, lineWidth, styles, noColor)
 			}
 		} else {
 			if workItemsFirst(plan) {
@@ -468,9 +551,6 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
 	footer := footerHint(lineWidth, utility, confirming, editing)
-	if confirming {
-		footer = footerHint(lineWidth, utility, confirming, editing)
-	}
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
 }

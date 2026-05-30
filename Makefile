@@ -1,4 +1,4 @@
-.PHONY: build test test-short lint vet fmt tidy clean release prototype prototype-list prototype-text prototype-test
+.PHONY: build test test-short lint vet fmt tidy clean release prototype prototype-list prototype-text prototype-test install-dev
 
 BINARY := stage-bin
 PKG := ./...
@@ -30,6 +30,19 @@ tidy:
 
 clean:
 	rm -f $(BINARY) coverage.out
+
+# install-dev: rebuild the binary, install it to /usr/local/bin, and copy the
+# bundled stack assets to the runtime stack home so that `stage up` finds the
+# compose files when run from outside the repo directory.
+install-dev: build
+	@echo "→  Installing stage binary to /usr/local/bin/stage"
+	sudo cp $(BINARY) /usr/local/bin/stage
+	@STACK_HOME="$(HOME)/docker/stageserve"; \
+		echo "→  Setting up stack home at $$STACK_HOME/stacks/20i"; \
+		mkdir -p "$$STACK_HOME/stacks/20i"; \
+		cp stacks/20i/docker-compose.shared.yml "$$STACK_HOME/stacks/20i/docker-compose.shared.yml"; \
+		cp stacks/20i/docker-compose.20i.yml "$$STACK_HOME/stacks/20i/docker-compose.20i.yml"; \
+		echo "→  Done. Run: stage up"
 
 prototype:
 	go run $(PROTOTYPE_PKG)

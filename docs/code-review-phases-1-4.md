@@ -241,3 +241,156 @@ The following roadmap items are already tracked in Phase 5 but are now validated
 ## Verdict
 
 The codebase is in a healthy state for the guided UX work completed in phases 1–4. No finding here blocks current functionality, but CR-01 (machine-not-ready situation unreachable from guided root) and CR-04 (silent registry error in `Attach`) should be fixed before this branch is merged to `master`. The remaining findings can be addressed in Phase 5 or as a targeted cleanup PR.
+
+---
+
+## Field-Reported Issues — Planning
+
+The following six issues were reported after phases 1–4 were marked complete. They are not regressions — they represent gaps in breadth of coverage and design ambition that the earlier phases did not address. Each is broken down into root cause and a concrete plan.
+
+---
+
+### FR-01 — `stage up` fails with "no such file or directory" for compose files
+
+**Symptom:**
+```
+open /Users/peternicholls/docker/stageserve/docker-compose.shared.yml: no such file or directory
+step shared-gateway failed: ...
+```
+
+**Root cause:** The compose files moved from the repo root to `stacks/20i/` during an earlier refactor. The `Makefile` `install-dev` target already copies them to `STACK_HOME/stacks/20i/`, but that target was not run after the move. The runtime STACK_HOME (`~/docker/stageserve`) contains only `.stageserve-state` — no compose files at all.
+
+**Immediate fix:** Run `make install-dev`. This copies the correct files to `~/docker/stageserve/stacks/20i/`.
+
+**Permanent fix (two tasks):**
+
+1. **Pre-flight compose file check.** In `core/lifecycle/orchestrator.go`, before launching `infra/compose` commands, add an explicit existence check on `cfg.SharedFile` and `cfg.StackFile`. If either is missing, return a `StepError` with a remedy that names the install command:
+   ```
+   remedy: "Run `make install-dev` from the StageServe repo, or re-run the installer."
+   ```
+   This turns a cryptic `open … no such file or directory` from deep inside compose into a clear operator message at the top of the error chain.
+
+2. **`install-dev` should verify the copy succeeded.** After the `cp` commands, add a `diff` or `cmp` check and print a warning if the installed files differ from the repo source (i.e., if a future move is missed again).
+
+---
+
+### FR-02 — `stage up` text output does not follow the established color scheme
+
+**Symptom:** The semantic color palette established in `shell.go` (terminal indices 0–15, `verdictReady`/`verdictWarn`/`verdictError`) is applied only inside the guided TUI. Direct `stage up`, `stage down`, `stage status`, and `stage logs` output uses plain text or ad-hoc formatting that does not match.
+
+**Root cause:** `guidance/text.go` (`RenderText`) was written as a minimal non-Charm fallback. The StepError display in `cmd/stage/commands/root.go` uses plain `fmt.Fprintf`. Neither pulls from the shared style registry in `shell.go`.
+
+**Plan:**
+
+1. Extract the color/style definitions from `shell.go` into a new file `core/guidance/styles.go`. Export `Styles` (the struct) and a `NewStyles(noColor bool)` constructor so both the TUI and text paths can use the same tokens.
+
+2. Update `guidance/text.go` `RenderText` to accept a `Styles` and use `verdictReady`, `verdictWarn`, `verdictError` for output line prefixes (✓ / ⚠ / ✗), matching the visual language of the guided shell.
+
+3. Update the `StepError` display in `root.go` (and `up.go`, `down.go` error paths) to call a shared `RenderStepError(w, err, styles)` helper rather than inline `fmt.Fprintf`.
+
+4. Respect `NO_COLOR` and `--notui`/`--cli` in all three paths — the `Styles` constructor already handles this via the `noColor bool` parameter.
+
+---
+
+### FR-03 — `stage up` failures present no recovery options
+
+**Symptom:** When `stage up` fails (e.g. port conflict, compose error, TLS failure), the user sees a plain error string and must independently decide what to do. There is no guided recovery path.
+
+**Root cause:** The guided shell surfaces `SituationDriftDetected`, `SituationUnknownError`, and recovery `DecisionItems` only for the bare `stage` situation (i.e. persistent state from a previous run). A freshly-failed `stage up` returns an error to the shell and exits. The `Up()` function does roll back, but the UX after rollback is a plain error line.
+
+**Plan:**
+
+1. **Post-failure recovery TUI.** In `cmd/stage/commands/up.go`, when `Up()` returns a non-nil `StepError`, call a new function `runFailureRecovery(ctx, stepErr, shared)`. This function:
+   - Builds a `NextActionPlan` with `Situation = SituationUnknownError` and populates `WorkItems` from the `StepError`'s step name and remedy.
+   - Appends a `DecisionItems` slice with contextually appropriate recovery actions (e.g. "Try again", "Run doctor", "Open logs", "Show full error").
+   - Runs this plan through `guidance.RunShell` (TUI-capable terminal) or `guidance.RenderText` (non-TTY / `--notui`).
+
+2. **Extend planner for new recovery situations.** Add two new `Situation` constants:
+   - `SituationStartFailed` — compose started but container(s) never became healthy.
+   - `SituationGatewayFailed` — shared gateway could not be reached or configured.
+   These allow the planner to provide more specific recovery copy rather than the generic `SituationUnknownError` path.
+
+3. **Remedy text completeness.** As part of FR-03, audit all `Wrap()` calls in `Up()`, `Down()`, and `Attach()` and ensure every `remedy` string is non-empty (see also CR-05 above).
+
+---
+
+### FR-04 — Bare `stage` guided shell exposes only a small subset of project actions
+
+**Symptom:** When a project is running, the guided shell shows only "Stop project" and "Detach from project". Key day-2 operations — opening the project URL in a browser, tailing logs, restarting a specific service, running `wp-cli` / `artisan`, attaching a shell to a container — are missing.
+
+**Root cause:** The `DecisionItems` in `planner.go`'s `SituationProjectRunning` branch were designed as a minimal first pass. The planner only knows the `RuntimeSummary` (URL, port, state) and cannot yet derive which per-service actions are appropriate.
+
+**Plan:**
+
+1. **Extend `RuntimeSummary`** to carry `Services []ServiceSummary` (name, health, image). Populate this in `guidedRuntimeStatus()` from Docker label inspection (already done for gateway config — reuse the pattern).
+
+2. **Add primary actions to the running-project plan:**
+   - `open_browser` — opens `cfg.LocalURL` in the default browser using `open` (macOS) / `xdg-open` (Linux).
+   - `view_logs` — launches an in-TUI log stream (a `viewport` bubbles component) for the selected service.
+   - `restart_service` — runs `docker compose restart <service>` via `infra/compose`.
+
+3. **Add utility-surface actions:**
+   - `run_wp_cli` / `run_artisan` — available when the stack's `Capabilities` indicate a PHP project; opens a sub-shell in the app container.
+   - `container_shell` — `docker exec -it <container> sh`.
+
+4. **Handle `open_browser` in `tui.go`** `handleGuidedAction` using `exec.Command("open", url)` on Darwin and `exec.Command("xdg-open", url)` on Linux.
+
+5. **Planner ordering:** Primary actions (Open, Logs) first; secondary (Restart); destructive (Stop) last. This follows the established least-to-most-invasive ordering from T069.
+
+---
+
+### FR-05 — Confirmation prompts are not visually prominent enough
+
+**Symptom:** When the guided shell asks "Stop this project? [y/N]", the confirmation text appears inline in the normal flow. For a destructive action like `down`, this is easy to miss or accidentally confirm. There is no visual separation from the surrounding content.
+
+**Root cause:** `renderConfirmView` in `shell.go` renders the confirmation as a padded block using `sectionTitle` and `bodyText` — the same visual weight as a normal surface. There is no border, modal overlay, or colour distinction to signal "this is a consequential decision".
+
+**Plan:**
+
+1. **Bordered confirmation panel.** Replace the inline `renderConfirmView` with a Lip Gloss bordered box. Use `lipgloss.NewStyle().Border(lipgloss.RoundedBorder())` with `verdictWarn` (yellow/3) as the border foreground. The panel width should be capped at 60 columns and centred in the terminal.
+
+2. **Destructive action colour.** For actions where `ActionKind` is `down`, `detach`, or any future delete/purge action, use `verdictError` (red/1) as the border foreground and prefix the title with a `⚠` glyph, distinct from the `!` used for warnings.
+
+3. **Explicit keybind hint.** The confirmation footer hint should be rendered inside the panel, not in the global footer bar, so the user's eye does not need to travel. Something like:  
+   `  [y] Confirm   [n / Esc] Cancel  ` rendered in `dimText` style.
+
+4. **Terminal-width guard.** If `lineWidth < 44`, fall back to the existing inline rendering (narrow-width safe path, consistent with the <58-column layout already in the shell).
+
+5. **Huh `Confirm` field as alternative.** Evaluate using `huh.NewConfirm()` as an embedded form step (the `charm-huh-forms` skill covers Huh-in-BubbleTea embedding). This gives accessibility benefits (screen reader friendly) at the cost of introducing a `huh` model step in the `shellModel` update loop. Decide based on whether the `huh` dependency is acceptable.
+
+---
+
+### FR-06 — Long-running operations have no visual feedback; Bubble Tea potential is underused
+
+**Symptom:** `stage up` and `stage down` can take 30–120 seconds (container build, health checks, DNS propagation). During this time the terminal shows nothing. The broader TUI offers no spinners, progress bars, animated transitions, log streaming, or any of the richer Bubble Tea/Bubbles component features available in the Charm ecosystem.
+
+**Root cause:** The guided shell was designed around instantaneous state display. `handleGuidedAction` in `tui.go` calls the lifecycle orchestrator synchronously — the Bubble Tea event loop is blocked for the duration. There are no `tea.Cmd` async dispatches for long-running operations.
+
+**Plan (ordered by impact, each independently shippable):**
+
+1. **Async action execution with spinner.**
+   - Add a new `shellModel` state flag: `running bool` and `runningLabel string`.
+   - Extract the `executeGuidedAction` call into a `tea.Cmd` (returns a `tea.Msg` when done). Use `spinner.New()` from `github.com/charmbracelet/bubbles/spinner` with `spinner.Dot` style, coloured with `accentText`.
+   - While `running == true`, render a spinner line replacing the decision items: `  ⠿  Starting project…` (or whatever `runningLabel` is set to).
+   - On completion, receive the result `tea.Msg` and transition back to normal state, triggering a context re-collect.
+
+2. **Real-time log streaming in TUI.**
+   - Add a `viewport.Model` from `github.com/charmbracelet/bubbles/viewport` as an optional overlay surface in `shellModel`.
+   - When the user selects `view_logs`, launch `docker compose logs --follow <service>` as an `exec.Cmd` with its stdout piped. Send each line as a `tea.Msg` to the viewport. Use `viewport.GotoBottom()` on each new line.
+   - The `charm-bubbletea-components` skill covers the viewport component and the exec-pipe pattern.
+
+3. **Progress indicator for multi-step `stage up`.**
+   - Add a `progress.Model` from `github.com/charmbracelet/bubbles/progress` to the running state.
+   - Expose a progress channel from `orchestrator.Up()` (one message per completed step, total 11 steps). Advance the progress bar as messages arrive.
+   - Use `harmonica` spring physics (from the `charm-tui-motion-observability` skill) to smooth the bar animation.
+
+4. **Animated state transitions.**
+   - Use `lipgloss.NewStyle().Faint(true)` fade-out on the previous surface content while `running == true`.
+   - On transition from running → done (success), briefly flash the status line in `verdictReady` before settling.
+   - Keep animations subtle — no more than 300ms total. Follow the motion budget in the `charm-tui-motion-observability` skill.
+
+5. **Key-binding help bar.**
+   - Add a `help.Model` from `github.com/charmbracelet/bubbles/help` at the bottom of every surface. Map to a `key.Map` struct per surface so `?` shows full keybindings.
+   - The `charm-bubbletea-components` skill documents the help/key-binding pattern.
+
+**Skills to load before implementation:** `charm-tui-builder`, `charm-bubbletea-components`, `charm-tui-motion-observability`, `charm-huh-forms` (for FR-05 Huh option).

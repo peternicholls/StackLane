@@ -199,6 +199,9 @@ Source: [Project Analysis Report](project-analysis-report.md)
 - 2026-05-28: semantic verdict and section-title styling now distinguish ready, warning, and recovery surfaces while preserving `NO_COLOR` behavior; the deliberate deferral for this slice is that very long path/value rows still rely on terminal wrapping rather than a dedicated truncation or viewport treatment.
 - 2026-05-28: `go test ./core/guidance ./cmd/stage/commands` passed after adding deterministic coverage for project, recovery, and 48-column guided renders.
 
+## Post-Phase 4: Code review, cleanup, and release prep
+- [ ] T072g Follow instructions and planning in [specs/011-guided-experience-and-runtime-hardening](../specs/011-guided-experience-and-runtime-hardening) to prepare for release, including code review, cleanup, and release notes drafting.
+
 ## Phase 5: Process Hardening
 
 **Goal**: Strengthen validation, documentation architecture, and release workflow.

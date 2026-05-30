@@ -47,9 +47,11 @@ func Plan(ctx GuidedContext) NextActionPlan {
 	case SituationProjectRunning:
 		plan.StatusHeader = "This project is running at " + ctx.LocalURL + "."
 		plan.DecisionItems = []GuidedAction{
+			action("open_browser", "Open in browser", "Open "+ctx.LocalURL+" in your default browser.", ctx.LocalURL, false),
 			action("logs", "View project logs", "Watch what your project is doing right now.", "stage logs", false),
 			action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
 			action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
+			action("detach", "Remove local routing only", "Remove the local URL without stopping containers.", "stage detach", true),
 		}
 		plan.DirectCommands = []string{"stage logs", "stage status", "stage down"}
 	case SituationProjectDown:
@@ -76,21 +78,21 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.Summary = "StageServe can walk through the safest checks first, then you can decide what to do next."
 		plan.WorkItems = recoveryWorkItems()
 		plan.DecisionItems = []GuidedAction{
-			action("status", "Run step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
-			action("logs", "Run step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
-			action("down", "Run step 3: stop this project", "Stop the project after confirmation.", "stage down", true),
-			action("up", "Run step 4: try this project again", "Start the project again with the current settings.", "stage up", true),
+			action("status", "Step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("logs", "Step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
+			action("up", "Step 3: try running this project again", "Restart with the current settings.", "stage up", true),
+			action("down", "Step 4: stop this project first", "Stop the project, then try again.", "stage down", true),
 		}
 		plan.DirectCommands = []string{"stage status", "stage logs", "stage down", "stage up"}
 	case SituationUnknownError:
 		plan.StatusHeader = "StageServe couldn't safely choose a next step."
-		plan.Summary = "StageServe doesn't want to guess. Here is what it can try, in order."
+		plan.Summary = "Here is what StageServe can try, in order of risk."
 		plan.WorkItems = recoveryWorkItems()
 		plan.DecisionItems = []GuidedAction{
-			action("status", "Run step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
-			action("logs", "Run step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
-			action("down", "Run step 3: stop this project", "Stop the project after confirmation.", "stage down", true),
-			action("up", "Run step 4: run this project from scratch", "Start the project again with the current settings.", "stage up", true),
+			action("status", "Step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("logs", "Step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
+			action("up", "Step 3: try running this project again", "Restart with the current settings.", "stage up", true),
+			action("down", "Step 4: stop this project first, then retry", "Stop the project, then try again.", "stage down", true),
 		}
 		plan.DirectCommands = []string{"stage status", "stage logs", "stage down", "stage up"}
 	}

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/peternicholls/stageserve/core/config"
@@ -134,6 +136,17 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 				Footer: "q exit logs • esc exit logs",
 			},
 		}, nil
+	case "open_browser":
+		url := action.DirectCommand
+		if url == "" {
+			url = "https://" + cfg.Hostname
+		}
+		openBrowser(url)
+		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		return guidance.ActionResult{
+			Plan:    nextPlan,
+			Message: "Opening " + url + " in your browser.",
+		}, nil
 	default:
 		return guidance.ActionResult{Plan: guidance.Plan(collectGuidedContext(ctx, cfg, capability)), Message: fmt.Sprintf("%s is not available in guided mode yet.", action.Label)}, nil
 	}
@@ -244,4 +257,19 @@ func projectEnvActionMessage(action onboarding.InitAction, path string) string {
 	default:
 		return "Project settings checked at " + path + "."
 	}
+}
+
+// openBrowser opens url in the user's default browser. Errors are silently
+// ignored because a failed open is non-fatal in the guided TUI context.
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	default:
+		return
+	}
+	_ = cmd.Start()
 }
