@@ -16,7 +16,7 @@ func NewUp(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "up",
 		Short: "Run this project",
-		Long:  "Starts the current project, waits for its containers to become healthy, and routes its local hostname through StageServe.",
+		Long:  "Runs the current project with its saved StageServe settings, waits until it is ready, and makes its local project URL available.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

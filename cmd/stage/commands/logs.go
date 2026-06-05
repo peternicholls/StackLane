@@ -21,7 +21,7 @@ func NewLogs(flags *SharedFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logs [service]",
 		Short: "View project logs",
-		Long:  "Streams logs for the current project by default. Use --project to select a recorded project and either [service] or --service to choose a service.",
+		Long:  "Shows log output for the current project by default. Use [service] or --service to choose a service, or --project to inspect another recorded project.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serviceName, err := resolveLogService(service, args)

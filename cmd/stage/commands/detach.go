@@ -7,7 +7,7 @@ func NewDetach(flags *SharedFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "detach",
 		Short: "Remove this project from StageServe",
-		Long:  "Stops the current project if needed, removes its StageServe record, and clears its local URL route without touching your project files.",
+		Long:  "Removes the current project from StageServe and clears its local project URL without touching your files or project settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

@@ -18,7 +18,7 @@ func NewStatus(flags *SharedFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show project status",
-		Long:  "Shows the current project by default, every recorded project with --all, or one recorded project selected by slug, name, hostname, or path with --project.",
+		Long:  "Shows the current project's recorded and live StageServe status by default. Use --all to list every recorded project, or --project to choose one by slug, name, hostname, or path.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if flags.All && projectSelector != "" {

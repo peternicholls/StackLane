@@ -9,6 +9,7 @@ func NewAttach(flags *SharedFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "attach",
 		Short: "Add this project to StageServe",
+		Long:  "Adds the current project back to StageServe so its local project URL works again without changing your project files.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

@@ -100,7 +100,7 @@ The docs currently overstate several command surfaces:
 - [README.md](../README.md) shows `stage logs apache`, but [cmd/stage/commands/logs.go](../cmd/stage/commands/logs.go) ignores positional args and expects `--service apache`.
 - [docs/runtime-contract.md](runtime-contract.md) documents `setup --recheck`, but [cmd/stage/commands/setup.go](../cmd/stage/commands/setup.go) has no `--recheck` flag.
 - [docs/runtime-contract.md](runtime-contract.md) says `status` and `logs` support `--project <selector>`, but the code does not implement that selector.
-- [docs/runtime-contract.md](runtime-contract.md) says `doctor` includes shared gateway diagnostics; [cmd/stage/commands/doctor.go](../cmd/stage/commands/doctor.go) checks Docker, state dir, ports, DNS, and mkcert, but not gateway health.
+- Active docs now describe `doctor` as the implemented read-only readiness surface: Docker, state dir, ports, DNS, and mkcert. There is still no distinct gateway-health check in [cmd/stage/commands/doctor.go](../cmd/stage/commands/doctor.go), so any future gateway-specific diagnostics remain separate follow-on work rather than current contract behavior.
 - Spec 007 says final opt-outs are `--notui` and `--cli`, while current commands expose `--tui` and `--no-tui`.
 
 These are not cosmetic differences. They affect onboarding trust: users will copy commands that fail or silently do the wrong thing.

@@ -49,9 +49,8 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.DecisionItems = []GuidedAction{
 			action("open_browser", "Open in browser", "Open "+ctx.LocalURL+" in your default browser.", ctx.LocalURL, false),
 			action("logs", "View project logs", "Watch what your project is doing right now.", "stage logs", false),
-			action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
+			action("status", "Check this project's status", "See the latest recorded and live project status.", "stage status", false),
 			action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
-			action("detach", "Remove local routing only", "Remove the local URL without stopping containers.", "stage detach", true),
 		}
 		plan.DirectCommands = []string{"stage logs", "stage status", "stage down"}
 	case SituationProjectDown:
@@ -60,7 +59,7 @@ func Plan(ctx GuidedContext) NextActionPlan {
 			plan.Summary = "Your project is already running. StageServe can add the local URL back without restarting it."
 			plan.DecisionItems = []GuidedAction{
 				action("attach", "Add this project to StageServe", "Add the local URL back without restarting the project.", "stage attach", true),
-				action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
+				action("status", "Check this project's status", "See the latest recorded and live project status.", "stage status", false),
 				action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
 			}
 			plan.DirectCommands = []string{"stage attach", "stage status", "stage down"}
@@ -69,7 +68,7 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.StatusHeader = "This project is stopped."
 		plan.DecisionItems = []GuidedAction{
 			action("up", "Run this project again", "Start the project and open it in your browser.", "stage up", true),
-			action("status", "Check this project's current state", "See the latest recorded and live project status.", "stage status", false),
+			action("status", "Check this project's status", "See the latest recorded and live project status.", "stage status", false),
 			action("detach", "Remove this project from StageServe", "Stop tracking this project. Your files will not be touched.", "stage detach", true),
 		}
 		plan.DirectCommands = []string{"stage up", "stage status", "stage detach"}
@@ -78,7 +77,7 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.Summary = "StageServe can walk through the safest checks first, then you can decide what to do next."
 		plan.WorkItems = recoveryWorkItems()
 		plan.DecisionItems = []GuidedAction{
-			action("status", "Step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("status", "Step 1: check this project's status", "Read-only. Nothing on your computer will be changed.", "stage status", false),
 			action("logs", "Step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
 			action("up", "Step 3: try running this project again", "Restart with the current settings.", "stage up", true),
 			action("down", "Step 4: stop this project first", "Stop the project, then try again.", "stage down", true),
@@ -89,7 +88,7 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.Summary = "Here is what StageServe can try, in order of risk."
 		plan.WorkItems = recoveryWorkItems()
 		plan.DecisionItems = []GuidedAction{
-			action("status", "Step 1: look at this project's current state", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("status", "Step 1: check this project's status", "Read-only. Nothing on your computer will be changed.", "stage status", false),
 			action("logs", "Step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
 			action("up", "Step 3: try running this project again", "Restart with the current settings.", "stage up", true),
 			action("down", "Step 4: stop this project first, then retry", "Stop the project, then try again.", "stage down", true),
@@ -159,7 +158,7 @@ func displayProjectStatus(ctx GuidedContext) string {
 
 func recoveryWorkItems() []WorkItem {
 	return []WorkItem{
-		{Label: "Step 1: look at this project's current state", Status: "read-only", Description: "Shows what StageServe and Docker currently know about this project.", DirectCommand: "stage status"},
+		{Label: "Step 1: check this project's status", Status: "read-only", Description: "Shows what StageServe currently knows about this project.", DirectCommand: "stage status"},
 		{Label: "Step 2: look at the latest project log", Status: "read-only", Description: "Shows the latest log output without changing anything.", DirectCommand: "stage logs"},
 		{Label: "Step 3: stop this project", Status: "confirmed change", Description: "Stops the project and frees up its local URL after confirmation.", DirectCommand: "stage down"},
 		{Label: "Step 4: run this project again", Status: "uses current settings", Description: "Starts the project again with the settings shown above.", DirectCommand: "stage up"},

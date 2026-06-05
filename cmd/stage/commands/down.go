@@ -13,6 +13,7 @@ func NewDown(flags *SharedFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "down",
 		Short: "Stop this project",
+		Long:  "Stops the current project and keeps its StageServe record so you can run it again later. Use --all to stop every recorded project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(flags)
 			if err != nil {

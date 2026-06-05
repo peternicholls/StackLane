@@ -1,27 +1,22 @@
-# StageServe - Shared Hosting Stack Emulation With Docker
+# StageServe - Shared Hosting-Style Local Sites
 
 ## Overview
 
-StageServe is a workflow for local Docker development that aims to mirror the shared hosting environment of 20i webhosting services. To achieve this, it introduces a command/runtime layer plus a shared gateway split, so per-project runtimes are fronted by one persistent gateway while hostname and DNS setup continue to mature.
+StageServe is a local development workflow for shared-hosting-style sites. It gives each project a stable local URL, keeps project settings in `.env.stageserve`, and lets a normal first run start from bare `stage` instead of a memorized command sequence.
 
-StageServe centrally defines the 20i-style local stack contract. Each project taps into that shared model through project-local config such as hostname, docroot, versions, and optional bootstrap behavior rather than redefining the stack shape.
+StageServe centrally defines the 20i-style local stack contract. Each project plugs into that shared model through project-local settings such as site name, web folder, suffix, versions, and optional bootstrap behavior rather than redefining the whole stack shape.
 
 The command surface is implemented as a single Go binary (`stage-bin`, exposed as `stage`). The Bash implementation is archived in `previous-version-archive/` for reference only.
 
 ### What is implemented now:
 
-- `stage` is the canonical CLI entrypoint, with subcommands such as `up`, `attach`, `status`, and `down`.
-- The runtime is a single statically-linked Go binary; no language runtime is required to run it.
-- Root-level `20i-*` wrapper entrypoints are not part of the active runtime.
-- Project config is resolved consistently with this precedence: CLI flags, then project-root `.env.stageserve`, then shell environment, then stack-home `.env.stageserve`, then built-in defaults.
-- Project identity is standardized around a slug and a `.test` (or configured) hostname.
-- Project state is recorded as one JSON file per project under `.stageserve-state/projects/<slug>.json`.
-- StageServe keeps shared hostname-aware routing available for attached projects, reuses it when already healthy, and repairs it when missing.
-- Per-project web containers are isolated behind the shared Docker network instead of publishing host ports directly.
-- Project code is mounted internally at `/home/sites/<project-slug>/...` to mirror a 20i-style hosting layout.
-- Per-project runtimes get deterministic Docker names: compose project `stage-<slug>`, network `stage-<slug>-runtime`, DB volume `stage-<slug>-db-data`. Shared routing resources stay distinct and StageServe-managed.
-- Healthcheck-driven readiness: `stage up` blocks until nginx, apache/PHP-FPM, and MariaDB report healthy (default 120 s, override via `--wait-timeout` or `STAGESERVE_WAIT_TIMEOUT`).
-- phpMyAdmin is opt-in via the `debug` compose profile.
+- `stage` is the canonical entrypoint, and bare `stage` opens the guided next-step path.
+- Direct commands such as `stage up`, `stage status`, `stage logs`, and `stage down` remain available when you already know the step you want.
+- Project settings live in project-root `.env.stageserve`, while stack-wide defaults live in `<stack-home>/.env.stageserve`.
+- New projects can preview and confirm settings before StageServe writes `.env.stageserve`.
+- Configured projects get a stable local URL with the active suffix you selected.
+- StageServe ships as one Go binary; you do not need Go or another language toolchain installed to use it.
+- Advanced technical details, shared routing behavior, and internal naming rules are documented later in this README and in [docs/runtime-contract.md](docs/runtime-contract.md).
 
 ## Install
 
@@ -81,6 +76,8 @@ stage status
 stage down
 ```
 
+If you want the deeper technical and troubleshooting contract, jump to [Command Semantics](#command-semantics) and [docs/runtime-contract.md](docs/runtime-contract.md).
+
 Optional overrides:
 
 ```bash
@@ -91,7 +88,7 @@ stage status --project marketing-site
 
 ## Build From Source
 
-Requirements: macOS, Docker Desktop, and Homebrew. Installing the binary requires no language runtime; building from source requires Go 1.26.2+.
+Requirements: macOS, Docker Desktop, and Homebrew. Installing the binary does not require Go or another language toolchain; building from source requires Go 1.26.2+.
 
 ```bash
 # 1. Clone the stack
@@ -116,7 +113,7 @@ If you want the explicit macOS DNS bootstrap path instead of the guided entrypoi
 
 The GitHub repository and the local folder that contains it are separate concerns. The remote repository is now named `StageServe`, but existing local checkout directories do not rename themselves. Keep `STACK_HOME` pointed at the folder you actually run, whether that folder is still named `stage` or you rename it manually.
 
-For manual runtime validation, the live StageServe installation on your `PATH` is the authoritative surface. If you edit a different checkout than the one you actually run, rebuild or sync that live install first before treating observed runtime behavior as validation evidence. `$HOME/docker/20i-stack` is one local example deployment path, not a universal product rule.
+For manual behavior validation, the live StageServe installation on your `PATH` is the authoritative surface. If you edit a different checkout than the one you actually run, rebuild or sync that live install first before treating observed behavior as validation evidence. `$HOME/docker/20i-stack` is one local example deployment path, not a universal product rule.
 
 If `stage dns-setup` requires elevated privileges it prints the exact `sudo` command to finish the resolver file installation. Run it once — it persists across reboots.
 

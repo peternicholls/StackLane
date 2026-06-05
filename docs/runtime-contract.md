@@ -106,6 +106,7 @@ This document locks the StageServe command semantics and state model.
 - When `.env.stageserve` already exists, interactive `stage init` switches to the same guided editor but requires explicit confirmation before updating the file.
 - Validates that the project root exists.
 - Validates `--docroot` is inside the project root when supplied.
+- The current validation is containment-only. `stage init` previews and writes a docroot path inside the project directory, but it does not require that path to already exist on disk before the write.
 - Without `--force`, skips writing if `.env.stageserve` already exists.
 - With `--force`, overwrites the existing file.
 - `--site-name` sets `STAGESERVE_SITE_NAME` in the generated file.
