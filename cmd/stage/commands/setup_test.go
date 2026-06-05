@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -55,6 +56,39 @@ func TestSetup_JSONModeStillReturnsReadinessExit(t *testing.T) {
 	err := root.Execute()
 	if !isSetupExitError(err) {
 		t.Fatalf("expected nil or setupExitError after JSON render, got: %v", err)
+	}
+}
+
+func TestSetup_JSONOutputIsMachinePure(t *testing.T) {
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"setup", "--json"})
+	_ = root.Execute()
+
+	var result map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("setup JSON output did not unmarshal: %v\n%s", err, buf.String())
+	}
+	assertMachineOutputHasNoTUIHints(t, buf.String())
+}
+
+func TestSetup_NonInteractiveOutputStaysPlain(t *testing.T) {
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"setup", "--non-interactive", "--notui"})
+	_ = root.Execute()
+
+	out := buf.String()
+	assertMachineOutputHasNoTUIHints(t, out)
+	if !strings.Contains(out, "StageServe Setup") {
+		t.Fatalf("setup fallback missing surface header:\n%s", out)
+	}
+	if !strings.Contains(out, "To fix:") && !strings.Contains(out, "Your machine is ready.") {
+		t.Fatalf("setup fallback missing next-action copy:\n%s", out)
 	}
 }
 

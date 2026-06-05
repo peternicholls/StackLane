@@ -154,6 +154,11 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !ok {
 				return m, nil
 			}
+			if action.ID == "more" {
+				m.utility = commandUtilitySurface(m.plan)
+				m.showDetails = false
+				return m, nil
+			}
 			if action.ID == "edit_config" {
 				return m.startEditing(), nil
 			}
@@ -707,6 +712,13 @@ func renderConfirmationBody(builder *strings.Builder, action GuidedAction, plan 
 		if localURL != "" {
 			fmt.Fprintf(builder, "  %s will no longer respond until you run it again.\n", localURL)
 		}
+	case "restart_service":
+		service := action.Inputs["service"]
+		builder.WriteString("  StageServe will restart one project service.\n")
+		builder.WriteString("  Your files and project settings will not be changed.\n")
+		if service != "" {
+			fmt.Fprintf(builder, "  Service: %s\n", service)
+		}
 	case "detach":
 		builder.WriteString("  StageServe will remove this project from StageServe.\n")
 		builder.WriteString("  .env.stageserve and your application files will stay as they are.\n")
@@ -752,12 +764,13 @@ func utilityFooter(utility UtilitySurface) string {
 }
 
 func commandUtilitySurface(plan NextActionPlan) *UtilitySurface {
-	body := "No direct commands for this screen yet."
+	body := "Direct commands\nNo direct commands for this screen yet."
 	if len(plan.DirectCommands) > 0 {
-		body = strings.Join(plan.DirectCommands, "\n")
+		body = "Direct commands\n" + strings.Join(plan.DirectCommands, "\n")
 	}
+	body += "\n\nPlain text output\nstage --cli\n\nAdvanced and troubleshooting\nstage doctor"
 	return &UtilitySurface{
-		Title:           "Direct commands",
+		Title:           "More...",
 		Body:            body,
 		DismissOnAnyKey: true,
 	}

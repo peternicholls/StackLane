@@ -181,6 +181,34 @@ func TestOrchestrator_UpHappyPath(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_RestartServiceOnlyCallsProjectCompose(t *testing.T) {
+	cfg := newCfg(t)
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	st.Records[cfg.Slug] = state.Record{Project: cfg, AttachmentState: state.StateAttached}
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: mocks.NewPorts(ports.Allocation{}),
+	})
+
+	if err := orch.RestartService(context.Background(), cfg, "apache"); err != nil {
+		t.Fatalf("RestartService: %v", err)
+	}
+	if len(composer.RestartCalls) != 1 {
+		t.Fatalf("restart calls=%d want 1", len(composer.RestartCalls))
+	}
+	call := composer.RestartCalls[0]
+	if call.ProjectDir != cfg.Dir || call.ComposeFile != cfg.StackFile || call.ProjectName != cfg.ComposeProjectName || call.Service != "apache" {
+		t.Fatalf("restart call=%+v", call)
+	}
+	if len(gw.Routes) != 0 {
+		t.Fatalf("restart should not change gateway routes: %+v", gw.Routes)
+	}
+	if _, err := st.Load(cfg.Slug); err != nil {
+		t.Fatalf("restart should not remove state record: %v", err)
+	}
+}
+
 func TestOrchestrator_UpRollbackOnHealthFail(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()

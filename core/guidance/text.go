@@ -36,6 +36,9 @@ func RenderText(w io.Writer, plan NextActionPlan) error {
 			return err
 		}
 		for i, action := range plan.DecisionItems {
+			if action.ID == "more" {
+				continue
+			}
 			if _, err := fmt.Fprintf(w, "  %d. %s\n     %s\n", i+1, action.Label, action.Description); err != nil {
 				return err
 			}

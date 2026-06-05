@@ -148,16 +148,72 @@ func TestPlanProjectDownUsesAttachWhenRuntimeAlreadyRunning(t *testing.T) {
 func TestPlanProjectRunningKeepsDetachOutOfPrimaryChoices(t *testing.T) {
 	ctx := baseContext()
 	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	ctx.Runtime = RuntimeSummary{Checked: true, Running: true, Status: "running", Services: []RuntimeServiceSummary{
+		{ServiceName: "nginx", ContainerName: "stage-demo-nginx", Status: "running", EligibleForLogs: true, EligibleForRestart: true},
+		{ServiceName: "apache", ContainerName: "stage-demo-apache", Status: "running", EligibleForLogs: true, EligibleForRestart: true},
+	}}
 
 	plan := Plan(ctx)
 
+	if len(plan.DecisionItems) < 5 {
+		t.Fatalf("decision items=%+v", plan.DecisionItems)
+	}
+	if plan.DecisionItems[0].ID != "logs_select" {
+		t.Fatalf("running-project default should be logs selector, got %+v", plan.DecisionItems[0])
+	}
+	if plan.DecisionItems[1].ID != "open_browser" || plan.DecisionItems[2].ID != "status" {
+		t.Fatalf("open/status should follow logs before mutations: %+v", plan.DecisionItems)
+	}
+	if !containsAction(plan.DecisionItems, "restart_service") || !containsAction(plan.DecisionItems, "more") {
+		t.Fatalf("running-project actions missing restart or More: %+v", plan.DecisionItems)
+	}
 	for _, item := range plan.DecisionItems {
 		if item.ID == "detach" {
 			t.Fatalf("running-project choices should not expose detach directly: %+v", plan.DecisionItems)
 		}
 	}
-	if len(plan.DirectCommands) != 3 || plan.DirectCommands[2] != "stage down" {
+	if len(plan.DirectCommands) < 4 || plan.DirectCommands[len(plan.DirectCommands)-1] != "stage down" {
 		t.Fatalf("direct commands=%+v", plan.DirectCommands)
+	}
+	for _, command := range plan.DirectCommands {
+		if strings.Contains(command, "<project-") {
+			t.Fatalf("direct command is not copy-pasteable: %q", command)
+		}
+	}
+}
+
+func containsAction(actions []GuidedAction, id string) bool {
+	for _, action := range actions {
+		if action.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func TestPlanProjectRunningAutoSelectsSingleService(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	ctx.Runtime = RuntimeSummary{Checked: true, Running: true, Status: "running", Services: []RuntimeServiceSummary{
+		{ServiceName: "apache", ContainerName: "stage-demo-apache", Status: "running", EligibleForLogs: true, EligibleForRestart: true},
+	}}
+
+	plan := Plan(ctx)
+
+	if plan.DecisionItems[0].ID != "logs" || plan.DecisionItems[0].Inputs["service"] != "apache" {
+		t.Fatalf("logs action=%+v", plan.DecisionItems[0])
+	}
+	restartFound := false
+	for _, action := range plan.DecisionItems {
+		if action.ID == "restart_service" {
+			restartFound = true
+			if action.Inputs["service"] != "apache" || !action.RequiresConfirmation {
+				t.Fatalf("restart action=%+v", action)
+			}
+		}
+	}
+	if !restartFound {
+		t.Fatalf("restart action missing: %+v", plan.DecisionItems)
 	}
 }
 
@@ -388,13 +444,70 @@ func TestShellCommandShortcutShowsDirectCommands(t *testing.T) {
 		t.Fatal("command shortcut should not start async work")
 	}
 	next := updated.(shellModel)
-	if next.utility == nil || next.utility.Title != "Direct commands" {
+	if next.utility == nil || next.utility.Title != "More..." {
 		t.Fatalf("command utility=%+v", next.utility)
 	}
 	view := next.View()
-	for _, want := range []string{"Direct commands", "stage up", "stage status"} {
+	for _, want := range []string{"More...", "Direct commands", "Plain text output", "Advanced and troubleshooting", "stage up", "stage status"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("command utility missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestShellMoreActionShowsAdvancedFallback(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	model := newShellModel(Plan(ctx), true)
+	for index, action := range model.plan.DecisionItems {
+		if action.ID == "more" {
+			model.cursor = index
+			break
+		}
+	}
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("More action should not start async work")
+	}
+	next := updated.(shellModel)
+	if next.utility == nil || next.utility.Title != "More..." {
+		t.Fatalf("More utility=%+v", next.utility)
+	}
+	view := next.View()
+	for _, want := range []string{"Direct commands", "stage logs", "Plain text output", "stage --cli", "Advanced and troubleshooting"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("More view missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestShellRestartConfirmationNamesService(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	ctx.Runtime = RuntimeSummary{Checked: true, Running: true, Status: "running", Services: []RuntimeServiceSummary{
+		{ServiceName: "apache", Status: "running", EligibleForLogs: true, EligibleForRestart: true},
+	}}
+	model := newShellModel(Plan(ctx), true)
+	for index, action := range model.plan.DecisionItems {
+		if action.ID == "restart_service" {
+			model.cursor = index
+			break
+		}
+	}
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("opening restart confirmation should not run action")
+	}
+	next := updated.(shellModel)
+	if !next.confirming {
+		t.Fatal("expected restart confirmation")
+	}
+	view := next.View()
+	for _, want := range []string{"Restart apache", "StageServe will restart one project service.", "Your files and project settings will not be changed.", "Service: apache"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("restart confirmation missing %q:\n%s", want, view)
 		}
 	}
 }

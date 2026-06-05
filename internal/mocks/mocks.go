@@ -107,14 +107,16 @@ func (m *Docker) Exec(ctx context.Context, opts docker.ExecOptions) (string, err
 // --- Composer ---
 
 type Composer struct {
-	mu          sync.Mutex
-	UpCalls     []compose.UpOptions
-	DownCalls   []compose.DownOptions
-	UpErr       error
-	UpErrOnCall int
-	DownErr     error
-	LogsErr     error
-	ExecErr     error
+	mu           sync.Mutex
+	UpCalls      []compose.UpOptions
+	DownCalls    []compose.DownOptions
+	RestartCalls []compose.RestartOptions
+	UpErr        error
+	UpErrOnCall  int
+	DownErr      error
+	RestartErr   error
+	LogsErr      error
+	ExecErr      error
 }
 
 func NewComposer() *Composer { return &Composer{} }
@@ -135,6 +137,13 @@ func (m *Composer) Down(ctx context.Context, opts compose.DownOptions) error {
 	m.DownCalls = append(m.DownCalls, opts)
 	m.mu.Unlock()
 	return m.DownErr
+}
+
+func (m *Composer) Restart(ctx context.Context, opts compose.RestartOptions) error {
+	m.mu.Lock()
+	m.RestartCalls = append(m.RestartCalls, opts)
+	m.mu.Unlock()
+	return m.RestartErr
 }
 
 func (m *Composer) Logs(ctx context.Context, opts compose.LogsOptions) error { return m.LogsErr }

@@ -29,6 +29,7 @@ type guidedLifecycleRunner interface {
 	Attach(context.Context, config.ProjectConfig) error
 	Down(context.Context, config.ProjectConfig, bool) error
 	Detach(context.Context, config.ProjectConfig) error
+	RestartService(context.Context, config.ProjectConfig, string) error
 	Status(context.Context, config.ProjectConfig) (string, error)
 	Logs(context.Context, config.ProjectConfig, string) (string, error)
 }
@@ -51,6 +52,10 @@ func (r guidedRuntimeRunner) Down(ctx context.Context, cfg config.ProjectConfig,
 
 func (r guidedRuntimeRunner) Detach(ctx context.Context, cfg config.ProjectConfig) error {
 	return r.orch.Detach(ctx, cfg)
+}
+
+func (r guidedRuntimeRunner) RestartService(ctx context.Context, cfg config.ProjectConfig, service string) error {
+	return r.orch.RestartService(ctx, cfg, service)
 }
 
 func (r guidedRuntimeRunner) Status(ctx context.Context, cfg config.ProjectConfig) (string, error) {
@@ -147,7 +152,7 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 		context := collectGuidedContext(ctx, nextConfig, capability)
 		return guidance.ActionResult{Plan: guidance.Plan(context), Message: message}, nil
 	case "up", "attach", "down", "detach":
-		if err := executeGuidedAction(action.ID, ctx, cfg, runner); err != nil {
+		if err := executeGuidedActionWithInputs(action.ID, action.Inputs, ctx, cfg, runner); err != nil {
 			return guidance.ActionResult{}, fmt.Errorf("failed to %s project: %w", guidedActionVerb(action.ID), err)
 		}
 		nextConfig := reloadGuidedConfig(cfg)
@@ -168,7 +173,8 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 			},
 		}, nil
 	case "logs":
-		body, err := runner.Logs(ctx, cfg, "nginx")
+		service := guidedActionInput(action, "service", "nginx")
+		body, err := runner.Logs(ctx, cfg, service)
 		if err != nil {
 			return guidance.ActionResult{}, err
 		}
@@ -177,23 +183,65 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 			Plan: nextPlan,
 			Utility: &guidance.UtilitySurface{
 				Title:  cfg.Name + " logs",
-				Body:   body,
+				Body:   "Project: " + cfg.Name + "\nService: " + service + "\n\n" + body,
 				Footer: "q exit logs • esc exit logs",
 			},
 		}, nil
+	case "logs_select":
+		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		return guidance.ActionResult{Plan: nextPlan, Utility: serviceChoiceSurface("Project log choices", "stage logs", nextPlan, true)}, nil
+	case "restart_select":
+		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		return guidance.ActionResult{Plan: nextPlan, Utility: serviceChoiceSurface("Restart choices", "restart", nextPlan, false)}, nil
+	case "restart_service":
+		service := guidedActionInput(action, "service", "")
+		if runner == nil {
+			return guidance.ActionResult{}, fmt.Errorf("guided lifecycle runner is not available")
+		}
+		if err := runner.RestartService(ctx, cfg, service); err != nil {
+			return guidance.ActionResult{}, fmt.Errorf("failed to restart %s: %w", service, err)
+		}
+		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		return guidance.ActionResult{Plan: nextPlan, Message: service + " was restarted."}, nil
 	case "open_browser":
 		url := action.DirectCommand
 		if url == "" {
 			url = "https://" + cfg.Hostname
 		}
-		openBrowser(url)
 		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		if err := openBrowser(url); err != nil {
+			return guidance.ActionResult{
+				Plan:    nextPlan,
+				Message: "StageServe couldn't open the browser. Next: open " + url,
+			}, nil
+		}
 		return guidance.ActionResult{
 			Plan:    nextPlan,
 			Message: "Opening " + url + " in your browser.",
 		}, nil
 	default:
 		return guidance.ActionResult{Plan: guidance.Plan(collectGuidedContext(ctx, cfg, capability)), Message: fmt.Sprintf("%s is not available in guided mode yet.", action.Label)}, nil
+	}
+}
+
+func serviceChoiceSurface(title, commandPrefix string, plan guidance.NextActionPlan, logs bool) *guidance.UtilitySurface {
+	commands := []string{}
+	for _, command := range plan.DirectCommands {
+		if logs && strings.HasPrefix(command, commandPrefix+" ") {
+			commands = append(commands, command)
+		}
+		if !logs && strings.Contains(command, " restart ") {
+			commands = append(commands, command)
+		}
+	}
+	if len(commands) == 0 {
+		commands = []string{"No service-specific command is available yet."}
+	}
+	return &guidance.UtilitySurface{
+		Title:           title,
+		Body:            strings.Join(commands, "\n"),
+		Footer:          "q return • esc return",
+		DismissOnAnyKey: false,
 	}
 }
 
@@ -210,6 +258,10 @@ func renderMachineReadinessReport(title string, result onboarding.CommandResult)
 }
 
 func executeGuidedAction(actionID string, ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner) error {
+	return executeGuidedActionWithInputs(actionID, nil, ctx, cfg, runner)
+}
+
+func executeGuidedActionWithInputs(actionID string, inputs map[string]string, ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner) error {
 	switch actionID {
 	case "up":
 		if runner == nil {
@@ -231,6 +283,15 @@ func executeGuidedAction(actionID string, ctx context.Context, cfg config.Projec
 			return fmt.Errorf("guided lifecycle runner is not available")
 		}
 		return runner.Detach(ctx, cfg)
+	case "restart_service":
+		if runner == nil {
+			return fmt.Errorf("guided lifecycle runner is not available")
+		}
+		service := strings.TrimSpace(inputs["service"])
+		if service == "" {
+			return fmt.Errorf("service is required")
+		}
+		return runner.RestartService(ctx, cfg, service)
 	default:
 		return fmt.Errorf("action %q not implemented", actionID)
 	}
@@ -244,6 +305,8 @@ func guidedActionVerb(actionID string) string {
 		return "stop"
 	case "detach":
 		return "remove"
+	case "restart_service":
+		return "restart"
 	default:
 		return "run"
 	}
@@ -257,6 +320,8 @@ func guidedActionMessage(actionID string) string {
 		return "Project is stopped."
 	case "detach":
 		return "Project was removed from StageServe."
+	case "restart_service":
+		return "Project service restarted."
 	default:
 		return "Project is now running."
 	}
@@ -329,17 +394,18 @@ func projectEnvDryRunMessage(action onboarding.InitAction, path string) string {
 	}
 }
 
-// openBrowser opens url in the user's default browser. Errors are silently
-// ignored because a failed open is non-fatal in the guided TUI context.
-func openBrowser(url string) {
+// openBrowser opens url in the user's default browser.
+var browserCommand = exec.Command
+
+func openBrowser(url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", url)
+		cmd = browserCommand("open", url)
 	case "linux":
-		cmd = exec.Command("xdg-open", url)
+		cmd = browserCommand("xdg-open", url)
 	default:
-		return
+		return fmt.Errorf("opening a browser is not supported on %s", runtime.GOOS)
 	}
-	_ = cmd.Start()
+	return cmd.Start()
 }

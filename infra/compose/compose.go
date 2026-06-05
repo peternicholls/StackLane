@@ -77,6 +77,15 @@ func (c *CLI) Down(ctx context.Context, opts DownOptions) error {
 	return c.run(ctx, opts.ProjectDir, opts.Env, args)
 }
 
+func (c *CLI) Restart(ctx context.Context, opts RestartOptions) error {
+	args := c.baseArgs(opts.ComposeFile, opts.ProjectName, opts.EnvFile, nil)
+	args = append(args, "restart")
+	if opts.Service != "" {
+		args = append(args, opts.Service)
+	}
+	return c.run(ctx, opts.ProjectDir, opts.Env, args)
+}
+
 func (c *CLI) Logs(ctx context.Context, opts LogsOptions) error {
 	args := c.baseArgs(opts.ComposeFile, opts.ProjectName, opts.EnvFile, nil)
 	args = append(args, "logs")

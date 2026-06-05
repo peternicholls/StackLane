@@ -102,15 +102,95 @@ func (r *Reporter) byRow(ctx context.Context, row state.RegistryRow) (ProjectSta
 // bash output. Semantic equivalence; not byte-for-byte (FR-014).
 func Render(s ProjectStatus) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s (%s) — %s\n", s.Slug, s.AttachmentState, s.Hostname)
+	fmt.Fprintf(&b, "StageServe Status\n%s\n\n%s\n", severityLabel(s), statusVerdict(s))
+	fmt.Fprintf(&b, "\nKey facts:\n")
+	fmt.Fprintf(&b, "  Project:     %s\n", displayProject(s))
+	if s.Hostname != "" {
+		fmt.Fprintf(&b, "  Local URL:   http://%s\n", s.Hostname)
+	}
+	fmt.Fprintf(&b, "  Status:      %s\n", statusLabel(s))
+
+	fmt.Fprintf(&b, "\nProject services:\n")
 	if len(s.Containers) == 0 {
-		b.WriteString("  no containers running\n")
+		b.WriteString("  No project services are running.\n")
 	}
 	for _, c := range s.Containers {
 		fmt.Fprintf(&b, "  %s  %-30s %s\n", c.Service, c.Name, c.Status)
 	}
-	for _, d := range s.Drift {
-		fmt.Fprintf(&b, "  ! drift: %s\n", d)
+	if len(s.Drift) > 0 {
+		fmt.Fprintf(&b, "\nNeeds attention:\n")
+		for _, d := range s.Drift {
+			fmt.Fprintf(&b, "  %s\n", d)
+		}
 	}
+	fmt.Fprintf(&b, "\nNext: %s\n", nextAction(s))
 	return b.String()
+}
+
+func severityLabel(s ProjectStatus) string {
+	if len(s.Drift) > 0 {
+		return "Needs attention"
+	}
+	return "Ready"
+}
+
+func statusVerdict(s ProjectStatus) string {
+	switch {
+	case hasDrift(s, "not added to StageServe yet"):
+		return "This project is not added to StageServe yet."
+	case len(s.Drift) > 0:
+		return "This project doesn't match what StageServe expects."
+	case s.AttachmentState == state.StateAttached:
+		if s.Hostname != "" {
+			return "This project is running at http://" + s.Hostname + "."
+		}
+		return "This project is running."
+	default:
+		return "This project is stopped."
+	}
+}
+
+func statusLabel(s ProjectStatus) string {
+	switch {
+	case hasDrift(s, "not added to StageServe yet"):
+		return "not added to StageServe"
+	case len(s.Drift) > 0:
+		return "needs attention"
+	case s.AttachmentState == state.StateAttached:
+		return "running"
+	default:
+		return "stopped"
+	}
+}
+
+func nextAction(s ProjectStatus) string {
+	switch {
+	case hasDrift(s, "not added to StageServe yet"):
+		return "stage up"
+	case len(s.Drift) > 0:
+		return "stage doctor"
+	case s.AttachmentState == state.StateAttached:
+		return "stage logs"
+	default:
+		return "stage up"
+	}
+}
+
+func displayProject(s ProjectStatus) string {
+	if s.Name != "" && s.Slug != "" && s.Name != s.Slug {
+		return fmt.Sprintf("%s (%s)", s.Name, s.Slug)
+	}
+	if s.Name != "" {
+		return s.Name
+	}
+	return s.Slug
+}
+
+func hasDrift(s ProjectStatus, value string) bool {
+	for _, drift := range s.Drift {
+		if drift == value {
+			return true
+		}
+	}
+	return false
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,16 +12,28 @@ import (
 
 	"github.com/peternicholls/stageserve/core/config"
 	"github.com/peternicholls/stageserve/core/guidance"
+	"github.com/peternicholls/stageserve/core/lifecycle"
 	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
+func assertMachineOutputHasNoTUIHints(t *testing.T, out string) {
+	t.Helper()
+	for _, forbidden := range []string{"\x1b[", "Press ", "press ", "↑", "↓", "←", "→", "More…", "shortcut"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("machine/plain output contains TUI-only copy %q:\n%s", forbidden, out)
+		}
+	}
+}
+
 type fakeGuidedLifecycleRunner struct {
-	upCalls     int
-	attachCalls int
-	downCalls   int
-	detachCalls int
-	statusBody  string
-	logsBody    string
+	upCalls      int
+	attachCalls  int
+	downCalls    int
+	detachCalls  int
+	restartCalls []string
+	statusBody   string
+	logsBody     string
+	lastLogSvc   string
 }
 
 func (f *fakeGuidedLifecycleRunner) Up(context.Context, config.ProjectConfig) error {
@@ -43,6 +56,11 @@ func (f *fakeGuidedLifecycleRunner) Detach(context.Context, config.ProjectConfig
 	return nil
 }
 
+func (f *fakeGuidedLifecycleRunner) RestartService(_ context.Context, _ config.ProjectConfig, service string) error {
+	f.restartCalls = append(f.restartCalls, service)
+	return nil
+}
+
 func (f *fakeGuidedLifecycleRunner) Status(context.Context, config.ProjectConfig) (string, error) {
 	if f.statusBody == "" {
 		return "demo (attached) — demo.test", nil
@@ -50,7 +68,8 @@ func (f *fakeGuidedLifecycleRunner) Status(context.Context, config.ProjectConfig
 	return f.statusBody, nil
 }
 
-func (f *fakeGuidedLifecycleRunner) Logs(context.Context, config.ProjectConfig, string) (string, error) {
+func (f *fakeGuidedLifecycleRunner) Logs(_ context.Context, _ config.ProjectConfig, service string) (string, error) {
+	f.lastLogSvc = service
 	if f.logsBody == "" {
 		return "10:42:13 GET / 200 12ms", nil
 	}
@@ -150,6 +169,37 @@ func TestRootCLIFlagUsesGuidanceFallback(t *testing.T) {
 	}
 }
 
+func TestRootCLIFallbackForRecoveryIsPlainAndUserGoalFirst(t *testing.T) {
+	projectDir := t.TempDir()
+	stackHome := t.TempDir()
+	stateDir := filepath.Join(stackHome, ".stageserve-state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatalf("create state dir: %v", err)
+	}
+
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--stack-home", stackHome, "--project-dir", projectDir, "--cli"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("root guidance: %v", err)
+	}
+	out := buf.String()
+	assertMachineOutputHasNoTUIHints(t, out)
+	for _, want := range []string{"StageServe", "Your computer isn't ready yet.", "Next step:", "Restore shared runtime file", "stage setup"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("root fallback missing %q:\n%s", want, out)
+		}
+	}
+	firstAction := strings.Index(out, "Next step:")
+	firstCommand := strings.Index(out, "Direct commands:")
+	if firstAction < 0 || firstCommand < 0 || firstCommand < firstAction {
+		t.Fatalf("direct commands should stay secondary to recovery steps:\n%s", out)
+	}
+}
+
 func TestRootNoColorGuidanceFallbackHasNoANSI(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	projectDir := t.TempDir()
@@ -204,6 +254,19 @@ func TestGuidancePlanCommandEmitsInspectablePlanJSON(t *testing.T) {
 	}
 	if len(view.DecisionItems) == 0 || view.DecisionItems[0].ID != "init" {
 		t.Fatalf("decision items=%+v", view.DecisionItems)
+	}
+	assertMachineOutputHasNoTUIHints(t, buf.String())
+}
+
+func TestRenderCommandErrorForDirectFailureIsPlain(t *testing.T) {
+	err := lifecycle.Wrap("project-start", "demo", errors.New("project file is missing"), "stage setup")
+	out := RenderCommandError(err)
+
+	assertMachineOutputHasNoTUIHints(t, out)
+	for _, want := range []string{"StageServe", "Error", "StageServe could not complete project-start for demo.", "Problem: project file is missing", "Next step: stage setup"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("direct command error missing %q:\n%s", want, out)
+		}
 	}
 }
 
@@ -365,6 +428,13 @@ func TestExecuteGuidedActionRouting(t *testing.T) {
 		t.Fatalf("unexpected detach routing counts: %+v", runner)
 	}
 
+	if err := executeGuidedActionWithInputs("restart_service", map[string]string{"service": "apache"}, context.Background(), cfg, runner); err != nil {
+		t.Fatalf("restart action: %v", err)
+	}
+	if len(runner.restartCalls) != 1 || runner.restartCalls[0] != "apache" {
+		t.Fatalf("unexpected restart routing: %+v", runner.restartCalls)
+	}
+
 	err := executeGuidedAction("unknown", context.Background(), cfg, nil)
 	if err == nil {
 		t.Fatalf("expected error for unknown action")
@@ -402,12 +472,49 @@ func TestHandleGuidedActionReturnsUtilityForStatusAndLogs(t *testing.T) {
 		t.Fatalf("status utility=%+v", statusResult.Utility)
 	}
 
-	logsResult, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, guidance.GuidedAction{ID: "logs"})
+	logsResult, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, guidance.GuidedAction{ID: "logs", Inputs: map[string]string{"service": "apache"}})
 	if err != nil {
 		t.Fatalf("logs action: %v", err)
 	}
 	if logsResult.Utility == nil || logsResult.Utility.Title != "demo logs" {
 		t.Fatalf("logs utility=%+v", logsResult.Utility)
+	}
+	if runner.lastLogSvc != "apache" {
+		t.Fatalf("logs service=%q want apache", runner.lastLogSvc)
+	}
+	for _, want := range []string{"Project: demo", "Service: apache", "10:42:13 GET / 200 12ms"} {
+		if !strings.Contains(logsResult.Utility.Body, want) {
+			t.Fatalf("logs utility missing %q:\n%s", want, logsResult.Utility.Body)
+		}
+	}
+}
+
+func TestHandleGuidedActionRestartsExplicitService(t *testing.T) {
+	projectDir := t.TempDir()
+	cfg := config.ProjectConfig{
+		Name:            "demo",
+		Slug:            "demo",
+		Dir:             projectDir,
+		StateDir:        filepath.Join(t.TempDir(), "state"),
+		StackKind:       "20i",
+		StackHome:       t.TempDir(),
+		Hostname:        "demo.test",
+		SiteSuffix:      "test",
+		DocRoot:         filepath.Join(projectDir, "public_html"),
+		DocRootRelative: "public_html",
+		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
+	}
+	runner := &fakeGuidedLifecycleRunner{}
+
+	result, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, guidance.GuidedAction{ID: "restart_service", Inputs: map[string]string{"service": "apache"}})
+	if err != nil {
+		t.Fatalf("restart action: %v", err)
+	}
+	if len(runner.restartCalls) != 1 || runner.restartCalls[0] != "apache" {
+		t.Fatalf("restart calls=%+v", runner.restartCalls)
+	}
+	if result.Message != "apache was restarted." {
+		t.Fatalf("message=%q", result.Message)
 	}
 }
 

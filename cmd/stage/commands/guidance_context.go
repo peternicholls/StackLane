@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"os"
+	"sort"
 
 	"github.com/peternicholls/stageserve/core/config"
 	"github.com/peternicholls/stageserve/core/guidance"
@@ -83,12 +84,52 @@ func guidedRuntimeStatus(ctx context.Context, cfg config.ProjectConfig, record *
 	}
 
 	summary := guidance.RuntimeSummary{
-		Checked: true,
-		Running: len(containers) > 0,
-		Status:  "stopped",
+		Checked:  true,
+		Running:  len(containers) > 0,
+		Status:   "stopped",
+		Services: runtimeServiceSummaries(containers),
 	}
 	if summary.Running {
 		summary.Status = "running"
 	}
 	return summary
+}
+
+func runtimeServiceSummaries(containers []docker.Container) []guidance.RuntimeServiceSummary {
+	services := make([]guidance.RuntimeServiceSummary, 0, len(containers))
+	for _, container := range containers {
+		if container.Service == "" {
+			continue
+		}
+		services = append(services, guidance.RuntimeServiceSummary{
+			ServiceName:        container.Service,
+			ContainerName:      container.Name,
+			Status:             container.Status,
+			EligibleForLogs:    container.ID != "",
+			EligibleForRestart: true,
+		})
+	}
+	sort.SliceStable(services, func(i, j int) bool {
+		leftRank, rightRank := serviceOrderRank(services[i].ServiceName), serviceOrderRank(services[j].ServiceName)
+		if leftRank != rightRank {
+			return leftRank < rightRank
+		}
+		return services[i].ServiceName < services[j].ServiceName
+	})
+	return services
+}
+
+func serviceOrderRank(service string) int {
+	switch service {
+	case "nginx":
+		return 0
+	case "apache":
+		return 1
+	case "mariadb":
+		return 2
+	case "phpmyadmin":
+		return 3
+	default:
+		return 10
+	}
 }

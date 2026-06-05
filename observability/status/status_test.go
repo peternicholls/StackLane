@@ -6,6 +6,7 @@ package status
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/peternicholls/stageserve/core/config"
@@ -129,5 +130,61 @@ func TestReporter_OneBySelectorMatchesRecordedProjectPath(t *testing.T) {
 	}
 	if len(got.Containers) != 1 || got.Containers[0].Service != "nginx" {
 		t.Fatalf("containers=%+v want nginx", got.Containers)
+	}
+}
+
+func TestRenderAttachedProjectUsesGuidedSurfaceLanguage(t *testing.T) {
+	out := Render(ProjectStatus{
+		Slug:            "demo",
+		Name:            "Demo Site",
+		Hostname:        "demo.test",
+		AttachmentState: state.StateAttached,
+		Containers: []ContainerStatus{{
+			Service: "web",
+			Name:    "stage-demo-web",
+			Status:  "running",
+		}},
+	})
+
+	for _, want := range []string{
+		"StageServe Status",
+		"Ready",
+		"This project is running at http://demo.test.",
+		"Local URL:   http://demo.test",
+		"Status:      running",
+		"Project services:",
+		"Next: stage logs",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("status output missing %q:\n%s", want, out)
+		}
+	}
+	for _, unwanted := range []string{"attached)", "drift:", "no containers running"} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("status output leaked implementation-first copy %q:\n%s", unwanted, out)
+		}
+	}
+}
+
+func TestRenderUnrecordedProjectPreservesRecoveryLanguage(t *testing.T) {
+	out := Render(ProjectStatus{
+		Slug:            "demo",
+		Name:            "demo",
+		Hostname:        "demo.test",
+		AttachmentState: state.StateDown,
+		Drift:           []string{"not added to StageServe yet"},
+	})
+
+	for _, want := range []string{
+		"Needs attention",
+		"This project is not added to StageServe yet.",
+		"Status:      not added to StageServe",
+		"Needs attention:",
+		"not added to StageServe yet",
+		"Next: stage up",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("status output missing %q:\n%s", want, out)
+		}
 	}
 }

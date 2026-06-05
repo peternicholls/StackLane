@@ -18,6 +18,8 @@ type Composer interface {
 	// Down runs `docker compose down`. Idempotent: succeeds when the project
 	// is already gone.
 	Down(ctx context.Context, opts DownOptions) error
+	// Restart runs `docker compose restart` for the selected service.
+	Restart(ctx context.Context, opts RestartOptions) error
 	// Logs streams `docker compose logs -f`. When service is empty, all
 	// services in the project stream.
 	Logs(ctx context.Context, opts LogsOptions) error
@@ -48,6 +50,16 @@ type DownOptions struct {
 	EnvFile       string
 	Env           []string
 	RemoveVolumes bool
+}
+
+// RestartOptions describes a compose-restart invocation.
+type RestartOptions struct {
+	ProjectDir  string
+	ComposeFile string
+	ProjectName string
+	EnvFile     string
+	Env         []string
+	Service     string
 }
 
 // LogsOptions describes a compose-logs invocation.

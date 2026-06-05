@@ -52,9 +52,30 @@ type MachineReadinessSummary struct {
 
 // RuntimeSummary is the cheap runtime view used by the planner.
 type RuntimeSummary struct {
-	Checked bool
-	Running bool
-	Status  string
+	Checked  bool
+	Running  bool
+	Status   string
+	Services []RuntimeServiceSummary
+}
+
+// RuntimeServiceSummary is the normalized service metadata the guided flow may
+// use for user-goal actions. It intentionally avoids raw container dumps.
+type RuntimeServiceSummary struct {
+	ServiceName        string
+	ContainerName      string
+	Status             string
+	EligibleForLogs    bool
+	EligibleForRestart bool
+}
+
+// ServiceSelectionDecision records deterministic routing for service-scoped
+// actions such as logs and restart.
+type ServiceSelectionDecision struct {
+	Action          string
+	Mode            string
+	SelectedService RuntimeServiceSummary
+	Services        []RuntimeServiceSummary
+	Reason          string
 }
 
 // GuidedContext is a no-mutation snapshot of the current StageServe situation.

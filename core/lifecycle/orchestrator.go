@@ -351,6 +351,34 @@ func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) err
 	return nil
 }
 
+// RestartService restarts one explicit project service without changing
+// routing, state records, or project files.
+func (o *Orchestrator) RestartService(ctx context.Context, cfg config.ProjectConfig, service string) error {
+	service = strings.TrimSpace(service)
+	if service == "" {
+		return Wrap("restart-service", cfg.Slug, errors.New("service name is required"), "Choose a specific service before restarting it.")
+	}
+	if err := ValidateRuntimeAssets(cfg); err != nil {
+		return err
+	}
+	envFile := envFilePath(cfg)
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		envFile = ""
+	} else if err != nil {
+		return Wrap("restart-service", cfg.Slug, err, "Inspect permissions on the generated runtime env file under the state directory.")
+	}
+	if err := o.D.Compose.Restart(ctx, compose.RestartOptions{
+		ProjectDir:  cfg.Dir,
+		ComposeFile: cfg.StackFile,
+		ProjectName: cfg.ComposeProjectName,
+		EnvFile:     envFile,
+		Service:     service,
+	}); err != nil {
+		return Wrap("restart-service", cfg.Slug, err, "Run `stage status`, then inspect the selected service logs before retrying.")
+	}
+	return nil
+}
+
 // --- helpers ---
 
 func (o *Orchestrator) ensureSharedNetwork(ctx context.Context, cfg config.ProjectConfig) error {

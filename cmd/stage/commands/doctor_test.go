@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -70,6 +71,21 @@ func TestDoctor_JSONOutputShape(t *testing.T) {
 	}
 }
 
+func TestDoctor_JSONOutputIsMachinePure(t *testing.T) {
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"doctor", "--json"})
+	_ = root.Execute()
+
+	var result map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("doctor JSON output did not unmarshal: %v\n%s", err, buf.String())
+	}
+	assertMachineOutputHasNoTUIHints(t, buf.String())
+}
+
 // TestDoctor_TextOutputShape verifies that plain-text output contains
 // at least one step label.
 func TestDoctor_TextOutputShape(t *testing.T) {
@@ -82,6 +98,24 @@ func TestDoctor_TextOutputShape(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, "Docker") {
 		t.Errorf("expected text output to mention 'Docker', got: %s", out)
+	}
+}
+
+func TestDoctor_NonInteractiveOutputStaysPlain(t *testing.T) {
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"doctor", "--non-interactive", "--notui"})
+	_ = root.Execute()
+
+	out := buf.String()
+	assertMachineOutputHasNoTUIHints(t, out)
+	if !strings.Contains(out, "StageServe Doctor") {
+		t.Fatalf("doctor fallback missing surface header:\n%s", out)
+	}
+	if !strings.Contains(out, "Needs fixing") && !strings.Contains(out, "Checks passed") {
+		t.Fatalf("doctor fallback missing report focus section:\n%s", out)
 	}
 }
 

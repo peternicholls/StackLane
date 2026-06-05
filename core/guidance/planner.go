@@ -46,13 +46,8 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.DirectCommands = []string{"stage up", "stage status"}
 	case SituationProjectRunning:
 		plan.StatusHeader = "This project is running at " + ctx.LocalURL + "."
-		plan.DecisionItems = []GuidedAction{
-			action("open_browser", "Open in browser", "Open "+ctx.LocalURL+" in your default browser.", ctx.LocalURL, false),
-			action("logs", "View project logs", "Watch what your project is doing right now.", "stage logs", false),
-			action("status", "Check this project's status", "See the latest recorded and live project status.", "stage status", false),
-			action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
-		}
-		plan.DirectCommands = []string{"stage logs", "stage status", "stage down"}
+		plan.DecisionItems = runningProjectActions(ctx)
+		plan.DirectCommands = runningProjectDirectCommands(ctx)
 	case SituationProjectDown:
 		if ctx.Runtime.Checked && ctx.Runtime.Running {
 			plan.StatusHeader = "This project isn't added to StageServe right now."
@@ -98,6 +93,91 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.DirectCommands = []string{"stage doctor", "stage status", "stage logs", "stage down", "stage up"}
 	}
 	return plan
+}
+
+func runningProjectActions(ctx GuidedContext) []GuidedAction {
+	actions := []GuidedAction{}
+	logsDecision := selectServiceForAction(ctx.Runtime, "logs")
+	switch logsDecision.Mode {
+	case "auto_single":
+		actions = append(actions, serviceAction("logs", "View project logs", "Watch what your project is doing right now.", "stage logs "+logsDecision.SelectedService.ServiceName, false, logsDecision.SelectedService.ServiceName))
+	case "prompt_multi":
+		actions = append(actions, GuidedAction{ID: "logs_select", Kind: "choose", Label: "Choose logs to view", Description: "Pick a project service before opening logs.", DirectCommand: "stage logs", Inputs: map[string]string{"mode": logsDecision.Mode}})
+	default:
+		actions = append(actions, action("logs", "View project logs", "Open the default project log stream.", "stage logs", false))
+	}
+	actions = append(actions,
+		action("open_browser", "Open in browser", "Open "+ctx.LocalURL+" in your default browser.", ctx.LocalURL, false),
+		action("status", "Check this project's status", "See the latest recorded and live project status.", "stage status", false),
+	)
+	restartDecision := selectServiceForAction(ctx.Runtime, "restart")
+	switch restartDecision.Mode {
+	case "auto_single":
+		actions = append(actions, serviceAction("restart_service", "Restart "+restartDecision.SelectedService.ServiceName, "Restart only the "+restartDecision.SelectedService.ServiceName+" service after confirmation.", "", true, restartDecision.SelectedService.ServiceName))
+	case "prompt_multi":
+		for _, service := range restartDecision.Services {
+			actions = append(actions, serviceAction("restart_service", "Restart "+service.ServiceName, "Restart only the "+service.ServiceName+" service after confirmation.", "", true, service.ServiceName))
+		}
+	}
+	actions = append(actions,
+		action("down", "Stop this project", "Stop the project after confirmation.", "stage down", true),
+		GuidedAction{ID: "more", Kind: "more", Label: "More...", Description: "Show direct commands, plain text output, and advanced troubleshooting."},
+	)
+	return actions
+}
+
+func runningProjectDirectCommands(ctx GuidedContext) []string {
+	commands := []string{"stage status"}
+	logServices := eligibleRuntimeServices(ctx.Runtime, "logs")
+	if len(logServices) == 0 {
+		commands = append(commands, "stage logs")
+	} else {
+		for _, service := range logServices {
+			commands = append(commands, "stage logs "+service.ServiceName)
+		}
+	}
+	commands = append(commands, restartDirectCommands(ctx)...)
+	commands = append(commands, "stage down")
+	return commands
+}
+
+func restartDirectCommands(ctx GuidedContext) []string {
+	return nil
+}
+
+func selectServiceForAction(runtime RuntimeSummary, actionName string) ServiceSelectionDecision {
+	services := eligibleRuntimeServices(runtime, actionName)
+	decision := ServiceSelectionDecision{Action: actionName, Services: services}
+	switch len(services) {
+	case 0:
+		decision.Mode = "fallback_advanced"
+		decision.Reason = "StageServe does not have service metadata for this action yet."
+	case 1:
+		decision.Mode = "auto_single"
+		decision.SelectedService = services[0]
+		decision.Reason = "Only one eligible service is available."
+	default:
+		decision.Mode = "prompt_multi"
+		decision.Reason = "More than one service can handle this action."
+	}
+	return decision
+}
+
+func eligibleRuntimeServices(runtime RuntimeSummary, actionName string) []RuntimeServiceSummary {
+	services := []RuntimeServiceSummary{}
+	for _, service := range runtime.Services {
+		switch actionName {
+		case "logs":
+			if service.EligibleForLogs {
+				services = append(services, service)
+			}
+		case "restart":
+			if service.EligibleForRestart {
+				services = append(services, service)
+			}
+		}
+	}
+	return services
 }
 
 func classify(ctx GuidedContext) Situation {
@@ -180,6 +260,12 @@ func displaySuffix(suffix string) string {
 
 func action(id, label, description, directCommand string, mutates bool) GuidedAction {
 	return GuidedAction{ID: id, Kind: "choose", Label: label, Description: description, MutatesState: mutates, RequiresConfirmation: mutates, DirectCommand: directCommand}
+}
+
+func serviceAction(id, label, description, directCommand string, mutates bool, service string) GuidedAction {
+	action := action(id, label, description, directCommand, mutates)
+	action.Inputs = map[string]string{"service": service}
+	return action
 }
 
 func footerAction(id, label, description string) GuidedAction {
