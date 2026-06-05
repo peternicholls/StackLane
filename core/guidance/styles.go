@@ -2,6 +2,17 @@ package guidance
 
 import "github.com/charmbracelet/lipgloss"
 
+const (
+	semanticColorReady            = "2"
+	semanticColorNeedsAction      = "3"
+	semanticColorError            = "1"
+	semanticColorPrimaryAction    = "14"
+	semanticColorSupportingAccent = "6"
+	semanticColorPrimaryStructure = "15"
+	semanticColorSupportingText   = "7"
+	semanticColorDimEvidence      = "8"
+)
+
 type shellStyles struct {
 	accent         lipgloss.Style
 	focus          lipgloss.Style
@@ -68,22 +79,22 @@ func shellStylesFor(noColor bool) shellStyles {
 		sectionAction:  lipgloss.NewStyle().Bold(true),
 		sectionWarn:    lipgloss.NewStyle().Bold(true),
 	}
-	styles.accent = styles.accent.Foreground(lipgloss.Color("6"))
-	styles.focus = styles.focus.Foreground(lipgloss.Color("6"))
-	styles.title = styles.title.Foreground(lipgloss.Color("15"))
-	styles.surface = styles.surface.Foreground(lipgloss.Color("7"))
-	styles.rule = styles.rule.Foreground(lipgloss.Color("8"))
-	styles.verdict = styles.verdict.Foreground(lipgloss.Color("15"))
-	styles.verdictReady = styles.verdictReady.Foreground(lipgloss.Color("2"))
-	styles.verdictWarn = styles.verdictWarn.Foreground(lipgloss.Color("3"))
-	styles.verdictError = styles.verdictError.Foreground(lipgloss.Color("1"))
-	styles.label = styles.label.Foreground(lipgloss.Color("15"))
-	styles.muted = styles.muted.Foreground(lipgloss.Color("7"))
-	styles.command = styles.command.Foreground(lipgloss.Color("14"))
-	styles.footer = styles.footer.Foreground(lipgloss.Color("8"))
-	styles.sectionNeutral = styles.sectionNeutral.Foreground(lipgloss.Color("15"))
-	styles.sectionAction = styles.sectionAction.Foreground(lipgloss.Color("6"))
-	styles.sectionWarn = styles.sectionWarn.Foreground(lipgloss.Color("3"))
+	styles.accent = styles.accent.Foreground(lipgloss.Color(semanticColorSupportingAccent))
+	styles.focus = styles.focus.Foreground(lipgloss.Color(semanticColorSupportingAccent))
+	styles.title = styles.title.Foreground(lipgloss.Color(semanticColorPrimaryStructure))
+	styles.surface = styles.surface.Foreground(lipgloss.Color(semanticColorSupportingText))
+	styles.rule = styles.rule.Foreground(lipgloss.Color(semanticColorDimEvidence))
+	styles.verdict = styles.verdict.Foreground(lipgloss.Color(semanticColorPrimaryStructure))
+	styles.verdictReady = styles.verdictReady.Foreground(lipgloss.Color(semanticColorReady))
+	styles.verdictWarn = styles.verdictWarn.Foreground(lipgloss.Color(semanticColorNeedsAction))
+	styles.verdictError = styles.verdictError.Foreground(lipgloss.Color(semanticColorError))
+	styles.label = styles.label.Foreground(lipgloss.Color(semanticColorPrimaryStructure))
+	styles.muted = styles.muted.Foreground(lipgloss.Color(semanticColorSupportingText))
+	styles.command = styles.command.Foreground(lipgloss.Color(semanticColorPrimaryAction))
+	styles.footer = styles.footer.Foreground(lipgloss.Color(semanticColorDimEvidence))
+	styles.sectionNeutral = styles.sectionNeutral.Foreground(lipgloss.Color(semanticColorPrimaryStructure))
+	styles.sectionAction = styles.sectionAction.Foreground(lipgloss.Color(semanticColorSupportingAccent))
+	styles.sectionWarn = styles.sectionWarn.Foreground(lipgloss.Color(semanticColorNeedsAction))
 	return styles
 }
 

@@ -79,7 +79,7 @@ func newShellModel(plan NextActionPlan, noColor bool) shellModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	if !noColor {
-		s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+		s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(semanticColorSupportingAccent))
 	}
 	return shellModel{plan: plan, width: 80, noColor: noColor, spinner: s}
 }
@@ -551,8 +551,10 @@ func renderLoadingView(plan NextActionPlan, width int, noColor bool, spin spinne
 	lineWidth := clampInt(width-4, 42, 96)
 	renderSurfaceHeader(&b, lineWidth, surfaceLabel(plan, 0, false, false, nil), styles)
 	fmt.Fprintf(&b, "  %s\n\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	fmt.Fprintf(&b, "  %s %s\n", spin.View(), styles.muted.Render(actionProgressText(action)))
-	fmt.Fprintf(&b, "  %s\n", styles.muted.Render(actionProgressDetail(action)))
+	fmt.Fprintf(&b, "  %s\n", verdictStyle(plan, styles).Render(actionProgressText(action)))
+	fmt.Fprintf(&b, "\n%s\n\n", sectionTitle("Current step", lineWidth, sectionToneAction, styles))
+	fmt.Fprintf(&b, "  %s %s\n", spin.View(), styles.label.Render("In progress"))
+	fmt.Fprintf(&b, "    %s\n", styles.muted.Render(actionProgressDetail(action)))
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render("esc cancel • please wait"))
 	return b.String()
@@ -587,15 +589,15 @@ func renderConfirmationModal(builder *strings.Builder, action GuidedAction, plan
 	fmt.Fprintf(builder, "\n  %s\n", panel.Render(inner.String()))
 }
 
-// confirmBorderColor returns the ANSI color code for the confirmation border.
+// confirmBorderColor returns the semantic ANSI role for the confirmation border.
 func confirmBorderColor(action GuidedAction) string {
 	switch action.ID {
 	case "down", "detach":
-		return "1" // red — destructive
+		return semanticColorError
 	case "init", "init_here", "overwrite_init":
-		return "6" // cyan — constructive
+		return semanticColorSupportingAccent
 	default:
-		return "8" // dim — neutral
+		return semanticColorDimEvidence
 	}
 }
 
@@ -893,7 +895,24 @@ func renderUtilitySurface(builder *strings.Builder, utility UtilitySurface, line
 			builder.WriteByte('\n')
 			continue
 		}
+		if isUtilitySubheading(line) {
+			fmt.Fprintf(builder, "  %s\n", styles.label.Render(line))
+			continue
+		}
+		if strings.HasPrefix(line, "stage ") {
+			fmt.Fprintf(builder, "    %s\n", styles.command.Render(line))
+			continue
+		}
 		fmt.Fprintf(builder, "  %s\n", line)
+	}
+}
+
+func isUtilitySubheading(line string) bool {
+	switch line {
+	case "Direct commands", "Plain text output", "Advanced and troubleshooting":
+		return true
+	default:
+		return false
 	}
 }
 

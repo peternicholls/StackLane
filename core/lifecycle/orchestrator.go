@@ -409,9 +409,7 @@ func (o *Orchestrator) ensureSharedNetwork(ctx context.Context, cfg config.Proje
 
 func sharedComposeRemedy(cfg config.ProjectConfig, command, suffix string) string {
 	return fmt.Sprintf(
-		"Run `docker compose -f %s -p stage-shared %s` (or run the command from `STACK_HOME`)%s",
-		cfg.SharedFile,
-		command,
+		"Run `stage doctor` to check setup, or `stage up` to retry%s",
 		suffix,
 	)
 }

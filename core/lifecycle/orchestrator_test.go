@@ -538,11 +538,8 @@ func TestOrchestrator_UpSharedGatewayFailureIncludesSharedComposeFile(t *testing
 	if se.Step != "shared-gateway" {
 		t.Fatalf("step=%q want shared-gateway", se.Step)
 	}
-	if !strings.Contains(se.Remedy, cfg.SharedFile) {
-		t.Fatalf("remedy=%q missing shared compose path %q", se.Remedy, cfg.SharedFile)
-	}
-	if !strings.Contains(se.Remedy, "STACK_HOME") {
-		t.Fatalf("remedy=%q missing STACK_HOME guidance", se.Remedy)
+	if !strings.Contains(se.Remedy, "stage doctor") {
+		t.Fatalf("remedy=%q missing stage doctor reference", se.Remedy)
 	}
 }
 

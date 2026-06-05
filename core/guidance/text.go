@@ -76,13 +76,22 @@ func RenderText(w io.Writer, plan NextActionPlan) error {
 		}
 	}
 	if len(plan.DirectCommands) > 0 {
-		if _, err := fmt.Fprintln(w, "\nDirect commands:"); err != nil {
+		if _, err := fmt.Fprintln(w, "\nMore:"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w, "  Direct commands:"); err != nil {
 			return err
 		}
 		for _, command := range plan.DirectCommands {
-			if _, err := fmt.Fprintf(w, "  %s\n", command); err != nil {
+			if _, err := fmt.Fprintf(w, "    %s\n", command); err != nil {
 				return err
 			}
+		}
+		if _, err := fmt.Fprintln(w, "  Plain text output: stage --cli"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w, "  Advanced and troubleshooting: stage doctor"); err != nil {
+			return err
 		}
 	}
 	_, err := fmt.Fprintln(w)

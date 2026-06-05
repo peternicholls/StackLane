@@ -286,7 +286,7 @@ func TestGuidedInitActionWritesEnvAndReplans(t *testing.T) {
 		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
 	}
 
-	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "init"})
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "init"})
 	if err != nil {
 		t.Fatalf("handleGuidedAction: %v", err)
 	}
@@ -328,7 +328,7 @@ func TestGuidedInitActionDryRunDoesNotWriteEnv(t *testing.T) {
 		DryRun:          true,
 	}
 
-	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "init"})
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "init"})
 	if err != nil {
 		t.Fatalf("handleGuidedAction: %v", err)
 	}
@@ -363,7 +363,7 @@ func TestGuidedOverwriteInitActionOverwritesEnvAndReplans(t *testing.T) {
 		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
 	}
 
-	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "overwrite_init"})
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "overwrite_init"})
 	if err != nil {
 		t.Fatalf("handleGuidedAction: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestHandleGuidedActionReturnsUtilityForStatusAndLogs(t *testing.T) {
 	}
 	runner := &fakeGuidedLifecycleRunner{}
 
-	statusResult, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, guidance.GuidedAction{ID: "status"})
+	statusResult, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "status"})
 	if err != nil {
 		t.Fatalf("status action: %v", err)
 	}
@@ -472,7 +472,7 @@ func TestHandleGuidedActionReturnsUtilityForStatusAndLogs(t *testing.T) {
 		t.Fatalf("status utility=%+v", statusResult.Utility)
 	}
 
-	logsResult, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, guidance.GuidedAction{ID: "logs", Inputs: map[string]string{"service": "apache"}})
+	logsResult, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "logs", Inputs: map[string]string{"service": "apache"}})
 	if err != nil {
 		t.Fatalf("logs action: %v", err)
 	}
@@ -506,7 +506,7 @@ func TestHandleGuidedActionRestartsExplicitService(t *testing.T) {
 	}
 	runner := &fakeGuidedLifecycleRunner{}
 
-	result, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, guidance.GuidedAction{ID: "restart_service", Inputs: map[string]string{"service": "apache"}})
+	result, err := handleGuidedAction(context.Background(), cfg, runner, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "restart_service", Inputs: map[string]string{"service": "apache"}})
 	if err != nil {
 		t.Fatalf("restart action: %v", err)
 	}
@@ -546,7 +546,7 @@ func TestHandleGuidedActionReturnsUtilityForSetup(t *testing.T) {
 		buildGuidedSetupResult = oldBuilder
 	}()
 
-	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "setup"})
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "setup"})
 	if err != nil {
 		t.Fatalf("setup action: %v", err)
 	}
@@ -586,7 +586,7 @@ func TestHandleGuidedActionReturnsUtilityForDoctor(t *testing.T) {
 		buildGuidedDoctorResult = oldBuilder
 	}()
 
-	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "doctor"})
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, false, guidance.GuidedAction{ID: "doctor"})
 	if err != nil {
 		t.Fatalf("doctor action: %v", err)
 	}

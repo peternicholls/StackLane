@@ -90,18 +90,19 @@ func runGuidedTUI(ctx context.Context, cfg config.ProjectConfig, plan guidance.N
 		return fmt.Errorf("failed to build orchestrator: %w", err)
 	}
 	runner := guidedRuntimeRunner{orch: orch}
+	noColor := capability.NoColor
 	handler := func(actionCtx context.Context, action guidance.GuidedAction) (guidance.ActionResult, error) {
-		return handleGuidedAction(actionCtx, cfg, runner, capability, action)
+		return handleGuidedAction(actionCtx, cfg, runner, capability, noColor, action)
 	}
 	shellOpts := append([]guidance.ShellOption{guidance.WithActionHandler(handler)}, opts...)
 	return guidance.RunShell(plan, capability, os.Stdin, output, shellOpts...)
 }
 
-func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner, capability guidance.TUICapability, action guidance.GuidedAction) (guidance.ActionResult, error) {
+func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner, capability guidance.TUICapability, noColor bool, action guidance.GuidedAction) (guidance.ActionResult, error) {
 	switch action.ID {
 	case "setup":
 		result := buildGuidedSetupResult(cfg)
-		body, err := renderMachineReadinessReport("StageServe Setup", result)
+		body, err := renderMachineReadinessReport("StageServe Setup", result, noColor)
 		if err != nil {
 			return guidance.ActionResult{}, err
 		}
@@ -117,7 +118,7 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 		}, nil
 	case "doctor":
 		result := buildGuidedDoctorResult(cfg)
-		body, err := renderMachineReadinessReport("StageServe Doctor", result)
+		body, err := renderMachineReadinessReport("StageServe Doctor", result, noColor)
 		if err != nil {
 			return guidance.ActionResult{}, err
 		}
@@ -153,7 +154,7 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 		return guidance.ActionResult{Plan: guidance.Plan(context), Message: message}, nil
 	case "up", "attach", "down", "detach":
 		if err := executeGuidedActionWithInputs(action.ID, action.Inputs, ctx, cfg, runner); err != nil {
-			return guidance.ActionResult{}, fmt.Errorf("failed to %s project: %w", guidedActionVerb(action.ID), err)
+			return guidance.ActionResult{}, fmt.Errorf("%s", renderGuidedActionError(action.ID, err))
 		}
 		nextConfig := reloadGuidedConfig(cfg)
 		context := collectGuidedContext(ctx, nextConfig, capability)
@@ -199,7 +200,7 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 			return guidance.ActionResult{}, fmt.Errorf("guided lifecycle runner is not available")
 		}
 		if err := runner.RestartService(ctx, cfg, service); err != nil {
-			return guidance.ActionResult{}, fmt.Errorf("failed to restart %s: %w", service, err)
+			return guidance.ActionResult{}, fmt.Errorf("%s", renderGuidedActionError("restart_service", err))
 		}
 		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
 		return guidance.ActionResult{Plan: nextPlan, Message: service + " was restarted."}, nil
@@ -245,9 +246,13 @@ func serviceChoiceSurface(title, commandPrefix string, plan guidance.NextActionP
 	}
 }
 
-func renderMachineReadinessReport(title string, result onboarding.CommandResult) (string, error) {
+func renderMachineReadinessReport(title string, result onboarding.CommandResult, noColor bool) (string, error) {
+	mode := onboarding.OutputModeTUI
+	if noColor {
+		mode = onboarding.OutputModeText
+	}
 	var output bytes.Buffer
-	projector := onboarding.NewProjector(onboarding.OutputModeText, &output, onboarding.ProjectorOptions{
+	projector := onboarding.NewProjector(mode, &output, onboarding.ProjectorOptions{
 		Title:    title,
 		Detailed: true,
 	})
@@ -295,6 +300,25 @@ func executeGuidedActionWithInputs(actionID string, inputs map[string]string, ct
 	default:
 		return fmt.Errorf("action %q not implemented", actionID)
 	}
+}
+
+// renderGuidedActionError produces a user-facing message from a lifecycle
+// action failure. If the error is a StepError, the remedy is surfaced
+// directly; otherwise the raw error is wrapped with the action verb.
+func renderGuidedActionError(actionID string, err error) string {
+	if step, ok := lifecycle.AsStepError(err); ok {
+		project := step.Project
+		if project == "" {
+			project = "shared runtime"
+		}
+		verb := guidedActionVerb(actionID)
+		out := fmt.Sprintf("Could not %s %s: %v.", verb, project, step.Cause)
+		if step.Remedy != "" {
+			out += "\nNext step: " + step.Remedy
+		}
+		return out
+	}
+	return fmt.Sprintf("Could not %s project: %v.", guidedActionVerb(actionID), err)
 }
 
 func guidedActionVerb(actionID string) string {

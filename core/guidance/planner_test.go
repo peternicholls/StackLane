@@ -228,7 +228,7 @@ func TestRenderTextUsesPlainLanguageWhileKeepingDirectCommands(t *testing.T) {
 		t.Fatalf("render text: %v", err)
 	}
 	out := buf.String()
-	for _, want := range []string{"Add this project to StageServe", "Check this project's status", "Direct commands:", "stage attach", "stage down"} {
+	for _, want := range []string{"Add this project to StageServe", "Check this project's status", "More:", "Direct commands:", "Plain text output: stage --cli", "Advanced and troubleshooting: stage doctor", "stage attach", "stage down"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("text output missing %q:\n%s", want, out)
 		}
@@ -736,7 +736,7 @@ func TestShellLifecycleActionShowsProgressWithinLatencyBudget(t *testing.T) {
 		t.Fatal("expected loading state")
 	}
 	view := next.View()
-	for _, want := range []string{"Starting this project...", "esc cancel", "Press esc to request cancellation"} {
+	for _, want := range []string{"Starting this project...", "Current step", "In progress", "esc cancel", "Press esc to request cancellation"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("loading view missing %q:\n%s", want, view)
 		}
