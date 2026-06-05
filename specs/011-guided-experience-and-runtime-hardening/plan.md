@@ -1,227 +1,107 @@
 # Implementation Plan: Guided Experience And Runtime Hardening
 
-**Branch**: `011-guided-experience-and-runtime-hardening` | **Date**: 2026-05-30 | **Spec**: [spec.md](./spec.md)
+**Branch**: `011-guided-experience-and-runtime-hardening` | **Date**: 2026-06-05 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/011-guided-experience-and-runtime-hardening/spec.md`
 
 ## Summary
 
-Turn the code-review and field-feedback follow-up into a repair-first hardening spec that closes runtime error gaps, fixes broken installed-binary paths, makes direct and guided output feel like one product, expands the running-project experience, and uses more of the Charm stack for confirmation and long-running feedback.
+Harden StageServe runtime and guided-entry correctness first, then complete the guided UX follow-up in bounded phases. Implement merge-gate work to eliminate missing-asset startup failures, machine-not-ready misclassification, silent lifecycle error handling, and password flag safety risk; then deliver shared presentation parity, recovery surfaces, running-project day-2 actions, and async confirmation/progress behavior. Keep the simple-first contract from spec 007 intact and preserve automation-safe direct command semantics.
 
-## Locked Planning Decisions
-
-- 011 is a repair spec first. Code-review correctness and operator-safety issues must be fixed before broader UX expansion is treated as done.
-- This work builds on spec 007. It does not reopen bare `stage` routing, easy-mode copy, or the existing opt-out contract.
-- T001a uses a bundled release/install artifact that ships the binary and runtime stack assets together. A future binary-embedded asset model is deferred and tracked in [embedded-runtime-assets-plan.md](./embedded-runtime-assets-plan.md).
-- Missing runtime assets are handled as product-level StageServe errors, not as installer-only assumptions.
-- Shared colour and hierarchy tokens come from one guidance style module used by TUI and non-TUI paths.
-- Running-project action expansion is scoped to high-value day-2 actions first: open browser, logs, stop, restart, and advanced command equivalents.
-- Confirmation and progress improvements use Bubble Tea and Bubbles components where they strengthen the product without creating a second runtime layer.
-- Security and seam cleanup work lands alongside UX changes when it directly supports correctness or operator safety.
+Preserve the retained spec 007 root-routing contract during hardening work: machine-not-ready, project-missing-config, ready-to-run, running-project, and recovery-needed states must remain deterministic and validation-backed.
 
 ## Technical Context
 
-**Language/Version**: Go 1.26.2  
-**Primary Dependencies**: `github.com/spf13/cobra`, `github.com/charmbracelet/bubbletea`, `github.com/charmbracelet/bubbles/spinner`, `github.com/charmbracelet/bubbles/viewport`, `github.com/charmbracelet/bubbles/help`, `github.com/charmbracelet/lipgloss`, existing StageServe config/lifecycle/onboarding/status packages  
-**Primary Packages**: `core/guidance`, `cmd/stage/commands`, `core/lifecycle`, `infra/compose`, `core/config`  
-**Validation Focus**: focused Go tests plus manual terminal checks for missing assets, failure recovery, running-project actions, confirmation prominence, and long-running feedback  
-**Primary Constraint**: keep the solution contract-driven and incremental; do not create a second implementation of lifecycle behavior inside the TUI
+**Language/Version**: Go 1.26 (toolchain go1.26.2)  
+**Primary Dependencies**: Cobra, Bubble Tea, Lip Gloss, Bubbles, Huh, Docker SDK, internal lifecycle/guidance/state seams  
+**Storage**: Filesystem state under `.stageserve-state` and project-local `.env.stageserve`  
+**Testing**: `go test` package-focused suites, targeted terminal/manual validation for TTY/non-TTY flows  
+**Target Platform**: macOS primary operator environment, Linux-compatible runtime checks where already supported  
+**Project Type**: Go CLI/TUI application  
+**Performance Goals**: Long-running guided actions display activity feedback within 250 ms of confirmation  
+**Constraints**: Preserve non-TTY and JSON purity guarantees; no new persistent config surface; keep direct command behavior automation-safe  
+**Scale/Scope**: Spec-local implementation across guidance, commands, lifecycle, compose, config, docs/help, and installer bundling contract
 
-## Decision Record
+## Constitution Check
 
-### Product-Level Failure Translation First
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- Decision: fix runtime failures at the StageServe boundary before deepening visual polish.
-- Rationale: if `stage up` still leaks raw missing-file or registry errors, more TUI chrome does not solve the product gap.
-- Rejected: treating installer drift and lifecycle error translation as separate future cleanup.
+- [x] Ease-of-use impact is documented. This plan keeps bare `stage` as the simple entrypoint, adds clearer failure/recovery paths, and avoids adding first-level operator friction.
+- [x] Reliability expectations are explicit. Runtime asset preflight, deterministic failure remedies, password-source boundaries, and state/route consistency are defined in spec requirements and contracts.
+- [x] Robustness boundaries are defined. Partial failure, stale registry, gateway route sync, and missing runtime assets are treated as first-class failure modes with explicit operator outcomes.
+- [x] Documentation surfaces are identified: `README.md`, `docs/installer-onboarding.md`, `docs/runtime-contract.md`, command help text, `.env.stageserve.example`, and spec-local validation docs.
+- [x] Validation scope is explicit: startup, status/inspection, teardown, and failure/recovery paths are required for merge-gate and follow-up completion.
 
-### Shared Style Registry
+Post-design re-check: **PASS**. Phase 0 and Phase 1 artifacts preserve all constitution gates without requiring exceptions.
 
-- Decision: extract semantic style tokens into a reusable guidance module and consume them everywhere.
-- Rationale: the current style language is correct but trapped in `shell.go`.
-- Rejected: maintaining separate style choices for TUI and direct output.
+## Project Structure
 
-### Async Guided Actions
+### Documentation (this feature)
 
-- Decision: move long-running guided actions onto `tea.Cmd`-driven async execution with visible loading state.
-- Rationale: this keeps Bubble Tea responsive and enables spinner/progress work without duplicating lifecycle logic.
-- Rejected: continuing to block the event loop during lifecycle calls.
+```text
+specs/011-guided-experience-and-runtime-hardening/
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
+├── contracts/
+│   └── guided-runtime-hardening-contract.md
+└── tasks.md
+```
 
-### Primary Actions First, Advanced Shelf Second
+### Source Code (repository root)
 
-- Decision: add a small high-value day-2 action set before broader framework-specific utilities.
-- Rationale: open URL, logs, restart, and stop cover the largest real gap while keeping the planner and runtime summary manageable.
-- Rejected: trying to surface every possible project or framework tool in the first follow-up pass.
+```text
+cmd/stage/commands/
+core/config/
+core/guidance/
+core/lifecycle/
+core/onboarding/
+core/state/
+infra/compose/
+observability/status/
+docs/
+install.sh
+```
 
-### Seam Cleanup As Enabler Work
+**Structure Decision**: Keep the existing monorepo CLI structure and implement through existing seams. Do not introduce new top-level packages for this spec.
 
-- Decision: include the review's seam fixes in the same spec so later UX work lands on stable primitives.
-- Rationale: duplicated env parsing, dead compose fields, bypassed state loading, and ignored registry errors are direct blockers for reliable follow-up.
-- Rejected: postponing all internal cleanup until after more TUI work.
+## Phase Plan
 
-## Delivery Split
+### Phase 0: Research And Decisions
 
-### Must Fix Before Merge
+- Confirm bundled installer artifact as the merge-gate runtime-asset fix path.
+- Confirm preflight checks happen before compose startup and are surfaced as StageServe-native remedies.
+- Confirm consistent severity/presentation model strategy across guided/text/direct paths.
+- Confirm minimum async action slice for Bubble Tea execution (`up`, `down`, `attach`, `detach`, recovery retries).
+- Confirm service-selection fallback rules for logs/restart flows.
 
-The current branch should not merge until the following outcome set is complete:
+Output: [research.md](./research.md)
 
-1. Supported installs provision the required runtime compose assets, and drift still fails early with StageServe-native remedies.
-2. Bare `stage` can reach `machine_not_ready` from guided root routing.
-3. `Attach()` no longer ignores registry read failures, and touched lifecycle errors carry remedies.
-4. Sensitive password handling removes command-line password entry and uses env/config-based input only.
-5. Docs/help for the merge-gate repair work land with that work.
-6. Focused Go tests and essential terminal validation cover only the merge-gate repair set.
+### Phase 1: Design And Contracts
 
-This maps to tasks `T001a` through `T001c`, `T001` through `T007`, `T011`, `T041`, `T042`, `T043`, and `T044` in [tasks.md](./tasks.md).
+- Define entities for runtime assets, readiness summaries, lifecycle failure envelopes, service action targets, and async action state.
+- Define contract for merge-gate versus follow-up behavior boundaries.
+- Define quickstart verification matrix with merge-gate and follow-up command sets.
 
-### Follow-up After Merge
+Outputs:
 
-The remaining work in this spec remains planned and valuable, but it does not block merging the current branch once the merge-gate work above is complete. That follow-up scope includes:
+- [data-model.md](./data-model.md)
+- [contracts/guided-runtime-hardening-contract.md](./contracts/guided-runtime-hardening-contract.md)
+- [quickstart.md](./quickstart.md)
 
-1. Remaining seam cleanup such as dead compose options, state-store seam cleanup, env helper deduplication, and partial-failure/concurrency hardening.
-2. Shared style extraction and direct-output consistency.
-3. Guided failure-recovery surfaces for direct commands.
-4. Running-project action expansion.
-5. Confirmation modal, spinner/progress work, and broader Bubble Tea polish.
-6. Broader docs/help alignment for recovery and day-2 features after those features land.
+### Phase 2: Implementation Sequencing (Reference)
 
-## Planned Workstreams
+- Runtime and lifecycle hardening first (`T004a`-`T019`) before UX expansion.
+- Retained root-routing, non-TTY or JSON safety, and recovery-ordering obligations land during the same hardening slice (`T007`, `T010`-`T014`, `T023a`, `T043`-`T045`).
+- Shared presentation parity (`T020`-`T024`) before day-2 surface expansion.
+- Running-project expansion and async confirmation/progress (`T025`-`T037`).
+- Dedicated TUI design polish (`T038`-`T040`).
+- Docs/help + validation at merge gate and follow-up closure (`T041`-`T049`).
 
-### Workstream 1 - Runtime Hardening And Operator Safety
+## Complexity Tracking
 
-1. Repair install/release provisioning of runtime compose assets through a bundled artifact and add pre-flight runtime asset checks.
-2. Route machine readiness into guided root context collection.
-3. Fix attach registry error handling and empty remedy strings.
-4. Remove dead compose options and unsafe secret-handling defaults.
-5. Improve `DownAll()` and route-refresh behavior around partial and concurrent failures.
+No constitution violations accepted for this plan.
 
-### Workstream 2 - Shared Presentation Layer
-
-1. Extract shared style tokens from `shell.go`.
-2. Add reusable text/direct error rendering helpers.
-3. Apply the shared presentation layer to guidance text fallback and direct command error paths.
-4. Validate `NO_COLOR` parity and severity consistency.
-
-### Workstream 3 - Recovery Surfaces
-
-1. Add typed failure situations or structured failure-plan inputs.
-2. Route `stage up` failures into recovery surfaces.
-3. Keep non-TTY recovery output equivalent in content even when not interactive.
-4. Add focused tests for the new planner/recovery paths.
-
-### Workstream 4 - Running-Project Action Expansion
-
-1. Extend runtime summary with service metadata.
-2. Add `open browser`, `view logs`, and `restart service` actions.
-3. Add an advanced-actions path for direct commands and later extensibility.
-4. Keep action ordering safe: inspect first, mutate later.
-
-### Workstream 5 - Confirmation And Long-Running Feedback
-
-1. Replace inline confirmation with an elevated modal treatment.
-2. Add async spinner state for guided actions.
-3. Define cancel/quit semantics for async actions so context cancellation and rollback expectations stay coherent.
-4. Add progress reporting where the orchestrator already has meaningful step boundaries.
-5. Add help/keymap affordances and narrow-width checks for the new surfaces.
-
-### Workstream 6 - Final Cleanup, Docs, And Validation
-
-1. Land small hygiene fixes while touching the affected files.
-2. Update docs/help for env-first secret guidance and richer recovery/day-2 actions.
-3. Run focused validation and terminal checks.
-4. Record deferred items that should remain outside this follow-up spec.
-
-## Proposed Sequence
-
-### Phase 0 - Crosswalk And Scope Lock
-
-1. Translate CR-01 through CR-14 and FR-01 through FR-06 into one consolidated backlog.
-2. Lock what is in scope for this spec versus deferred follow-up.
-3. Preserve spec 007 contract assumptions while allowing implementation cleanup.
-
-### Phase 1 - Runtime Hardening
-
-1. Implement bundled release/install provisioning of runtime compose assets.
-2. Add compose asset pre-flight checks and remedies.
-3. Inject machine readiness into guided context collection.
-4. Fix attach registry handling and remedy completeness.
-5. Remove dead compose detach behavior.
-6. Deduplicate env-truthy parsing and clean state-store access seams.
-7. Improve partial-failure and route-refresh behavior.
-
-If only the merge-gate repair set is being delivered on the current branch, stop after Phase 1 and then run the merge-gate docs/help and validation tasks from [tasks.md](./tasks.md).
-
-### Phase 2 - Shared Output Consistency
-
-1. Extract guidance styles into a shared module.
-2. Update the TUI to consume the extracted styles.
-3. Apply the same styles and hierarchy to text fallback and direct command errors.
-4. Add focused parity checks for `NO_COLOR` and severity rendering.
-
-### Phase 3 - Failure Recovery Paths
-
-1. Add recovery-plan inputs or new failure situations.
-2. Implement `stage up` recovery entrypoints for TTY and non-TTY flows.
-3. Ensure every surfaced error includes next-step guidance and direct command equivalents.
-4. Add tests for machine-not-ready and start-failed paths.
-
-### Phase 4 - Running-Project Expansion
-
-1. Extend runtime summary/service inspection.
-2. Add browser, logs, restart, and advanced-actions handlers.
-3. Keep the default action non-destructive.
-4. Validate these flows in a real terminal.
-
-### Phase 5 - Confirmation And Progress Polish
-
-1. Add bordered modal confirmations.
-2. Add spinner-based async action handling.
-3. Add progress reporting where feasible.
-4. Add help/footer polish for the new interaction states.
-
-### Phase 6 - Final Alignment
-
-1. Update docs and help text tied to the new behavior.
-2. Run focused Go tests.
-3. Run terminal validation for the critical paths.
-4. Record any deferred work such as broader framework-specific utility actions.
-
-The deferred long-term runtime-asset direction is captured in [embedded-runtime-assets-plan.md](./embedded-runtime-assets-plan.md).
-
-## Validation Strategy
-
-### Focused Automated Validation
-
-- `go test ./core/guidance ./cmd/stage/commands ./core/lifecycle ./infra/compose ./core/config`
-- targeted tests for missing compose assets, attach registry failure, `machine_not_ready` reachability, compose detach option cleanup, recovery rendering, and `NO_COLOR` parity
-
-### Terminal Validation
-
-- installer or supported local-install validation that runtime assets are provisioned in the default stack-home layout
-- manual `stage up` with missing assets in `STACK_HOME`
-- bare `stage` on a machine-not-ready path
-- running-project guided shell with open browser, logs, and stop actions
-- destructive confirmation visibility and cancel path
-- long-running guided action feedback in a real TTY
-- `NO_COLOR=1 stage` and non-TTY fallback checks
-
-### Safety Checks
-
-- direct commands remain non-interactive when invoked directly in non-TTY contexts
-- JSON-output commands stay free of styled guidance
-- gateway/shared-route behavior is still correct after attach/down-all/up changes
-
-## Risks And Mitigations
-
-| Risk | Why It Matters | Mitigation |
-|---|---|---|
-| Scope balloons from hardening into a full shell redesign | Work slows and correctness fixes get delayed | Keep primary action set narrow and defer framework-specific extras |
-| Async Bubble Tea integration destabilizes current guided flows | Regressions in core UX | Introduce async execution behind existing action handlers and add focused update-loop tests |
-| Shared styles leak TUI assumptions into non-TTY output | Plain output becomes noisy or fragile | Keep the shared style registry semantic, with `NO_COLOR` and plain-text-safe fallbacks |
-| Asset-path fixes solve only the local symptom | Future stack layout changes regress again | Check for required assets via config-resolved paths and fail early with remedies |
-| Partial-failure fixes widen lifecycle churn | Risk of unrelated regressions | Keep lifecycle changes local, test-driven, and limited to the reviewed seams |
-
-## Deliverables
-
-- new follow-up spec package in this directory
-- runtime-hardening plan mapped from the review findings
-- implementation task list that combines review gaps and field feedback
-- focused validation matrix for code and terminal behavior
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| None | N/A | N/A |

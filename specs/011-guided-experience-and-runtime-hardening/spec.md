@@ -2,189 +2,204 @@
 
 **Feature Branch**: `011-guided-experience-and-runtime-hardening`  
 **Created**: 2026-05-30  
+**Last Updated**: 2026-06-05  
 **Status**: Draft  
-**Input**: Follow-up planning derived from `/docs/code-review-phases-1-4.md`, including review findings CR-01 through CR-14 and field-reported issues FR-01 through FR-06.
+**Input**: Follow-up work from spec 007 recovery intent, code review findings (CR-01..CR-14), and field reports (FR-01..FR-06).
 
-## Decision Overrides
+## Intent
 
-The following decisions are resolved for this follow-up spec and constrain implementation:
+Spec 011 is the execution-focused follow-up that closes the most important gaps left after spec 007.
 
-- This spec is a repair pass driven by code-review findings and field-reported breakage. Essential correctness and operator-safety fixes take priority over broader UX expansion.
-- This spec extends spec 007 rather than reopening its core contract. Bare `stage`, plain-language guidance, and direct-command opt-outs remain the product model.
-- Runtime asset repair in 011 uses a bundled release/install artifact that ships the binary and required stack assets together. Fully embedded binary-owned runtime assets are deferred as a long-term direction and tracked in [embedded-runtime-assets-plan.md](./embedded-runtime-assets-plan.md).
-- Missing runtime assets and lifecycle blockers MUST surface as StageServe-native operator guidance before raw Compose or Docker errors.
-- Guided TUI, text fallback, and direct command error output MUST share one semantic style language.
-- The running-project guided surface MUST expose richer day-2 actions than the current minimal stop/detach set.
-- Destructive confirmations MUST be visually elevated above normal page content.
-- Long-running actions MUST provide visible progress or activity feedback inside the TUI.
-- Secrets and root-level flag ownership cleanup are in scope when they materially affect operator safety.
+This spec does not redefine the StageServe model. It hardens and completes it:
+
+- `stage` remains the simple guided entrypoint.
+- direct commands remain stable for power users and automation.
+- StageServe-first language remains the default user-facing contract.
+
+## Decision Record
+
+The following decisions are fixed for spec 011:
+
+- Merge-gate work is correctness and operator-safety first.
+- Runtime asset provisioning is solved with a bundled installer artifact in 011.
+- Embedded runtime assets in the binary are explicitly deferred (tracked separately).
+- Missing runtime assets and lifecycle blockers must surface as StageServe-native guidance before raw Docker/Compose failure output.
+- Guided TUI, text fallback, and direct command errors must converge on one semantic presentation language.
+- Command-line password entry for MySQL password is removed; existing env-based config ownership remains.
 
 ## Problem Statement
 
-Phases 1 through 4 of spec 007 delivered the core guided shell, planner, text fallback, and visual polish pass. The implementation now works, but the review and field feedback show three remaining gaps.
+The current codebase has a strong guided shell foundation but still fails users in four places:
 
-First, some runtime failures still break through as implementation-shaped errors instead of StageServe-shaped recovery. Missing Compose assets, unreachable machine-readiness states, ignored registry errors, and partial-failure paths all weaken confidence in the operator contract.
+1. Runtime prerequisites can fail late and leak implementation-shaped errors.
+2. Some lifecycle paths remain fragile under partial failure or stale state.
+3. Guided and direct surfaces still feel inconsistent in hierarchy and severity language.
+4. Running-project and long-running interaction quality is still below the intended day-2 standard.
 
-Second, the guided experience is still narrower than the product promise. The running-project screen exposes only a small subset of StageServe's day-2 capabilities, direct `stage up` failures do not open recovery paths, and confirmations are too easy to miss.
+## Scope Model
 
-Third, the TUI and non-TUI surfaces do not yet feel like one product. Semantic colour choices are concentrated in `shell.go`, long-running actions block without feedback, and direct command output does not consistently reuse the same hierarchy or next-step language.
+Spec 011 has two delivery slices:
 
-This follow-up spec turns those gaps into an implementation-ready hardening and expansion plan.
+- Merge-gate slice: hardening and safety repairs required before merge.
+- Follow-up slice: deeper guided UX expansion that can land after merge.
+
+The authoritative task split is maintained in [tasks.md](./tasks.md).
 
 ## User Scenarios And Testing
 
-### User Story 1 - Runtime Failures Explain Themselves In StageServe Terms (Priority: P1)
+### User Story 1 - Runtime Startup Fails Early And Clearly (P1)
 
-As an operator, when StageServe cannot find required runtime assets or hits a lifecycle blocker, I get a clear StageServe error with an actionable next step instead of a raw Compose failure.
+As an operator, I want StageServe to detect missing runtime assets before trying to run Compose, so startup failures are actionable and not confusing.
 
-**Why this priority**: The current compose-path failure is a real broken user path.
+**Independent test**: remove required compose assets and run `stage up`; StageServe must fail with StageServe-native guidance and next action.
 
-**Independent Test**: Install StageServe through the supported bundled release/install path and verify the runtime compose assets are provisioned for the default stack-home layout; then remove or relocate those assets and verify `stage up` reports the missing asset with a StageServe-native remedy.
+**Acceptance scenarios**:
 
-**Acceptance Scenarios**:
+1. **Given** runtime assets are provisioned by the supported installer path, **When** I run `stage up`, **Then** startup does not require manual asset copying.
+2. **Given** a required runtime compose file is missing, **When** I run `stage up`, **Then** StageServe fails before Compose execution and prints a StageServe remediation path.
+3. **Given** the machine cannot satisfy readiness prerequisites, **When** I run bare `stage`, **Then** the planner enters machine-not-ready instead of ready-to-run.
+4. **Given** machine readiness is satisfied but this directory has no StageServe project config, **When** bare `stage` opens, **Then** the default guided action is to set up this directory as a project and preview init before writing `.env.stageserve`.
+5. **Given** project config exists and the project is stopped, **When** bare `stage` opens, **Then** the default guided action is to run this project rather than send the user to setup or recovery first.
+6. **Given** project state indicates failure, drift, or an unknown blocker, **When** bare `stage` opens, **Then** the planner defaults to the least-invasive recovery action and surfaces `stage doctor`, `stage status`, and `stage logs` as ordered recovery affordances.
 
-1. **Given** StageServe is installed through the supported bundled release/install path, **When** the operator runs `stage up` with the default stack-home layout, **Then** the required runtime compose assets are already present without a manual copy step.
-2. **Given** `cfg.SharedFile` or `cfg.StackFile` is missing, **When** `stage up` starts, **Then** StageServe fails before invoking Compose and reports the missing file with a concrete remedy.
-3. **Given** the machine is not ready, **When** the operator runs bare `stage`, **Then** the planner reaches `machine_not_ready` and shows the blocker instead of falling through to project actions.
-4. **Given** `Attach()` cannot read the registry, **When** attach is requested, **Then** the command fails explicitly and does not silently write an empty gateway route set.
+### User Story 2 - Lifecycle Errors Preserve Safety And Explain Recovery (P1)
 
-### User Story 2 - Direct Commands And Guided Output Feel Like One Product (Priority: P1)
+As an operator, I want lifecycle failures to preserve safe state and explain what happened, so I can recover without guessing.
 
-As an operator, whether I use bare `stage`, text fallback, or direct commands, I see the same semantic colour language, status hierarchy, and next-step guidance.
+**Independent test**: induce attach/down/down-all/up failure variants and validate explicit remedies, partial-failure messaging, and safe gateway cleanup behavior.
 
-**Why this priority**: The current product feels split between the guided shell and the direct command path.
+**Acceptance scenarios**:
 
-**Independent Test**: Compare a guided error, a text fallback error, and a direct `stage up` failure and verify they use the same severity language, colour semantics when enabled, and equivalent next-step guidance.
+1. **Given** attach cannot read state registry, **When** attach is requested, **Then** the command fails explicitly and does not silently continue.
+2. **Given** down-all partially fails, **When** StageServe reports the result, **Then** the output identifies partial effects and best-effort cleanup actions.
+3. **Given** route/state races are possible during up, **When** routes are written, **Then** StageServe either refreshes registry first or documents/enforces a single-instance assumption.
 
-**Acceptance Scenarios**:
+### User Story 3 - Guided And Direct Surfaces Speak One Language (P1)
 
-1. **Given** colour output is enabled, **When** a warning, success, or error is rendered in either TUI or text/direct-command output, **Then** the same semantic colour tokens are used.
-2. **Given** `NO_COLOR=1`, **When** any guided or direct output is rendered, **Then** styling falls back cleanly without breaking hierarchy.
-3. **Given** `stage up` fails in a TTY, **When** the failure is shown, **Then** the user gets next-step options rather than a dead-end error line.
+As a user, I want errors and next steps to look and read consistently across guided TUI, text fallback, and direct commands.
 
-### User Story 3 - The Running-Project Screen Covers Real Day-2 Work (Priority: P1)
+**Independent test**: compare equivalent failures across TUI/text/direct paths with and without color.
 
-As a user working on a running project, I can open the site, inspect logs, stop safely, and reach advanced actions from the guided shell without first dropping to raw Docker commands.
+**Acceptance scenarios**:
 
-**Why this priority**: The current running-project screen is too narrow for normal day-2 use.
+1. **Given** semantic states (success/warn/error), **When** output is rendered, **Then** all surfaced modes use the same severity model.
+2. **Given** `NO_COLOR=1`, **When** output is rendered, **Then** hierarchy remains intact without ANSI styling.
+3. **Given** interactive direct-command failure in TTY, **When** the error is shown, **Then** the user is offered actionable recovery guidance.
+4. **Given** a guided or direct failure surface, **When** recovery is rendered, **Then** primary labels use StageServe task language and direct command names appear only as secondary equivalents or advanced fallback.
+5. **Given** non-interactive invocation or JSON mode, **When** guidance or failure output is produced, **Then** interactive copy does not pollute parseable output and documented JSON surfaces remain machine-safe.
 
-**Independent Test**: Start a project, open bare `stage`, and verify the running-project screen offers open URL, logs, stop, and an advanced-actions path while keeping a non-destructive default.
+### User Story 4 - Running-Project Screen Supports Day-2 Work (P1, follow-up)
 
-**Acceptance Scenarios**:
+As a user with a running project, I want to perform common day-2 actions from guided mode without dropping immediately into raw command troubleshooting.
 
-1. **Given** a project is running, **When** the guided shell starts, **Then** the default action is non-destructive and the screen exposes `open browser`, `view logs`, and `stop this project`.
-2. **Given** service metadata is available, **When** the user chooses logs or restart actions, **Then** StageServe scopes the action to a named service.
-3. **Given** a user wants command-level control, **When** they open advanced actions, **Then** StageServe shows direct command equivalents before raw implementation details.
+**Independent test**: run a project and verify open/status/logs/stop flow plus advanced fallback commands.
 
-### User Story 4 - Destructive Actions And Long Operations Feel Deliberate (Priority: P1)
+**Acceptance scenarios**:
 
-As a user, I can clearly see when I am being asked to confirm a consequential action, and I can tell when StageServe is working during long-running tasks.
+1. **Given** project is running, **When** bare `stage` opens, **Then** the default action is non-destructive and inspect/open actions are available first.
+2. **Given** service metadata is sufficient, **When** I choose logs or restart, **Then** service selection is deterministic and explicit.
+3. **Given** metadata is ambiguous, **When** I open advanced actions, **Then** direct command equivalents are shown as fallback.
 
-**Why this priority**: The current confirmation layout and blocking execution model underuse the terminal UI.
+### User Story 5 - Consequential Actions Feel Deliberate (P1, follow-up)
 
-**Independent Test**: Trigger `down` from the guided shell and run `up` on a slow path; verify confirmation is visually elevated and the long-running action shows spinner/progress feedback without freezing the interface.
+As a user, I want destructive actions to stand out and long-running actions to show progress, so I can trust what StageServe is doing.
 
-**Acceptance Scenarios**:
+**Independent test**: perform destructive confirmation and long-running lifecycle actions in TTY and narrow terminal widths.
 
-1. **Given** the user selects a destructive action, **When** confirmation is requested, **Then** the confirmation is rendered as a bordered modal or equivalent elevated surface with explicit confirm/cancel hints.
-2. **Given** a long-running action is in progress, **When** the TUI is active, **Then** the user sees a spinner or progress indicator and a stable cancel/quit story.
-3. **Given** the terminal is narrow, **When** confirmation or loading state is shown, **Then** the screen remains usable and falls back safely.
+**Acceptance scenarios**:
 
-### User Story 5 - Internal Seams Are Safer And Easier To Extend (Priority: P2)
-
-As a maintainer, I can extend the guided shell and lifecycle behavior without fighting duplicated helpers, dead API branches, or bypassed abstractions.
-
-**Why this priority**: Several review findings are not immediately user-facing but directly limit reliable follow-up work.
-
-**Independent Test**: Focused tests cover the cleaned seams and the affected packages no longer carry dead fields, duplicated env parsing, or private state-file path logic.
-
-**Acceptance Scenarios**:
-
-1. **Given** compose startup options are reviewed, **When** the code is read or tested, **Then** there is no dead `Detach` branch that claims to support a false case it ignores.
-2. **Given** guidance context needs project state, **When** it reads state, **Then** it uses the state store seam instead of reconstructing file paths privately.
-3. **Given** `DownAll()` or concurrent `Up()` paths fail partially, **When** the operator gets the result, **Then** the error explains partial effects or the implementation refreshes shared state before writing gateway routes.
+1. **Given** action is destructive, **When** confirmation is shown, **Then** it is visually elevated and explicitly states impact and non-impact.
+2. **Given** lifecycle action takes time, **When** it runs in guided mode, **Then** spinner/progress appears promptly and cancel semantics remain clear.
+3. **Given** narrow terminal dimensions, **When** these surfaces render, **Then** they remain usable and readable.
 
 ## Edge Cases
 
-- `STACK_HOME` exists but is missing one or both compose files.
-- `make install-dev` or installer copy drift leaves outdated runtime assets in place.
-- `NO_COLOR=1`, `STAGESERVE_NO_TUI=1`, or non-TTY execution disables rich presentation.
-- Terminal width is too narrow for a centered confirmation modal.
-- Browser launch is unsupported or `open` / `xdg-open` is unavailable.
-- Runtime service inspection succeeds for some services but not all.
-- A registry read fails during attach or while refreshing routes in `Up()`.
-- `DownAll()` stops some projects before one project fails.
-- Two `stage up` invocations race on registry/gateway updates.
-- Existing scripts or users still attempt `--mysql-password` after command-line password entry is removed.
-
-## Operational Impact
-
-### Operator Surface Impact
-
-- Affected commands and flows: bare `stage`, `stage up`, `stage down`, `stage status`, `stage logs`, `stage doctor`, running-project guided actions, confirmation prompts, and direct command error output.
-- Primary change: more StageServe-native recovery and richer day-2 actions, not a new product model.
-- Direct commands remain automation-safe and must not open TUI in non-interactive contexts.
-
-### Internal Impact
-
-- Affected packages: `core/guidance`, `cmd/stage/commands`, `core/lifecycle`, `infra/compose`, `core/config`, and selected operator docs/help text.
-- Main implementation pattern: reuse current domain seams rather than reimplementing runtime logic inside Bubble Tea models.
+- Stack-home exists but one compose file is missing.
+- State registry is unreadable or stale during attach/up.
+- `STAGESERVE_NO_TUI`, non-TTY, and `NO_COLOR` combinations.
+- `DownAll` succeeds for some projects and fails for others.
+- Browser-launch helper unsupported in current OS/session.
+- Service metadata missing for logs/restart selection.
+- Users/scripts still attempt removed password CLI flag.
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: Bare `stage` MUST be able to reach `machine_not_ready` by running or injecting the existing machine-readiness path into guided context collection.
-- **FR-002**: StageServe MUST check for required compose asset files before invoking Compose and MUST return a StageServe-native remedy when they are missing.
-- **FR-002a**: The supported install and release path MUST use a bundled artifact that delivers the StageServe binary and required runtime compose assets together, installing those assets into the default stack-home layout so a normal installed StageServe binary can run without a manual asset-copy step.
-- **FR-003**: Direct lifecycle failures in interactive terminals MUST offer a recovery surface or equivalent next-step guidance rather than only printing a raw error line.
-- **FR-004**: Guided TUI, text fallback, and direct command error rendering MUST share one semantic style token set for success, warning, and error states.
-- **FR-005**: `NO_COLOR=1` MUST disable those shared style tokens cleanly in all relevant output paths.
-- **FR-006**: The running-project guided surface MUST expose at least `open browser`, `view logs`, and `stop this project`, with a non-destructive default action.
-- **FR-007**: The guided runtime summary MUST carry enough service metadata to support service-scoped logs and restart actions where supported.
-- **FR-008**: Advanced actions in the guided shell MUST show StageServe command equivalents before implementation-level runtime details.
-- **FR-009**: Destructive confirmations MUST state what will change and what will not change, and MUST be rendered with elevated visual prominence over normal surface content.
-- **FR-010**: Long-running guided actions MUST execute without freezing the interface, MUST show spinner or progress feedback, and MUST define a stable cancel/quit path that preserves existing cancellation and rollback semantics.
-- **FR-011**: `Attach()` MUST not ignore registry read failures.
-- **FR-012**: Lifecycle `Wrap()` calls for attach/up/down error paths MUST provide non-empty remedy strings.
-- **FR-013**: Compose orchestration code MUST not expose dead behavior such as a `Detach` option that is ignored.
-- **FR-014**: Guidance context state loading MUST use a shared state-store seam rather than re-implementing file-path-based record loading privately.
-- **FR-015**: `STAGESERVE_NO_TUI` truthy parsing MUST have one canonical implementation reused across command and guidance paths.
-- **FR-016**: The `DownAll()` path MUST report partial failures clearly and SHOULD still attempt best-effort shared gateway cleanup.
-- **FR-017**: The `Up()` gateway route write path MUST either refresh registry state before writing routes or explicitly enforce and document a single-instance assumption.
-- **FR-018**: Operator-facing password handling MUST remove command-line password entry for sensitive values such as MySQL password. StageServe MUST accept `MYSQL_PASSWORD` through the existing shell-environment and `.env.stageserve` config surfaces only; it MUST NOT add a replacement password flag, prompt, or new secret file surface as part of 011.
-- **FR-019**: Docs and command help changed by the merge-gate repair work MUST land with that repair work. Broader docs/help for richer recovery and day-2 actions MUST land with the related follow-up features.
-- **FR-020**: The implementation MUST preserve existing non-TTY, JSON, and direct-command safety guarantees from spec 007.
+- **FR-001**: Bare `stage` must reach machine-not-ready when prerequisites are missing, including runtime asset prerequisites.
+- **FR-001a**: Bare `stage` must route deterministically among machine-not-ready, project-missing-config, ready-to-run, running-project, and recovery-needed states.
+- **FR-001b**: In a project directory without `.env.stageserve`, bare `stage` must prefer `Set up this directory as a project` over machine setup unless machine prerequisites are missing.
+- **FR-001c**: In recovery-needed states, bare `stage` must default to the next least-invasive recovery action and surface `stage doctor`, `stage status`, and `stage logs` as ordered recovery affordances.
+- **FR-002**: StageServe must preflight required runtime compose files before compose startup paths.
+- **FR-003**: Missing runtime assets must return StageServe-native remedies with clear next actions.
+- **FR-004**: Installer/release path for 011 must ship and provision binary plus required runtime assets as a bundled artifact.
+- **FR-005**: Attach must fail explicitly on state/registry read failure.
+- **FR-006**: Lifecycle StepError wrapping in touched attach/up/down paths must include non-empty remedies.
+- **FR-007**: DownAll must report partial failures and preserve best-effort gateway cleanup behavior.
+- **FR-008**: Up route-write path must refresh state before route generation or explicitly enforce/document single-instance assumptions.
+- **FR-009**: Guided, text fallback, and direct command error output must share one semantic severity model.
+- **FR-010**: `NO_COLOR=1` behavior must preserve readable hierarchy in all touched output paths.
+- **FR-011**: `STAGESERVE_NO_TUI` truthy parsing must be canonicalized and reused across command/guidance entry paths.
+- **FR-012**: Root `--mysql-password` flag must be removed; `MYSQL_PASSWORD` remains supported only through existing shell/project/stack env surfaces.
+- **FR-013**: Running-project guided surface must support open/status/logs/stop plus advanced command fallback (follow-up slice).
+- **FR-014**: Service-scoped logs/restart actions must follow deterministic selection rules and ambiguity fallback behavior (follow-up slice).
+- **FR-015**: Destructive confirmations must be visually elevated and include explicit impact language (follow-up slice).
+- **FR-016**: Long-running guided lifecycle actions must run asynchronously with visible progress and stable cancel/quit semantics (follow-up slice).
+- **FR-017**: Touched docs/help/config examples must remain aligned with implemented contract in each delivery slice.
+- **FR-018**: Primary guided surfaces, README first-path sections, and installer onboarding docs must describe StageServe actions first; Docker, Compose, gateway, container, and attach/detach terminology may appear only in advanced, troubleshooting, or command-equivalent contexts.
 
 ### Non-Functional Requirements
 
-- **NFR-001**: The first visible guided response for a long-running action SHOULD appear within 250 ms of user confirmation.
-- **NFR-002**: Runtime hardening changes SHOULD prefer focused seam cleanup over broad refactors.
-- **NFR-003**: Added TUI feedback components SHOULD preserve plain-text fallback parity for primary outcomes and next steps.
-- **NFR-004**: Any new action added to the running-project screen SHOULD reuse existing lifecycle or status seams rather than shelling out ad hoc.
+- **NFR-001**: For long-running guided lifecycle actions, visible activity feedback should appear within 250 ms of confirmation.
+- **NFR-002**: Hardening changes should prefer seam-level fixes over broad architectural rewrites.
+- **NFR-003**: Non-TTY and JSON output safety must not regress.
+- **NFR-003a**: Interactive recovery rendering must not alter non-TTY fallback behavior or `stage setup --json` and `stage doctor --json` output contracts.
+- **NFR-004**: New guided actions should reuse existing lifecycle/status seams rather than ad hoc subprocess logic.
 
 ## Out Of Scope
 
-- A multi-project switcher or dashboard redesign.
-- New persistent config surfaces beyond the current StageServe config model.
-- Full framework-specific action catalogs for every stack in the first pass.
-- Embedding runtime stack assets directly into the binary as part of the 011 repair; that long-term direction is tracked separately in [embedded-runtime-assets-plan.md](./embedded-runtime-assets-plan.md).
-- Reworking spec 010 DNS extraction or unrelated release-pipeline work.
-- Replacing direct CLI commands with TUI-only flows.
+- Multi-project dashboard redesign.
+- New persistent config surfaces.
+- Broad framework-specific action catalogs.
+- Embedded-in-binary runtime assets (tracked separately).
+- Replacing direct commands with TUI-only flows.
 
 ## Key Entities
 
-- **Runtime Asset**: A file StageServe expects in stack home before lifecycle orchestration begins, including shared and project compose files.
-- **Recovery Surface**: A guided or text-rendered post-failure screen that explains the blocker and offers the next safe action.
-- **Shared Style Tokens**: The reusable semantic style definitions for success, warning, error, accent, muted text, confirmation, and footer hints.
-- **Service Summary**: Service-level runtime metadata used by the running-project screen for logs, restart, and other scoped actions.
-- **Confirmation Modal**: The elevated destructive-action confirmation surface rendered separately from normal decision content.
+- **Runtime Asset**: Required stack files needed before compose startup.
+- **Recovery Surface**: Guided/text failure response with blocker + next safe actions.
+- **Semantic Style Tokens**: Shared severity/presentation language across guided/text/direct output.
+- **Service Summary**: Runtime metadata supporting service-scoped day-2 actions.
+- **Elevated Confirmation Surface**: Prominent destructive-action confirmation UI.
+
+## Validation Gates
+
+Merge-gate completion requires:
+
+- runtime asset preflight/remedy behavior validated,
+- machine-not-ready reachability validated,
+- root missing-config and ready-to-run routing validated,
+- status/inspection path validated,
+- teardown path validated,
+- attach/down-all safety behavior validated,
+- at least one failure/recovery path validated,
+- password flag removal and env-based guidance validated,
+- focused automated checks passing,
+- merge-gate manual terminal checks recorded with explicit gaps when daemon-dependent scenarios cannot be exercised.
+
+Follow-up completion requires:
+
+- running-project day-2 action validation,
+- destructive confirmation validation,
+- long-running progress/cancel validation,
+- final docs/help parity checks,
+- deferred-work record updated.
 
 ## Success Criteria
 
-- **SC-001**: Supported StageServe installs use the bundled release/install artifact to provision the required runtime compose assets, and if those assets later drift missing StageServe fails with a StageServe-native remedy instead of a raw compose path error.
-- **SC-002**: Bare `stage` reaches the machine-readiness blocker path in interactive terminals.
-- **SC-003**: Guided and direct output share visibly consistent severity language and `NO_COLOR` behavior.
-- **SC-004**: The running-project screen supports core day-2 tasks beyond stop/detach.
-- **SC-005**: Destructive confirmations and long-running actions feel intentionally designed rather than incidental.
-- **SC-006**: Focused tests cover the hardening seams surfaced by the review.
+- **SC-001**: Users on supported installs do not need manual runtime asset copying to run first startup.
+- **SC-002**: Missing-asset failures are StageServe-native and actionable.
+- **SC-003**: Bare `stage` no longer misclassifies missing prerequisite states as ready-to-run.
+- **SC-004**: Lifecycle hardening paths (attach/down-all/up race assumptions) are explicit and test-covered.
+- **SC-005**: Guided, text, and direct outputs use consistent severity language and no-color behavior.
+- **SC-006**: Running-project/day-2 and long-running UX improvements are validated in real TTY follow-up checks.
