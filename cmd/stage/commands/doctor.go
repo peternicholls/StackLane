@@ -31,18 +31,12 @@ func NewDoctor(shared *SharedFlags) *cobra.Command {
 				return err
 			}
 
-			switch mode {
-			case onboarding.OutputModeJSON:
-				p := onboarding.JSONProjector{W: cmd.OutOrStdout()}
-				if err := p.Project(result); err != nil {
-					return err
-				}
-			case onboarding.OutputModeTUI:
-				p := onboarding.TUIProjector{W: cmd.OutOrStdout(), Title: "StageServe Doctor", Detailed: true}
-				p.Project(result)
-			default:
-				p := onboarding.TextProjector{W: cmd.OutOrStdout(), Title: "StageServe Doctor", Detailed: true}
-				p.Project(result)
+			projector := onboarding.NewProjector(mode, cmd.OutOrStdout(), onboarding.ProjectorOptions{
+				Title:    "StageServe Doctor",
+				Detailed: true,
+			})
+			if err := projector.Project(result); err != nil {
+				return err
 			}
 
 			if result.ExitCode != 0 {

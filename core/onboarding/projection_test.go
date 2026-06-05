@@ -87,6 +87,34 @@ func TestTUIProjector_RendersReadableSections(t *testing.T) {
 	}
 }
 
+func TestNewProjector_AppliesDetailedOptions(t *testing.T) {
+	result := onboarding.BuildResult([]onboarding.StepResult{
+		{
+			ID:      "docker.binary",
+			Label:   "Docker CLI",
+			Status:  onboarding.StatusReady,
+			Message: "docker found at /usr/local/bin/docker",
+		},
+	}, nil, nil)
+
+	buf := &bytes.Buffer{}
+	projector := onboarding.NewProjector(onboarding.OutputModeText, buf, onboarding.ProjectorOptions{
+		Title:    "StageServe Setup",
+		Detailed: true,
+	})
+	if err := projector.Project(result); err != nil {
+		t.Fatalf("project failed: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "StageServe Setup") {
+		t.Fatalf("expected projector output to include custom title, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Checks passed") {
+		t.Fatalf("expected detailed projection output, got:\n%s", out)
+	}
+}
+
 func stringPtr(s string) *string {
 	return &s
 }

@@ -79,14 +79,26 @@ type Projector interface {
 	Project(r CommandResult) error
 }
 
+// ProjectorOptions carries optional rendering hints shared by text and TUI projection.
+type ProjectorOptions struct {
+	Title    string
+	Detailed bool
+}
+
 // NewProjector creates and returns a Projector for the given output mode.
-func NewProjector(mode OutputMode, w io.Writer) Projector {
+
+func NewProjector(mode OutputMode, w io.Writer, opts ...ProjectorOptions) Projector {
+	var options ProjectorOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
 	switch mode {
 	case OutputModeJSON:
 		return &JSONProjector{W: w}
 	case OutputModeTUI:
-		return &TUIProjector{W: w}
+		return &TUIProjector{W: w, Title: options.Title, Detailed: options.Detailed}
 	default:
-		return &TextProjector{W: w}
+		return &TextProjector{W: w, Title: options.Title, Detailed: options.Detailed}
 	}
 }

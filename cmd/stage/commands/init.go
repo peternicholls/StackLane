@@ -65,7 +65,7 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 				}
 				context := collectGuidedContext(cmd.Context(), cfg, capability)
 				plan := buildInitGuidedPlan(context)
-				return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout())
+				return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout(), guidance.WithInitialEditor())
 			}
 
 			// Write the project env file.
@@ -99,18 +99,9 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 
 			result := onboarding.BuildResult([]onboarding.StepResult{step}, nil, []string{"stage up"})
 
-			switch mode {
-			case onboarding.OutputModeJSON:
-				p := onboarding.JSONProjector{W: cmd.OutOrStdout()}
-				if err := p.Project(result); err != nil {
-					return err
-				}
-			case onboarding.OutputModeTUI:
-				p := onboarding.TUIProjector{W: cmd.OutOrStdout()}
-				p.Project(result)
-			default:
-				p := onboarding.TextProjector{W: cmd.OutOrStdout()}
-				p.Project(result)
+			projector := onboarding.NewProjector(mode, cmd.OutOrStdout())
+			if err := projector.Project(result); err != nil {
+				return err
 			}
 
 			if writeErr != nil {
