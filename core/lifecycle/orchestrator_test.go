@@ -209,6 +209,31 @@ func TestOrchestrator_RestartServiceOnlyCallsProjectCompose(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_UpHonorsCanceledContextBeforeSideEffects(t *testing.T) {
+	cfg := newCfg(t)
+	composer := mocks.NewComposer()
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := orch.Up(ctx, cfg)
+	if err == nil {
+		t.Fatal("expected canceled context error")
+	}
+	stepErr, ok := lifecycle.AsStepError(err)
+	if !ok || stepErr.Step != "cancelled" {
+		t.Fatalf("step error=%+v ok=%v", stepErr, ok)
+	}
+	if !strings.Contains(stepErr.Remedy, "stage status") {
+		t.Fatalf("remedy=%q", stepErr.Remedy)
+	}
+	if len(composer.UpCalls) != 0 || len(composer.DownCalls) != 0 {
+		t.Fatalf("canceled context should not call compose: up=%+v down=%+v", composer.UpCalls, composer.DownCalls)
+	}
+}
+
 func TestOrchestrator_UpRollbackOnHealthFail(t *testing.T) {
 	cfg := newCfg(t)
 	dc := mocks.NewDocker()

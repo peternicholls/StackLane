@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/peternicholls/stageserve/core/config"
@@ -239,6 +240,23 @@ func TestRenderTextUsesPlainLanguageWhileKeepingDirectCommands(t *testing.T) {
 	}
 }
 
+func TestRenderTextIncludesConfirmationImpactCopy(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	plan := Plan(ctx)
+
+	buf := &bytes.Buffer{}
+	if err := RenderText(buf, plan); err != nil {
+		t.Fatalf("render text: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{"Confirmation:", "Stops http://demo.test; project files and settings are not changed."} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("text output missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestRenderTextUsesSeverityWithoutANSI(t *testing.T) {
 	buf := &bytes.Buffer{}
 	ctx := baseContext()
@@ -418,7 +436,7 @@ func TestShellMachineReadinessEnterUsesSetupAction(t *testing.T) {
 	}
 	model := newShellModel(Plan(ctx), true)
 	called := false
-	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+	model.actionHandler = func(_ context.Context, action GuidedAction) (ActionResult, error) {
 		called = true
 		if action.ID != "setup" {
 			t.Fatalf("action id=%q want setup", action.ID)
@@ -505,7 +523,7 @@ func TestShellRestartConfirmationNamesService(t *testing.T) {
 		t.Fatal("expected restart confirmation")
 	}
 	view := next.View()
-	for _, want := range []string{"Restart apache", "StageServe will restart one project service.", "Your files and project settings will not be changed.", "Service: apache"} {
+	for _, want := range []string{"Confirm restart", "Restart apache", "Restarts only apache; project files and settings are not changed."} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("restart confirmation missing %q:\n%s", want, view)
 		}
@@ -517,7 +535,7 @@ func TestShellDoctorShortcutRunsFooterDiagnostics(t *testing.T) {
 	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
 	model := newShellModel(Plan(ctx), true)
 	called := false
-	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+	model.actionHandler = func(_ context.Context, action GuidedAction) (ActionResult, error) {
 		called = true
 		if action.ID != "doctor" {
 			t.Fatalf("action id=%q want doctor", action.ID)
@@ -561,7 +579,7 @@ func TestShellConfirmationRequiresExplicitConfirm(t *testing.T) {
 	called := false
 
 	model := newShellModel(plan, true)
-	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+	model.actionHandler = func(_ context.Context, action GuidedAction) (ActionResult, error) {
 		called = true
 		return ActionResult{Plan: Plan(baseContext()), Message: "Created project settings."}, nil
 	}
@@ -601,7 +619,7 @@ func TestShellConfirmationCanCancelWithoutAction(t *testing.T) {
 	ctx := baseContext()
 	ctx.ProjectEnvExists = false
 	model := newShellModel(Plan(ctx), true)
-	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+	model.actionHandler = func(context.Context, GuidedAction) (ActionResult, error) {
 		t.Fatal("action should not run after cancel")
 		return ActionResult{}, nil
 	}
@@ -639,19 +657,121 @@ func TestShellDriftRecoveryStopConfirmationUsesStopCopy(t *testing.T) {
 		t.Fatal("expected confirmation state")
 	}
 	view := next.View()
-	for _, want := range []string{"Step 5: stop this project first", "StageServe will stop this project.", "Your files will not be touched.", "http://demo.test will no longer respond until you run it again."} {
+	for _, want := range []string{"Confirm stop", "Step 5: stop this project first", "Stops http://demo.test; project files and settings are not changed.", "Default: cancel", "y confirm", "enter cancel"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("confirmation view missing %q:\n%s", want, view)
 		}
 	}
 
-	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	next = updated.(shellModel)
 	if next.confirming {
 		t.Fatal("confirmation state should close after cancel")
 	}
-	if !strings.Contains(next.View(), "No changes made.") {
+	if !strings.Contains(next.View(), "No changes made. The project is still running.") {
 		t.Fatalf("cancel message missing after recovery confirmation cancel:\n%s", next.View())
+	}
+}
+
+func TestShellDestructiveConfirmationRequiresY(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	model := newShellModel(Plan(ctx), true)
+	for index, action := range model.plan.DecisionItems {
+		if action.ID == "down" {
+			model.cursor = index
+			break
+		}
+	}
+	called := false
+	model.actionHandler = func(_ context.Context, action GuidedAction) (ActionResult, error) {
+		called = true
+		if action.ID != "down" {
+			t.Fatalf("action id=%q want down", action.ID)
+		}
+		return ActionResult{Plan: Plan(ctx), Message: "Project is stopped."}, nil
+	}
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := updated.(shellModel)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next = updated.(shellModel)
+	if called {
+		t.Fatal("enter should cancel destructive confirmation")
+	}
+	if !strings.Contains(next.View(), "No changes made. The project is still running.") {
+		t.Fatalf("destructive enter cancel missing copy:\n%s", next.View())
+	}
+
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next = updated.(shellModel)
+	updated, cmd := next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	next = driveShellCommand(t, updated.(shellModel), cmd)
+	if !called {
+		t.Fatal("y should confirm destructive action")
+	}
+	if !strings.Contains(next.View(), "Project is stopped.") {
+		t.Fatalf("confirmed action message missing:\n%s", next.View())
+	}
+}
+
+func TestShellLifecycleActionShowsProgressWithinLatencyBudget(t *testing.T) {
+	model := newShellModel(Plan(baseContext()), true)
+	model.actionHandler = func(context.Context, GuidedAction) (ActionResult, error) {
+		t.Fatal("handler should not run during initial update")
+		return ActionResult{}, nil
+	}
+
+	started := time.Now()
+	updated, cmd := model.runAction(GuidedAction{ID: "up", Label: "Run this project"})
+	elapsed := time.Since(started)
+	if cmd == nil {
+		t.Fatal("expected async command")
+	}
+	if elapsed > 250*time.Millisecond {
+		t.Fatalf("initial progress took %s, want <=250ms", elapsed)
+	}
+	next := updated.(shellModel)
+	if !next.loading {
+		t.Fatal("expected loading state")
+	}
+	view := next.View()
+	for _, want := range []string{"Starting this project...", "esc cancel", "Press esc to request cancellation"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("loading view missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestShellCancelRequestsContextCancellationAndIgnoresStaleResult(t *testing.T) {
+	ctx := baseContext()
+	model := newShellModel(Plan(ctx), true)
+	canceled := false
+	model.actionHandler = func(actionCtx context.Context, action GuidedAction) (ActionResult, error) {
+		<-actionCtx.Done()
+		canceled = true
+		return ActionResult{Plan: Plan(ctx), Message: "stale success"}, nil
+	}
+
+	updated, cmd := model.runAction(GuidedAction{ID: "up", Label: "Run this project"})
+	next := updated.(shellModel)
+	batchMsg := cmd().(tea.BatchMsg)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	canceledModel := updated.(shellModel)
+	if canceledModel.loading {
+		t.Fatal("loading should close after cancel")
+	}
+	if !strings.Contains(canceledModel.View(), "Cancellation requested") {
+		t.Fatalf("cancel message missing:\n%s", canceledModel.View())
+	}
+	msg := batchMsg[1]().(actionCompleteMsg)
+	if !canceled {
+		t.Fatal("action context was not canceled")
+	}
+	updated, _ = canceledModel.Update(msg)
+	finalModel := updated.(shellModel)
+	if strings.Contains(finalModel.View(), "stale success") {
+		t.Fatalf("stale action result should be ignored:\n%s", finalModel.View())
 	}
 }
 
@@ -695,7 +815,7 @@ func TestShellProjectSettingsEditorUpdatesPreviewAndActionInputs(t *testing.T) {
 	}
 
 	var captured GuidedAction
-	next.actionHandler = func(action GuidedAction) (ActionResult, error) {
+	next.actionHandler = func(_ context.Context, action GuidedAction) (ActionResult, error) {
 		captured = action
 		return ActionResult{Plan: Plan(baseContext()), Message: "Created project settings."}, nil
 	}
@@ -723,7 +843,7 @@ func TestShellUtilitySurfaceOpensAndCloses(t *testing.T) {
 	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
 	plan := Plan(ctx)
 	model := newShellModel(plan, true)
-	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+	model.actionHandler = func(context.Context, GuidedAction) (ActionResult, error) {
 		return ActionResult{
 			Plan: plan,
 			Utility: &UtilitySurface{

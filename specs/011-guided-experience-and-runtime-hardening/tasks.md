@@ -126,13 +126,13 @@ Non-negotiable design rules for implementation tasks:
 
 **Independent Test**: Validate elevated confirmations, async progress feedback, and cancellation semantics in real TTY paths.
 
-- [ ] T032 [US5] Replace inline destructive confirmations with elevated modal-style confirmation surfaces in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go; follow the confirmation-sheet grammar and default rare destructive choices toward the non-destructive option where applicable.
-- [ ] T033 [US5] Add explicit impact/non-impact confirmation copy for destructive actions in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/core/guidance/text.go; name the exact path, URL, project, or service affected.
-- [ ] T034 [US5] Move long-running lifecycle guided actions to async `tea.Cmd` handling in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/cmd/stage/commands/tui.go; loading surfaces must name the current user-goal step instead of generic `Working…` copy.
-- [ ] T035 [US5] Implement cancel/quit semantics for async lifecycle actions in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/core/lifecycle/orchestrator.go; explain what cancellation can and cannot stop in user language.
-- [ ] T036 [US5] Add spinner/progress messaging hooks for async lifecycle actions in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go; use semantic status text and avoid decorative animation-only feedback.
-- [ ] T036a [US5] Add explicit latency verification for first visible progress feedback (<= 250 ms) in /Users/peternicholls/Dev/stageserve/core/guidance/ tests and record criteria in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T037 [P] [US5] Add confirmation/progress narrow-width and keymap tests in /Users/peternicholls/Dev/stageserve/core/guidance/planner_test.go; assert target values remain visible, footer help is contextual, and text does not rely on colour to communicate risk.
+- [x] T032 [US5] Replace inline destructive confirmations with elevated modal-style confirmation surfaces in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go; follow the confirmation-sheet grammar and default rare destructive choices toward the non-destructive option where applicable.
+- [x] T033 [US5] Add explicit impact/non-impact confirmation copy for destructive actions in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/core/guidance/text.go; name the exact path, URL, project, or service affected.
+- [x] T034 [US5] Move long-running lifecycle guided actions to async `tea.Cmd` handling in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/cmd/stage/commands/tui.go; loading surfaces must name the current user-goal step instead of generic `Working…` copy.
+- [x] T035 [US5] Implement cancel/quit semantics for async lifecycle actions in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/core/lifecycle/orchestrator.go; explain what cancellation can and cannot stop in user language.
+- [x] T036 [US5] Add spinner/progress messaging hooks for async lifecycle actions in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go; use semantic status text and avoid decorative animation-only feedback.
+- [x] T036a [US5] Add explicit latency verification for first visible progress feedback (<= 250 ms) in /Users/peternicholls/Dev/stageserve/core/guidance/ tests and record criteria in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [x] T037 [P] [US5] Add confirmation/progress narrow-width and keymap tests in /Users/peternicholls/Dev/stageserve/core/guidance/planner_test.go; assert target values remain visible, footer help is contextual, and text does not rely on colour to communicate risk.
 
 **Checkpoint**: Destructive and long-running interactions are explicit, stable, and observable.
 

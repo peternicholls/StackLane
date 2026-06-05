@@ -1,6 +1,7 @@
 package guidance
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -24,7 +25,7 @@ func RunShell(plan NextActionPlan, capability TUICapability, input io.Reader, ou
 	return err
 }
 
-type ActionHandler func(GuidedAction) (ActionResult, error)
+type ActionHandler func(context.Context, GuidedAction) (ActionResult, error)
 
 type ShellOption func(*shellConfig)
 
@@ -60,12 +61,16 @@ type shellModel struct {
 	noColor       bool
 	actionHandler ActionHandler
 	// async action execution
-	loading bool
-	spinner spinner.Model
+	loading       bool
+	loadingAction GuidedAction
+	actionCancel  context.CancelFunc
+	actionRunID   int
+	spinner       spinner.Model
 }
 
 // actionCompleteMsg is sent by the async action goroutine when it finishes.
 type actionCompleteMsg struct {
+	runID  int
 	result ActionResult
 	err    error
 }
@@ -93,7 +98,12 @@ func (m shellModel) Init() tea.Cmd { return nil }
 func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case actionCompleteMsg:
+		if msg.runID != m.actionRunID {
+			return m, nil
+		}
 		m.loading = false
+		m.loadingAction = GuidedAction{}
+		m.actionCancel = nil
 		if msg.err != nil {
 			m.message = msg.err.Error()
 			return m, nil
@@ -118,7 +128,9 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyMsg:
 		if m.loading {
-			// absorb all key input while an action is running
+			if msg.String() == "esc" || msg.String() == "ctrl+c" || msg.String() == "q" {
+				return m.cancelAction(), nil
+			}
 			return m, nil
 		}
 		if m.editing {
@@ -175,7 +187,7 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m shellModel) View() string {
 	if m.loading {
-		return renderLoadingView(m.plan, m.width, m.noColor, m.spinner)
+		return renderLoadingView(m.plan, m.width, m.noColor, m.spinner, m.loadingAction)
 	}
 	return renderShellViewState(m.plan, m.width, m.cursor, m.showDetails, m.noColor, m.message, m.confirming, m.editing, m.editCursor, m.editDraft, m.utility)
 }
@@ -195,15 +207,30 @@ func (m shellModel) selectedInteractiveAction() (GuidedAction, bool) {
 }
 
 func (m shellModel) updateConfirmation(key string) (tea.Model, tea.Cmd) {
+	action, ok := m.selectedAction()
 	switch key {
 	case "ctrl+c":
 		return m, tea.Quit
+	case "enter":
+		if destructiveAction(action) {
+			m.confirming = false
+			m.message = cancellationMessage(action)
+			return m, nil
+		}
+		if !ok {
+			m.confirming = false
+			return m, nil
+		}
+		if action.ID == "stop_here" {
+			return m, tea.Quit
+		}
+		m.confirming = false
+		return m.runAction(action)
 	case "esc", "n":
 		m.confirming = false
-		m.message = "No changes made."
+		m.message = cancellationMessage(action)
 		return m, nil
-	case "enter", "y":
-		action, ok := m.selectedAction()
+	case "y":
 		if !ok {
 			m.confirming = false
 			return m, nil
@@ -215,6 +242,18 @@ func (m shellModel) updateConfirmation(key string) (tea.Model, tea.Cmd) {
 		return m.runAction(action)
 	}
 	return m, nil
+}
+
+func (m shellModel) cancelAction() shellModel {
+	if m.actionCancel != nil {
+		m.actionCancel()
+	}
+	m.loading = false
+	m.loadingAction = GuidedAction{}
+	m.actionCancel = nil
+	m.actionRunID++
+	m.message = "Cancellation requested. StageServe asked the current step to stop. If Docker already started work, it may finish safely."
+	return m
 }
 
 func (m shellModel) updateUtility(message tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -235,13 +274,18 @@ func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
 	}
 	action = m.actionWithDraft(action)
 	m.loading = true
+	m.loadingAction = action
 	m.message = ""
 	handler := m.actionHandler
+	actionCtx, cancel := context.WithCancel(context.Background())
+	m.actionCancel = cancel
+	m.actionRunID++
+	runID := m.actionRunID
 	return m, tea.Batch(
 		m.spinner.Tick,
 		func() tea.Msg {
-			result, err := handler(action)
-			return actionCompleteMsg{result: result, err: err}
+			result, err := handler(actionCtx, action)
+			return actionCompleteMsg{runID: runID, result: result, err: err}
 		},
 	)
 }
@@ -501,28 +545,36 @@ func renderShellView(plan NextActionPlan, width, cursor int, showDetails, noColo
 }
 
 // renderLoadingView shows a spinner screen while an async action is running.
-func renderLoadingView(plan NextActionPlan, width int, noColor bool, spin spinner.Model) string {
+func renderLoadingView(plan NextActionPlan, width int, noColor bool, spin spinner.Model, action GuidedAction) string {
 	styles := shellStylesFor(noColor)
 	var b strings.Builder
 	lineWidth := clampInt(width-4, 42, 96)
 	renderSurfaceHeader(&b, lineWidth, surfaceLabel(plan, 0, false, false, nil), styles)
 	fmt.Fprintf(&b, "  %s\n\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	fmt.Fprintf(&b, "  %s %s\n", spin.View(), styles.muted.Render("Working…"))
+	fmt.Fprintf(&b, "  %s %s\n", spin.View(), styles.muted.Render(actionProgressText(action)))
+	fmt.Fprintf(&b, "  %s\n", styles.muted.Render(actionProgressDetail(action)))
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render("please wait"))
+	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render("esc cancel • please wait"))
 	return b.String()
 }
 
 // renderConfirmationModal renders a bordered confirmation panel for the given action.
 func renderConfirmationModal(builder *strings.Builder, action GuidedAction, plan NextActionPlan, lineWidth int, styles shellStyles, noColor bool) {
 	var inner strings.Builder
-	fmt.Fprintf(&inner, "%s\n", styles.label.Render(action.Label))
+	fmt.Fprintf(&inner, "%s\n", styles.label.Render(confirmationTitle(action)))
+	fmt.Fprintf(&inner, "%s\n\n", styles.muted.Render(action.Label))
 	fmt.Fprintf(&inner, "%s\n", styles.muted.Render(action.Description))
 	renderConfirmationBody(&inner, action, plan, styles)
-	if lineWidth < 58 {
-		fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[enter] confirm  [n/esc] cancel"))
+	if destructiveAction(action) {
+		if lineWidth < 58 {
+			fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[y] confirm  [enter/esc] cancel"))
+		} else {
+			fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[y] confirm  [enter] cancel  [esc] cancel"))
+		}
+	} else if lineWidth < 58 {
+		fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[enter/y] confirm  [esc] cancel"))
 	} else {
-		fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[enter] confirm  [n] cancel  [esc] cancel"))
+		fmt.Fprintf(&inner, "\n%s", styles.footer.Render("[enter] confirm  [y] confirm  [esc] cancel"))
 	}
 
 	panel := lipgloss.NewStyle().
@@ -544,6 +596,78 @@ func confirmBorderColor(action GuidedAction) string {
 		return "6" // cyan — constructive
 	default:
 		return "8" // dim — neutral
+	}
+}
+
+func confirmationTitle(action GuidedAction) string {
+	if destructiveAction(action) {
+		return "Confirm stop"
+	}
+	if action.ID == "restart_service" {
+		return "Confirm restart"
+	}
+	return "Confirm change"
+}
+
+func destructiveAction(action GuidedAction) bool {
+	switch action.ID {
+	case "down", "detach":
+		return true
+	default:
+		return false
+	}
+}
+
+func cancellationMessage(action GuidedAction) string {
+	if action.ID == "" {
+		return "No changes made."
+	}
+	switch action.ID {
+	case "down":
+		return "No changes made. The project is still running."
+	case "detach":
+		return "No changes made. The project is still added to StageServe."
+	case "restart_service":
+		return "No changes made. The service was not restarted."
+	default:
+		return "No changes made."
+	}
+}
+
+func actionProgressText(action GuidedAction) string {
+	switch action.ID {
+	case "up":
+		return "Starting this project..."
+	case "attach":
+		return "Adding this project to StageServe..."
+	case "down":
+		return "Stopping this project..."
+	case "detach":
+		return "Removing this project from StageServe..."
+	case "restart_service":
+		service := action.Inputs["service"]
+		if service != "" {
+			return "Restarting " + service + "..."
+		}
+		return "Restarting selected service..."
+	case "setup":
+		return "Checking setup requirements..."
+	case "doctor":
+		return "Running diagnostics..."
+	default:
+		if action.Label != "" {
+			return action.Label + "..."
+		}
+		return "Working..."
+	}
+}
+
+func actionProgressDetail(action GuidedAction) string {
+	switch action.ID {
+	case "up", "attach", "down", "detach", "restart_service":
+		return "Press esc to request cancellation. If Docker has already started work, StageServe will wait for a safe stop."
+	default:
+		return "StageServe is preparing the next screen."
 	}
 }
 
@@ -595,7 +719,7 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 	}
 
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	footer := footerHint(plan, lineWidth, utility, confirming, editing)
+	footer := footerHint(plan, cursor, lineWidth, utility, confirming, editing)
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
 }
@@ -698,39 +822,59 @@ func workItemMarker(status string) string {
 
 func renderConfirmationBody(builder *strings.Builder, action GuidedAction, plan NextActionPlan, styles shellStyles) {
 	builder.WriteByte('\n')
-	localURL := visibleDefaultValue(plan, "Local URL")
-	switch action.ID {
-	case "init", "init_here":
-		builder.WriteString("  StageServe will update the settings file shown above.\n")
-		builder.WriteString("  It will not run the project or change your application files.\n")
-	case "overwrite_init":
-		builder.WriteString("  StageServe will update the settings file shown above.\n")
-		builder.WriteString("  It will not run the project or change your application files.\n")
-	case "down":
-		builder.WriteString("  StageServe will stop this project.\n")
-		builder.WriteString("  Your files will not be touched.\n")
-		if localURL != "" {
-			fmt.Fprintf(builder, "  %s will no longer respond until you run it again.\n", localURL)
+	for _, line := range strings.Split(confirmationDetail(action, plan), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
 		}
+		fmt.Fprintf(builder, "  %s\n", styles.muted.Render(line))
+	}
+}
+
+func confirmationSummary(action GuidedAction, plan NextActionPlan) string {
+	localURL := visibleDefaultValue(plan, "Local URL")
+	settingsPath := visibleDefaultValue(plan, "Settings file")
+	projectName := visibleDefaultValue(plan, "Site name")
+	if projectName == "" {
+		projectName = visibleDefaultValue(plan, "Project")
+	}
+	switch action.ID {
+	case "init", "init_here", "overwrite_init":
+		if settingsPath != "" {
+			return "Writes project settings to " + settingsPath + "; application files are not changed and the project is not started."
+		}
+		return "Writes project settings; application files are not changed and the project is not started."
+	case "down":
+		if localURL != "" {
+			return "Stops " + localURL + "; project files and settings are not changed."
+		}
+		return "Stops this project; project files and settings are not changed."
 	case "restart_service":
 		service := action.Inputs["service"]
-		builder.WriteString("  StageServe will restart one project service.\n")
-		builder.WriteString("  Your files and project settings will not be changed.\n")
 		if service != "" {
-			fmt.Fprintf(builder, "  Service: %s\n", service)
+			return "Restarts only " + service + "; project files and settings are not changed."
 		}
+		return "Restarts one project service; project files and settings are not changed."
 	case "detach":
-		builder.WriteString("  StageServe will remove this project from StageServe.\n")
-		builder.WriteString("  .env.stageserve and your application files will stay as they are.\n")
 		if localURL != "" {
-			fmt.Fprintf(builder, "  %s will no longer be routed by StageServe.\n", localURL)
+			return "Removes StageServe routing for " + localURL + "; .env.stageserve and application files stay in place."
 		}
+		return "Removes this project from StageServe routing; .env.stageserve and application files stay in place."
 	case "stop_here":
-		builder.WriteString("  StageServe will leave this project as it is.\n")
-		builder.WriteString("  No file or runtime change will be made.\n")
+		return "Leaves this project as it is; no file or runtime change is made."
 	default:
-		fmt.Fprintf(builder, "  %s\n", styles.muted.Render("StageServe will apply the selected change after confirmation."))
+		if projectName != "" {
+			return "Applies the selected change to " + projectName + " after confirmation."
+		}
+		return "Applies the selected change after confirmation."
 	}
+}
+
+func confirmationDetail(action GuidedAction, plan NextActionPlan) string {
+	summary := confirmationSummary(action, plan)
+	if action.ID == "down" || action.ID == "detach" {
+		return summary + "\nDefault: cancel. Press y only if you want this change."
+	}
+	return summary
 }
 
 func visibleDefaultValue(plan NextActionPlan, label string) string {
@@ -886,11 +1030,17 @@ func workSectionTone(plan NextActionPlan) sectionTone {
 	}
 }
 
-func footerHint(plan NextActionPlan, lineWidth int, utility *UtilitySurface, confirming, editing bool) string {
+func footerHint(plan NextActionPlan, cursor, lineWidth int, utility *UtilitySurface, confirming, editing bool) string {
 	if utility != nil {
 		return utilityFooter(*utility)
 	}
 	if confirming {
+		if action, ok := selectedAction(plan, cursor); ok && destructiveAction(action) {
+			if lineWidth < 58 {
+				return "y confirm • enter cancel • esc"
+			}
+			return "y confirm • enter cancel • esc cancel"
+		}
 		if lineWidth < 58 {
 			return "enter confirm • n cancel • esc"
 		}

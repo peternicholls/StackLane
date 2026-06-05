@@ -42,6 +42,11 @@ func RenderText(w io.Writer, plan NextActionPlan) error {
 			if _, err := fmt.Fprintf(w, "  %d. %s\n     %s\n", i+1, action.Label, action.Description); err != nil {
 				return err
 			}
+			if action.RequiresConfirmation {
+				if _, err := fmt.Fprintf(w, "     Confirmation: %s\n", confirmationSummary(action, plan)); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	if len(plan.WorkItems) > 0 {

@@ -90,8 +90,8 @@ func runGuidedTUI(ctx context.Context, cfg config.ProjectConfig, plan guidance.N
 		return fmt.Errorf("failed to build orchestrator: %w", err)
 	}
 	runner := guidedRuntimeRunner{orch: orch}
-	handler := func(action guidance.GuidedAction) (guidance.ActionResult, error) {
-		return handleGuidedAction(ctx, cfg, runner, capability, action)
+	handler := func(actionCtx context.Context, action guidance.GuidedAction) (guidance.ActionResult, error) {
+		return handleGuidedAction(actionCtx, cfg, runner, capability, action)
 	}
 	shellOpts := append([]guidance.ShellOption{guidance.WithActionHandler(handler)}, opts...)
 	return guidance.RunShell(plan, capability, os.Stdin, output, shellOpts...)

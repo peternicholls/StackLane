@@ -132,6 +132,7 @@ Validate:
 
 - elevated destructive confirmation surfaces,
 - async spinner/progress for long-running lifecycle actions,
+- first visible progress feedback appears within 250 ms of confirmation,
 - cancellation behavior and safe return states,
 - narrow-width terminal usability.
 

@@ -52,6 +52,9 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	if err := ValidateRuntimeAssets(cfg); err != nil {
 		return err
 	}
+	if err := lifecycleContextErr(ctx, cfg); err != nil {
+		return err
+	}
 
 	// Step 1: ensure shared network exists.
 	if err := o.ensureSharedNetwork(ctx, cfg); err != nil {
@@ -226,6 +229,9 @@ func runtimeAssetRemedy(cfg config.ProjectConfig, label, path string) string {
 // Down stops the project, removes project-owned runtime state, and clears any active route.
 func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
 	cfg = resolveSharedGatewayPorts(cfg)
+	if err := lifecycleContextErr(ctx, cfg); err != nil {
+		return err
+	}
 
 	if err := o.stopProject(ctx, cfg, removeVolumes); err != nil {
 		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
@@ -293,6 +299,9 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 // Attach updates state + gateway to mark the project routed.
 func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
+	if err := lifecycleContextErr(ctx, cfg); err != nil {
+		return err
+	}
 
 	rec, err := o.D.State.Load(cfg.Slug)
 	if err != nil {
@@ -335,6 +344,9 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 // Detach stops the project, removes its runtime state, and clears its route.
 func (o *Orchestrator) Detach(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
+	if err := lifecycleContextErr(ctx, cfg); err != nil {
+		return err
+	}
 
 	if err := o.stopProject(ctx, cfg, false); err != nil {
 		return Wrap("compose-down", cfg.Slug, err, "Inspect docker compose output above.")
@@ -357,6 +369,9 @@ func (o *Orchestrator) RestartService(ctx context.Context, cfg config.ProjectCon
 	service = strings.TrimSpace(service)
 	if service == "" {
 		return Wrap("restart-service", cfg.Slug, errors.New("service name is required"), "Choose a specific service before restarting it.")
+	}
+	if err := lifecycleContextErr(ctx, cfg); err != nil {
+		return err
 	}
 	if err := ValidateRuntimeAssets(cfg); err != nil {
 		return err
@@ -438,6 +453,13 @@ func (o *Orchestrator) stopProject(ctx context.Context, cfg config.ProjectConfig
 		EnvFile:       envFile,
 		RemoveVolumes: removeVolumes,
 	})
+}
+
+func lifecycleContextErr(ctx context.Context, cfg config.ProjectConfig) error {
+	if err := ctx.Err(); err != nil {
+		return Wrap("cancelled", cfg.Slug, err, "Run `stage status` to check this project before retrying.")
+	}
+	return nil
 }
 
 func (o *Orchestrator) syncSharedGateway(ctx context.Context, cfg config.ProjectConfig, preferredSlug string) error {
