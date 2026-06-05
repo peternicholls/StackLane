@@ -470,6 +470,29 @@ func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_DownWithoutEnvFileStillRunsComposeDown(t *testing.T) {
+	cfg := newCfg(t)
+	composer := mocks.NewComposer()
+	gw := mocks.NewGateway()
+	st := mocks.NewState()
+	pa := mocks.NewPorts(ports.Allocation{})
+	_ = st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached})
+
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: gw, State: st, Ports: pa,
+	})
+
+	if err := orch.Down(context.Background(), cfg, false); err != nil {
+		t.Fatalf("Down without env file: %v", err)
+	}
+	if len(composer.DownCalls) != 1 {
+		t.Fatalf("down calls=%d want 1", len(composer.DownCalls))
+	}
+	if composer.DownCalls[0].EnvFile != "" {
+		t.Fatalf("expected compose down without --env-file, got envfile=%q", composer.DownCalls[0].EnvFile)
+	}
+}
+
 func TestOrchestrator_DetachRemovesStateAndReloadsGateway(t *testing.T) {
 	cfg := newCfg(t)
 	composer := mocks.NewComposer()

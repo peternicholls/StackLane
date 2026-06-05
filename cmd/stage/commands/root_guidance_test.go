@@ -61,12 +61,22 @@ func TestRootNoArgsPrintsGuidanceWithoutMutatingProject(t *testing.T) {
 	projectDir := t.TempDir()
 	stackHome := t.TempDir()
 	stateDir := filepath.Join(stackHome, ".stageserve-state")
+	stackDir := filepath.Join(stackHome, "stacks", "20i")
 
 	// Pre-create the state directory to simulate a set-up machine so the cheap
 	// readiness heuristic does not fire and the test exercises the
 	// project_missing_config path.
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatalf("create state dir: %v", err)
+	}
+	if err := os.MkdirAll(stackDir, 0o755); err != nil {
+		t.Fatalf("create stack dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stackDir, "docker-compose.shared.yml"), []byte("services: {}\n"), 0o644); err != nil {
+		t.Fatalf("write shared compose: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stackDir, "docker-compose.20i.yml"), []byte("services: {}\n"), 0o644); err != nil {
+		t.Fatalf("write project compose: %v", err)
 	}
 
 	root := NewRoot("test")
@@ -188,6 +198,38 @@ func TestGuidedInitActionWritesEnvAndReplans(t *testing.T) {
 	}
 	if len(result.Plan.DecisionItems) == 0 || result.Plan.DecisionItems[0].Label != "Run this project" {
 		t.Fatalf("expected run action after init, got %+v", result.Plan.DecisionItems)
+	}
+}
+
+func TestGuidedInitActionDryRunDoesNotWriteEnv(t *testing.T) {
+	projectDir := t.TempDir()
+	cfg := config.ProjectConfig{
+		Name:            "demo",
+		Slug:            "demo",
+		Dir:             projectDir,
+		StateDir:        filepath.Join(t.TempDir(), "state"),
+		StackKind:       "20i",
+		StackHome:       t.TempDir(),
+		Hostname:        "demo.test",
+		SiteSuffix:      "test",
+		DocRoot:         filepath.Join(projectDir, "public_html"),
+		DocRootRelative: "public_html",
+		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
+		DryRun:          true,
+	}
+
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "init"})
+	if err != nil {
+		t.Fatalf("handleGuidedAction: %v", err)
+	}
+	if !strings.Contains(result.Message, "Dry run") {
+		t.Fatalf("message=%q", result.Message)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, ".env.stageserve")); !os.IsNotExist(err) {
+		t.Fatalf("dry-run should not write .env.stageserve, stat err=%v", err)
+	}
+	if result.Plan.Situation != guidance.SituationProjectMissingConf {
+		t.Fatalf("situation=%s want %s", result.Plan.Situation, guidance.SituationProjectMissingConf)
 	}
 }
 

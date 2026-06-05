@@ -117,6 +117,52 @@ func CheckStateDir(stateDir string) StepResult {
 	}
 }
 
+// CheckRequiredFile verifies that a required StageServe file exists.
+func CheckRequiredFile(stepID, label, path string) StepResult {
+	if strings.TrimSpace(path) == "" {
+		return StepResult{
+			ID:      stepID,
+			Label:   label,
+			Status:  StatusError,
+			Message: "required file path is empty",
+		}
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return StepResult{
+				ID:      stepID,
+				Label:   label,
+				Status:  StatusNeedsAction,
+				Message: fmt.Sprintf("required file is missing at %s", path),
+			}
+		}
+		return StepResult{
+			ID:      stepID,
+			Label:   label,
+			Status:  StatusError,
+			Message: fmt.Sprintf("cannot access required file %s: %v", path, err),
+		}
+	}
+
+	if info.IsDir() {
+		return StepResult{
+			ID:      stepID,
+			Label:   label,
+			Status:  StatusError,
+			Message: fmt.Sprintf("expected a file at %s, but found a directory", path),
+		}
+	}
+
+	return StepResult{
+		ID:      stepID,
+		Label:   label,
+		Status:  StatusReady,
+		Message: fmt.Sprintf("found %s", path),
+	}
+}
+
 // CheckPort checks whether a TCP port on 127.0.0.1 is free.
 // stepID should be "port.80" or "port.443".
 func CheckPort(stepID string, port int) StepResult {

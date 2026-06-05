@@ -6,22 +6,28 @@ import (
 )
 
 func buildMachineReadinessResult(shared *SharedFlags, suffix string) (onboarding.CommandResult, error) {
-	stateDir, err := resolveOnboardingStateDir(shared)
+	cfg, err := loadConfig(shared)
 	if err != nil {
 		return onboarding.CommandResult{}, err
 	}
-	return onboarding.BuildResult(machineReadinessSteps(stateDir, suffix), nil, nil), nil
+	checkSuffix := cfg.SiteSuffix
+	if suffix != "" {
+		checkSuffix = suffix
+	}
+	return onboarding.BuildResult(machineReadinessSteps(cfg, checkSuffix), nil, nil), nil
 }
 
 func buildMachineReadinessResultForConfig(cfg config.ProjectConfig) onboarding.CommandResult {
-	return onboarding.BuildResult(machineReadinessSteps(cfg.StateDir, cfg.SiteSuffix), nil, nil)
+	return onboarding.BuildResult(machineReadinessSteps(cfg, cfg.SiteSuffix), nil, nil)
 }
 
-func machineReadinessSteps(stateDir, suffix string) []onboarding.StepResult {
+func machineReadinessSteps(cfg config.ProjectConfig, suffix string) []onboarding.StepResult {
 	return []onboarding.StepResult{
 		onboarding.CheckDockerBinary(""),
 		onboarding.CheckDockerDaemon(),
-		onboarding.CheckStateDir(stateDir),
+		onboarding.CheckStateDir(cfg.StateDir),
+		onboarding.CheckRequiredFile("stack.shared_file", "Shared runtime file", cfg.SharedFile),
+		onboarding.CheckRequiredFile("stack.project_file", "Project runtime file", cfg.StackFile),
 		onboarding.CheckPort("port.80", 80),
 		onboarding.CheckPort("port.443", 443),
 		onboarding.CheckDNS(suffix),

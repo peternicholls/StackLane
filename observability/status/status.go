@@ -64,7 +64,7 @@ func (r *Reporter) One(ctx context.Context, slug string) (ProjectStatus, error) 
 			return r.byRow(ctx, row)
 		}
 	}
-	return ProjectStatus{}, fmt.Errorf("status: project %q not found", slug)
+	return ProjectStatus{}, fmt.Errorf("status: project %q not found: %w", slug, state.ErrNotFound)
 }
 
 // OneBySelector reports a single project matched by slug, project name,

@@ -225,3 +225,21 @@ func TestInit_NextStepsJSONOutputDoesNotEmbedNewline(t *testing.T) {
 		t.Fatalf("next_steps=%s, want %s", got, want)
 	}
 }
+
+func TestInit_DryRunDoesNotCreateEnvFile(t *testing.T) {
+	dir := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--dry-run", "init", "--project-dir", dir, "--non-interactive", "--no-tui"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".env.stageserve")); !os.IsNotExist(err) {
+		t.Fatalf("dry-run should not create .env.stageserve, stat err=%v", err)
+	}
+	if !strings.Contains(buf.String(), "would be created") {
+		t.Fatalf("expected dry-run output to describe planned write, got:\n%s", buf.String())
+	}
+}

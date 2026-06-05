@@ -3,8 +3,8 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -41,11 +41,11 @@ func NewStatus(flags *SharedFlags) *cobra.Command {
 					return err
 				}
 				if len(results) == 0 {
-					fmt.Println("no projects recorded")
+					fmt.Fprintln(cmd.OutOrStdout(), "no projects recorded")
 					return nil
 				}
 				for _, p := range results {
-					fmt.Fprint(os.Stdout, status.Render(p))
+					fmt.Fprint(cmd.OutOrStdout(), status.Render(p))
 				}
 				return nil
 			}
@@ -56,9 +56,19 @@ func NewStatus(flags *SharedFlags) *cobra.Command {
 				one, err = r.One(ctx, cfg.Slug)
 			}
 			if err != nil {
-				return err
+				if projectSelector == "" && errors.Is(err, state.ErrNotFound) {
+					one = status.ProjectStatus{
+						Slug:            cfg.Slug,
+						Name:            cfg.Name,
+						Hostname:        cfg.Hostname,
+						AttachmentState: state.StateDown,
+						Drift:           []string{"not added to StageServe yet"},
+					}
+				} else {
+					return err
+				}
 			}
-			fmt.Fprint(os.Stdout, status.Render(one))
+			fmt.Fprint(cmd.OutOrStdout(), status.Render(one))
 			return nil
 		},
 	}

@@ -35,24 +35,39 @@ func cheapReadinessHeuristic(_ context.Context, cfg config.ProjectConfig) guidan
 	if cfg.StateDir == "" {
 		return guidance.MachineReadinessSummary{}
 	}
-	if _, err := os.Stat(cfg.StateDir); os.IsNotExist(err) {
-		return guidance.MachineReadinessSummary{
-			Checked:      true,
-			Blocked:      true,
-			Status:       "needs_action",
-			NextFixLabel: "Set up this computer",
-			NextCommand:  "stage setup",
-			WorkItems: []guidance.WorkItem{
-				{
-					Label:         "Set up this computer",
-					Status:        "needs attention",
-					Description:   "StageServe is not set up on this computer yet. Run stage setup to check and fix each requirement.",
-					DirectCommand: "stage setup",
-				},
-			},
-		}
+
+	items := []guidance.WorkItem{}
+	addItem := func(label, description string) {
+		items = append(items, guidance.WorkItem{
+			Label:         label,
+			Status:        "needs attention",
+			Description:   description,
+			DirectCommand: "stage setup",
+		})
 	}
-	return guidance.MachineReadinessSummary{}
+
+	if _, err := os.Stat(cfg.StateDir); os.IsNotExist(err) {
+		addItem("Set up this computer", "StageServe is not set up on this computer yet. Run stage setup to check and fix each requirement.")
+	}
+	if _, err := os.Stat(cfg.SharedFile); os.IsNotExist(err) {
+		addItem("Restore shared runtime file", "StageServe could not find the shared runtime file for this stack home.")
+	}
+	if _, err := os.Stat(cfg.StackFile); os.IsNotExist(err) {
+		addItem("Restore project runtime file", "StageServe could not find the project runtime file for this stack home.")
+	}
+
+	if len(items) == 0 {
+		return guidance.MachineReadinessSummary{}
+	}
+
+	return guidance.MachineReadinessSummary{
+		Checked:      true,
+		Blocked:      true,
+		Status:       "needs_action",
+		NextFixLabel: items[0].Label,
+		NextCommand:  "stage setup",
+		WorkItems:    items,
+	}
 }
 
 func guidedRuntimeStatus(ctx context.Context, cfg config.ProjectConfig, record *state.Record) guidance.RuntimeSummary {

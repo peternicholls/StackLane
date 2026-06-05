@@ -338,6 +338,11 @@ func (o *Orchestrator) reloadSharedGateway(ctx context.Context, cfg config.Proje
 
 func (o *Orchestrator) stopProject(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
 	envFile := envFilePath(cfg)
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		envFile = ""
+	} else if err != nil {
+		return err
+	}
 	return o.D.Compose.Down(ctx, compose.DownOptions{
 		ProjectDir:    cfg.Dir,
 		ComposeFile:   cfg.StackFile,

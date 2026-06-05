@@ -73,6 +73,10 @@ func checkDescription(id string) string {
 		return "The Docker daemon must be running before any container can start."
 	case "state.dir":
 		return "Stores StageServe runtime data: ports, certs, project registry."
+	case "stack.shared_file":
+		return "Shared runtime file required to start local URL routing."
+	case "stack.project_file":
+		return "Project runtime file required to run each project stack."
 	case "port.80":
 		return "Port 80 must be free for the local HTTP gateway to bind to it."
 	case "port.443":
@@ -91,6 +95,8 @@ func compactMessage(s StepResult) string {
 	switch s.ID {
 	case "state.dir":
 		return "exists"
+	case "stack.shared_file", "stack.project_file":
+		return "available"
 	case "port.80", "port.443":
 		return "available"
 	case "mkcert.binary":

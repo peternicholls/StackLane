@@ -129,13 +129,22 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 	case "init", "init_here", "overwrite_init":
 		settings := projectEnvSettingsFromGuidedAction(cfg, action)
 		force := action.ID == "overwrite_init"
-		result, err := onboarding.WriteProjectEnvWithSettings(cfg.Dir, settings, force)
-		if err != nil {
-			return guidance.ActionResult{}, err
+		var message string
+		if cfg.DryRun {
+			plannedAction, err := plannedProjectEnvAction(cfg.Dir, settings, force)
+			if err != nil {
+				return guidance.ActionResult{}, err
+			}
+			message = projectEnvDryRunMessage(plannedAction, filepath.Join(cfg.Dir, ".env.stageserve"))
+		} else {
+			result, err := onboarding.WriteProjectEnvWithSettings(cfg.Dir, settings, force)
+			if err != nil {
+				return guidance.ActionResult{}, err
+			}
+			message = projectEnvActionMessage(result, filepath.Join(cfg.Dir, ".env.stageserve"))
 		}
 		nextConfig := reloadGuidedConfig(cfg)
 		context := collectGuidedContext(ctx, nextConfig, capability)
-		message := projectEnvActionMessage(result, filepath.Join(cfg.Dir, ".env.stageserve"))
 		return guidance.ActionResult{Plan: guidance.Plan(context), Message: message}, nil
 	case "up", "attach", "down", "detach":
 		if err := executeGuidedAction(action.ID, ctx, cfg, runner); err != nil {
@@ -304,6 +313,19 @@ func projectEnvActionMessage(action onboarding.InitAction, path string) string {
 		return "Updated project settings at " + path + "."
 	default:
 		return "Project settings checked at " + path + "."
+	}
+}
+
+func projectEnvDryRunMessage(action onboarding.InitAction, path string) string {
+	switch action {
+	case onboarding.InitActionCreated:
+		return "Dry run: would create project settings at " + path + "."
+	case onboarding.InitActionSkipped:
+		return "Dry run: project settings already exist at " + path + "."
+	case onboarding.InitActionOverwritten:
+		return "Dry run: would update project settings at " + path + "."
+	default:
+		return "Dry run: checked project settings at " + path + "."
 	}
 }
 

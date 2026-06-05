@@ -68,8 +68,16 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 				return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout(), guidance.WithInitialEditor())
 			}
 
-			// Write the project env file.
-			action, writeErr := onboarding.WriteProjectEnvWithSettings(root, projectEnvSettingsFromInitFlags(shared, f), f.Force)
+			settings := projectEnvSettingsFromInitFlags(shared, f)
+
+			// Write the project env file unless dry-run is requested.
+			action := onboarding.InitActionSkipped
+			var writeErr error
+			if shared.DryRun {
+				action, writeErr = plannedProjectEnvAction(root, settings, f.Force)
+			} else {
+				action, writeErr = onboarding.WriteProjectEnvWithSettings(root, settings, f.Force)
+			}
 
 			// Build a result step from the write outcome.
 			var step onboarding.StepResult
@@ -87,6 +95,20 @@ func NewInit(shared *SharedFlags) *cobra.Command {
 					Label:   ".env.stageserve",
 					Status:  onboarding.StatusReady,
 					Message: ".env.stageserve already exists (use --force to overwrite)",
+				}
+			case shared.DryRun && action == onboarding.InitActionOverwritten:
+				step = onboarding.StepResult{
+					ID:      "init.env_file",
+					Label:   ".env.stageserve",
+					Status:  onboarding.StatusReady,
+					Message: fmt.Sprintf(".env.stageserve would be overwritten in %s", root),
+				}
+			case shared.DryRun && action == onboarding.InitActionCreated:
+				step = onboarding.StepResult{
+					ID:      "init.env_file",
+					Label:   ".env.stageserve",
+					Status:  onboarding.StatusReady,
+					Message: fmt.Sprintf(".env.stageserve would be created in %s", root),
 				}
 			default:
 				step = onboarding.StepResult{
@@ -181,7 +203,12 @@ func loadInitGuidedConfig(shared *SharedFlags, flags *initFlags) (config.Project
 	merged.ProjectDir = initProjectDir(shared, flags)
 	merged.SiteName = initSiteName(shared, flags)
 	merged.DocRoot = initDocRoot(shared, flags)
-	return loadConfig(&merged)
+	cfg, err := loadConfig(&merged)
+	if err != nil {
+		return config.ProjectConfig{}, err
+	}
+	cfg.DryRun = shared.DryRun
+	return cfg, nil
 }
 
 func projectEnvSettingsFromInitFlags(shared *SharedFlags, flags *initFlags) onboarding.ProjectEnvSettings {
@@ -190,6 +217,20 @@ func projectEnvSettingsFromInitFlags(shared *SharedFlags, flags *initFlags) onbo
 		DocRoot:    normalizeProjectEnvDocRoot(initDocRoot(shared, flags)),
 		SiteSuffix: normalizeProjectEnvSuffix(shared.SiteSuffix),
 	}
+}
+
+func plannedProjectEnvAction(projectRoot string, settings onboarding.ProjectEnvSettings, force bool) (onboarding.InitAction, error) {
+	preview, err := onboarding.PreviewProjectEnvWithSettings(projectRoot, settings)
+	if err != nil {
+		return "", err
+	}
+	if preview.Exists {
+		if force {
+			return onboarding.InitActionOverwritten, nil
+		}
+		return onboarding.InitActionSkipped, nil
+	}
+	return onboarding.InitActionCreated, nil
 }
 
 // initExitError wraps a non-zero exit code for the init command.
