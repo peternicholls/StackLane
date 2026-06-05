@@ -1,6 +1,7 @@
 package guidance
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -144,6 +145,44 @@ func TestPlanProjectDownUsesAttachWhenRuntimeAlreadyRunning(t *testing.T) {
 	}
 }
 
+func TestPlanProjectRunningKeepsDetachOutOfPrimaryChoices(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+
+	plan := Plan(ctx)
+
+	for _, item := range plan.DecisionItems {
+		if item.ID == "detach" {
+			t.Fatalf("running-project choices should not expose detach directly: %+v", plan.DecisionItems)
+		}
+	}
+	if len(plan.DirectCommands) != 3 || plan.DirectCommands[2] != "stage down" {
+		t.Fatalf("direct commands=%+v", plan.DirectCommands)
+	}
+}
+
+func TestRenderTextUsesPlainLanguageWhileKeepingDirectCommands(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateDown}
+	ctx.Runtime = RuntimeSummary{Checked: true, Running: true, Status: "running"}
+
+	buf := &bytes.Buffer{}
+	if err := RenderText(buf, Plan(ctx)); err != nil {
+		t.Fatalf("render text: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{"Add this project to StageServe", "Check this project's status", "Direct commands:", "stage attach", "stage down"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("text output missing %q:\n%s", want, out)
+		}
+	}
+	for _, unwanted := range []string{"Attach", "Detach", "current state"} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("text output leaked %q:\n%s", unwanted, out)
+		}
+	}
+}
+
 func TestPlanUnknownErrorExposesOrderedRecoverySteps(t *testing.T) {
 	plan := Plan(ContextFromError("/tmp/demo", TUICapability{}, os.ErrInvalid))
 
@@ -230,7 +269,7 @@ func TestShellRecoveryViewPrioritizesRecoveryStepsBeforeChoices(t *testing.T) {
 
 func TestShellNarrowViewStacksKeyFacts(t *testing.T) {
 	view := renderShellView(Plan(baseContext()), 48, 0, false, true)
-	for _, want := range []string{"Project", "Site name\n    demo", "Local URL\n    http://demo.test", "↑/↓ move • enter choose • ? details • q"} {
+	for _, want := range []string{"Project", "Site name\n    demo", "Local URL\n    http://demo.test", "↑/↓ move • enter choose • c commands • d doctor • q"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("narrow shell view missing %q:\n%s", want, view)
 		}
@@ -268,6 +307,124 @@ func TestMachineReadinessFromResultUsesOnboardingSemantics(t *testing.T) {
 	}
 }
 
+func driveShellCommand(t *testing.T, model shellModel, cmd tea.Cmd) shellModel {
+	t.Helper()
+	queue := []tea.Cmd{cmd}
+	for step := 0; len(queue) > 0 && step < 16; step++ {
+		current := queue[0]
+		queue = queue[1:]
+		if current == nil {
+			continue
+		}
+		msg := current()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			queue = append([]tea.Cmd(batch), queue...)
+			continue
+		}
+		updated, nextCmd := model.Update(msg)
+		next, ok := updated.(shellModel)
+		if !ok {
+			t.Fatalf("updated model type %T", updated)
+		}
+		model = next
+		if nextCmd != nil {
+			queue = append(queue, nextCmd)
+		}
+		if !model.loading {
+			return model
+		}
+	}
+	return model
+}
+
+func TestShellMachineReadinessEnterUsesSetupAction(t *testing.T) {
+	ctx := baseContext()
+	ctx.MachineReadiness = MachineReadinessSummary{
+		Checked:   true,
+		Blocked:   true,
+		WorkItems: []WorkItem{{Label: "Docker daemon", Status: "needs attention", DirectCommand: "stage setup"}},
+	}
+	model := newShellModel(Plan(ctx), true)
+	called := false
+	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+		called = true
+		if action.ID != "setup" {
+			t.Fatalf("action id=%q want setup", action.ID)
+		}
+		return ActionResult{Plan: Plan(ctx)}, nil
+	}
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := driveShellCommand(t, updated.(shellModel), cmd)
+	if !called {
+		t.Fatal("expected setup action to run")
+	}
+	if !strings.Contains(next.View(), "c commands") || !strings.Contains(next.View(), "d doctor") {
+		t.Fatalf("machine readiness footer missing review hint:\n%s", next.View())
+	}
+}
+
+func TestShellCommandShortcutShowsDirectCommands(t *testing.T) {
+	model := newShellModel(Plan(baseContext()), true)
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	if cmd != nil {
+		t.Fatal("command shortcut should not start async work")
+	}
+	next := updated.(shellModel)
+	if next.utility == nil || next.utility.Title != "Direct commands" {
+		t.Fatalf("command utility=%+v", next.utility)
+	}
+	view := next.View()
+	for _, want := range []string{"Direct commands", "stage up", "stage status"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("command utility missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestShellDoctorShortcutRunsFooterDiagnostics(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectState = &state.Record{AttachmentState: state.StateAttached}
+	model := newShellModel(Plan(ctx), true)
+	called := false
+	model.actionHandler = func(action GuidedAction) (ActionResult, error) {
+		called = true
+		if action.ID != "doctor" {
+			t.Fatalf("action id=%q want doctor", action.ID)
+		}
+		return ActionResult{
+			Plan:    Plan(ctx),
+			Utility: &UtilitySurface{Title: "Doctor report", Body: "StageServe Doctor", DismissOnAnyKey: true},
+		}, nil
+	}
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+	next := driveShellCommand(t, updated.(shellModel), cmd)
+	if !called {
+		t.Fatal("expected doctor shortcut to run")
+	}
+	if next.utility == nil || next.utility.Title != "Doctor report" {
+		t.Fatalf("doctor utility=%+v", next.utility)
+	}
+}
+
+func TestShellInitialEditorOptionStartsInEditMode(t *testing.T) {
+	ctx := baseContext()
+	ctx.ProjectEnvExists = false
+	model := newShellModelWithConfig(Plan(ctx), true, shellConfig{startEditing: true})
+
+	if !model.editing {
+		t.Fatal("expected initial editor mode")
+	}
+	view := model.View()
+	for _, want := range []string{"Project settings", "Local URL", "Saving updates the preview only"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("initial editor view missing %q:\n%s", want, view)
+		}
+	}
+}
+
 func TestShellConfirmationRequiresExplicitConfirm(t *testing.T) {
 	ctx := baseContext()
 	ctx.ProjectEnvExists = false
@@ -294,18 +451,12 @@ func TestShellConfirmationRequiresExplicitConfirm(t *testing.T) {
 	if !next.confirming {
 		t.Fatal("expected confirmation state")
 	}
-	if view := next.View(); !strings.Contains(view, "Confirm change") || !strings.Contains(view, "enter confirm") {
+	if view := next.View(); !strings.Contains(view, "Create project settings") || !strings.Contains(view, "enter confirm") {
 		t.Fatalf("confirmation view missing expected copy:\n%s", view)
 	}
 
 	updated, cmd = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if cmd != nil {
-		t.Fatal("confirmed action should not quit")
-	}
-	next, ok = updated.(shellModel)
-	if !ok {
-		t.Fatalf("updated model type %T", updated)
-	}
+	next = driveShellCommand(t, updated.(shellModel), cmd)
 	if !called {
 		t.Fatal("action did not run after confirmation")
 	}
@@ -343,7 +494,7 @@ func TestShellDriftRecoveryStopConfirmationUsesStopCopy(t *testing.T) {
 	ctx := baseContext()
 	ctx.Warnings = []string{"Project settings do not match the recorded project path."}
 	model := newShellModel(Plan(ctx), true)
-	model.cursor = 2
+	model.cursor = 3
 
 	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd != nil {
@@ -354,7 +505,7 @@ func TestShellDriftRecoveryStopConfirmationUsesStopCopy(t *testing.T) {
 		t.Fatal("expected confirmation state")
 	}
 	view := next.View()
-	for _, want := range []string{"Confirm change", "StageServe will stop this project.", "Your files will not be touched.", "http://demo.test will no longer respond until you run it again."} {
+	for _, want := range []string{"Step 4: stop this project first", "StageServe will stop this project.", "Your files will not be touched.", "http://demo.test will no longer respond until you run it again."} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("confirmation view missing %q:\n%s", want, view)
 		}
@@ -416,8 +567,8 @@ func TestShellProjectSettingsEditorUpdatesPreviewAndActionInputs(t *testing.T) {
 	}
 	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	next = updated.(shellModel)
-	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	next = updated.(shellModel)
+	updated, cmd = next.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next = driveShellCommand(t, updated.(shellModel), cmd)
 
 	if captured.Inputs["site_name"] != "demox" {
 		t.Fatalf("site_name input=%q", captured.Inputs["site_name"])
@@ -449,8 +600,8 @@ func TestShellUtilitySurfaceOpensAndCloses(t *testing.T) {
 		}, nil
 	}
 
-	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	next := updated.(shellModel)
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := driveShellCommand(t, updated.(shellModel), cmd)
 	if next.utility == nil || !strings.Contains(next.View(), "demo logs") {
 		t.Fatalf("utility view missing:\n%s", next.View())
 	}

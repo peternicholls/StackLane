@@ -18,8 +18,7 @@ func RunShell(plan NextActionPlan, capability TUICapability, input io.Reader, ou
 	for _, opt := range opts {
 		opt(&config)
 	}
-	model := newShellModel(plan, capability.NoColor)
-	model.actionHandler = config.actionHandler
+	model := newShellModelWithConfig(plan, capability.NoColor, config)
 	program := tea.NewProgram(model, tea.WithInput(input), tea.WithOutput(output))
 	_, err := program.Run()
 	return err
@@ -31,11 +30,18 @@ type ShellOption func(*shellConfig)
 
 type shellConfig struct {
 	actionHandler ActionHandler
+	startEditing  bool
 }
 
 func WithActionHandler(handler ActionHandler) ShellOption {
 	return func(config *shellConfig) {
 		config.actionHandler = handler
+	}
+}
+
+func WithInitialEditor() ShellOption {
+	return func(config *shellConfig) {
+		config.startEditing = true
 	}
 }
 
@@ -71,6 +77,15 @@ func newShellModel(plan NextActionPlan, noColor bool) shellModel {
 		s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 	}
 	return shellModel{plan: plan, width: 80, noColor: noColor, spinner: s}
+}
+
+func newShellModelWithConfig(plan NextActionPlan, noColor bool, config shellConfig) shellModel {
+	model := newShellModel(plan, noColor)
+	model.actionHandler = config.actionHandler
+	if config.startEditing {
+		model = model.startEditing()
+	}
+	return model
 }
 
 func (m shellModel) Init() tea.Cmd { return nil }
@@ -118,6 +133,12 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
+		case "c":
+			m.utility = commandUtilitySurface(m.plan)
+			m.showDetails = false
+			return m, nil
+		case "d":
+			return m.runFooterAction(GuidedAction{ID: "doctor", Kind: "footer", Label: "Run diagnostics", Description: "Show the current StageServe diagnostics for this project."})
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -129,7 +150,7 @@ func (m shellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "?":
 			m.showDetails = !m.showDetails
 		case "enter":
-			action, ok := m.selectedAction()
+			action, ok := m.selectedInteractiveAction()
 			if !ok {
 				return m, nil
 			}
@@ -159,6 +180,13 @@ func (m shellModel) selectedAction() (GuidedAction, bool) {
 		return GuidedAction{}, false
 	}
 	return m.plan.DecisionItems[m.cursor], true
+}
+
+func (m shellModel) selectedInteractiveAction() (GuidedAction, bool) {
+	if action, ok := m.selectedAction(); ok {
+		return action, true
+	}
+	return setupAction(m.plan)
 }
 
 func (m shellModel) updateConfirmation(key string) (tea.Model, tea.Cmd) {
@@ -211,6 +239,14 @@ func (m shellModel) runAction(action GuidedAction) (tea.Model, tea.Cmd) {
 			return actionCompleteMsg{result: result, err: err}
 		},
 	)
+}
+
+func (m shellModel) runFooterAction(action GuidedAction) (tea.Model, tea.Cmd) {
+	if action.ID == "show_commands" {
+		m.utility = commandUtilitySurface(m.plan)
+		return m, nil
+	}
+	return m.runAction(action)
 }
 
 func (m shellModel) startEditing() shellModel {
@@ -416,10 +452,14 @@ func renderProjectSettingsEditor(builder *strings.Builder, draft projectSettings
 	}
 	for fieldIndex, field := range fields {
 		marker := " "
+		labelStyle := styles.label
+		valueStyle := lipgloss.NewStyle()
 		if fieldIndex == editCursor {
 			marker = "▶"
+			labelStyle = styles.focus
+			valueStyle = styles.focus
 		}
-		fmt.Fprintf(builder, "  %s %s  %s\n", styles.accent.Render(marker), styles.label.Render(fmt.Sprintf("%-13s", field.label)), field.value)
+		fmt.Fprintf(builder, "  %s %s  %s\n", styles.accent.Render(marker), labelStyle.Render(fmt.Sprintf("%-13s", field.label)), valueStyle.Render(field.value))
 	}
 	fmt.Fprintf(builder, "\n  %s  %s\n", styles.label.Render(fmt.Sprintf("%-13s", "Local URL")), draft.localURL())
 	fmt.Fprintf(builder, "  %s\n", styles.muted.Render("Saving updates the preview only; confirm project settings to write the file."))
@@ -550,7 +590,7 @@ func renderShellViewState(plan NextActionPlan, width, cursor int, showDetails, n
 	}
 
 	fmt.Fprintf(&b, "\n  %s\n", styles.rule.Render(strings.Repeat("─", lineWidth)))
-	footer := footerHint(lineWidth, utility, confirming, editing)
+	footer := footerHint(plan, lineWidth, utility, confirming, editing)
 	fmt.Fprintf(&b, "  %s\n\n", styles.footer.Render(footer))
 	return b.String()
 }
@@ -572,19 +612,7 @@ func renderVisibleDefaultsSection(builder *strings.Builder, defaults []VisibleDe
 	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("Key facts", lineWidth, sectionToneNeutral, styles))
 	stacked := lineWidth < 58
 	for _, item := range defaults {
-		if stacked {
-			fmt.Fprintf(builder, "  %s\n", styles.label.Render(item.Label))
-			fmt.Fprintf(builder, "    %s\n", item.Value)
-			if item.Note != "" {
-				fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Note))
-			}
-			continue
-		}
-		fmt.Fprintf(builder, "  %s  %s", styles.label.Render(fmt.Sprintf("%-13s", item.Label)), item.Value)
-		if item.Note != "" {
-			fmt.Fprintf(builder, "  %s", styles.muted.Render(item.Note))
-		}
-		builder.WriteByte('\n')
+		renderVisibleDefaultRow(builder, item, stacked, styles)
 	}
 }
 
@@ -594,12 +622,7 @@ func renderDecisionSection(builder *strings.Builder, items []GuidedAction, curso
 	}
 	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle("What you can do", lineWidth, sectionToneAction, styles))
 	for itemIndex, item := range items {
-		marker := " "
-		if itemIndex == cursor {
-			marker = "▶"
-		}
-		fmt.Fprintf(builder, "  %s %s\n", styles.accent.Render(marker), styles.label.Render(item.Label))
-		fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Description))
+		renderDecisionRow(builder, item, itemIndex == cursor, styles)
 		if itemIndex < len(items)-1 {
 			builder.WriteByte('\n')
 		}
@@ -611,19 +634,13 @@ func renderWorkSection(builder *strings.Builder, plan NextActionPlan, lineWidth 
 		return
 	}
 	fmt.Fprintf(builder, "\n%s\n\n", sectionTitle(workSectionTitle(plan), lineWidth, workSectionTone(plan), styles))
+	highlighted := false
 	for _, item := range plan.WorkItems {
-		marker := workItemMarker(item.Status)
-		fmt.Fprintf(builder, "  %s %s", styles.accent.Render(marker), styles.label.Render(item.Label))
-		if item.Status != "" {
-			fmt.Fprintf(builder, "  %s", styles.muted.Render(item.Status))
+		isActive := !highlighted && item.Status != "ready"
+		if isActive {
+			highlighted = true
 		}
-		builder.WriteByte('\n')
-		if item.Description != "" {
-			fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Description))
-		}
-		if item.DirectCommand != "" {
-			fmt.Fprintf(builder, "    Direct command: %s\n", styles.command.Render(item.DirectCommand))
-		}
+		renderWorkItemRow(builder, item, isActive, styles)
 	}
 }
 
@@ -680,10 +697,10 @@ func renderConfirmationBody(builder *strings.Builder, action GuidedAction, plan 
 	switch action.ID {
 	case "init", "init_here":
 		builder.WriteString("  StageServe will update the settings file shown above.\n")
-		builder.WriteString("  It will not start containers or change your application files.\n")
+		builder.WriteString("  It will not run the project or change your application files.\n")
 	case "overwrite_init":
 		builder.WriteString("  StageServe will update the settings file shown above.\n")
-		builder.WriteString("  It will not start containers or change your application files.\n")
+		builder.WriteString("  It will not run the project or change your application files.\n")
 	case "down":
 		builder.WriteString("  StageServe will stop this project.\n")
 		builder.WriteString("  Your files will not be touched.\n")
@@ -734,6 +751,64 @@ func utilityFooter(utility UtilitySurface) string {
 	return "q return • esc return"
 }
 
+func commandUtilitySurface(plan NextActionPlan) *UtilitySurface {
+	body := "No direct commands for this screen yet."
+	if len(plan.DirectCommands) > 0 {
+		body = strings.Join(plan.DirectCommands, "\n")
+	}
+	return &UtilitySurface{
+		Title:           "Direct commands",
+		Body:            body,
+		DismissOnAnyKey: true,
+	}
+}
+
+func renderVisibleDefaultRow(builder *strings.Builder, item VisibleDefault, stacked bool, styles shellStyles) {
+	if stacked {
+		fmt.Fprintf(builder, "  %s\n", styles.label.Render(item.Label))
+		fmt.Fprintf(builder, "    %s\n", item.Value)
+		if item.Note != "" {
+			fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Note))
+		}
+		return
+	}
+	fmt.Fprintf(builder, "  %s  %s", styles.label.Render(fmt.Sprintf("%-13s", item.Label)), item.Value)
+	if item.Note != "" {
+		fmt.Fprintf(builder, "  %s", styles.muted.Render(item.Note))
+	}
+	builder.WriteByte('\n')
+}
+
+func renderDecisionRow(builder *strings.Builder, item GuidedAction, selected bool, styles shellStyles) {
+	marker := " "
+	labelStyle := styles.label
+	if selected {
+		marker = "▶"
+		labelStyle = styles.focus
+	}
+	fmt.Fprintf(builder, "  %s %s\n", styles.accent.Render(marker), labelStyle.Render(item.Label))
+	fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Description))
+}
+
+func renderWorkItemRow(builder *strings.Builder, item WorkItem, active bool, styles shellStyles) {
+	marker := workItemMarker(item.Status)
+	labelStyle := styles.label
+	if active {
+		labelStyle = styles.focus
+	}
+	fmt.Fprintf(builder, "  %s %s", styles.accent.Render(marker), labelStyle.Render(item.Label))
+	if item.Status != "" {
+		fmt.Fprintf(builder, "  %s", styles.muted.Render(item.Status))
+	}
+	builder.WriteByte('\n')
+	if item.Description != "" {
+		fmt.Fprintf(builder, "    %s\n", styles.muted.Render(item.Description))
+	}
+	if item.DirectCommand != "" {
+		fmt.Fprintf(builder, "    Direct command: %s\n", styles.command.Render(item.DirectCommand))
+	}
+}
+
 func selectedAction(plan NextActionPlan, cursor int) (GuidedAction, bool) {
 	if cursor < 0 || cursor >= len(plan.DecisionItems) {
 		return GuidedAction{}, false
@@ -741,8 +816,23 @@ func selectedAction(plan NextActionPlan, cursor int) (GuidedAction, bool) {
 	return plan.DecisionItems[cursor], true
 }
 
+func setupAction(plan NextActionPlan) (GuidedAction, bool) {
+	if plan.Situation != SituationMachineNotReady || len(plan.WorkItems) == 0 {
+		return GuidedAction{}, false
+	}
+	item := plan.WorkItems[0]
+	return GuidedAction{
+		ID:            "setup",
+		Kind:          "work",
+		Label:         item.Label,
+		Description:   "Review what StageServe still needs before it can run this project.",
+		DirectCommand: commandOr(item.DirectCommand, "stage setup"),
+	}, true
+}
+
 type shellStyles struct {
 	accent         lipgloss.Style
+	focus          lipgloss.Style
 	title          lipgloss.Style
 	surface        lipgloss.Style
 	rule           lipgloss.Style
@@ -771,6 +861,7 @@ func shellStylesFor(noColor bool) shellStyles {
 	if noColor {
 		return shellStyles{
 			accent:         lipgloss.NewStyle(),
+			focus:          lipgloss.NewStyle().Bold(true),
 			title:          lipgloss.NewStyle(),
 			surface:        lipgloss.NewStyle(),
 			rule:           lipgloss.NewStyle(),
@@ -789,6 +880,7 @@ func shellStylesFor(noColor bool) shellStyles {
 	}
 	styles := shellStyles{
 		accent:         lipgloss.NewStyle(),
+		focus:          lipgloss.NewStyle().Bold(true),
 		title:          lipgloss.NewStyle().Bold(true),
 		surface:        lipgloss.NewStyle().Bold(true),
 		rule:           lipgloss.NewStyle(),
@@ -805,6 +897,7 @@ func shellStylesFor(noColor bool) shellStyles {
 		sectionWarn:    lipgloss.NewStyle().Bold(true),
 	}
 	styles.accent = styles.accent.Foreground(lipgloss.Color("6"))
+	styles.focus = styles.focus.Foreground(lipgloss.Color("6"))
 	styles.title = styles.title.Foreground(lipgloss.Color("15"))
 	styles.surface = styles.surface.Foreground(lipgloss.Color("7"))
 	styles.rule = styles.rule.Foreground(lipgloss.Color("8"))
@@ -878,7 +971,7 @@ func workSectionTone(plan NextActionPlan) sectionTone {
 	}
 }
 
-func footerHint(lineWidth int, utility *UtilitySurface, confirming, editing bool) string {
+func footerHint(plan NextActionPlan, lineWidth int, utility *UtilitySurface, confirming, editing bool) string {
 	if utility != nil {
 		return utilityFooter(*utility)
 	}
@@ -894,10 +987,16 @@ func footerHint(lineWidth int, utility *UtilitySurface, confirming, editing bool
 		}
 		return "type edit • tab/↑/↓ move • enter save • esc cancel"
 	}
-	if lineWidth < 58 {
-		return "↑/↓ move • enter choose • ? details • q"
+	if _, ok := setupAction(plan); ok {
+		if lineWidth < 58 {
+			return "enter review • c commands • d doctor • q"
+		}
+		return "enter review • c commands • d doctor • q quit"
 	}
-	return "↑/↓ inspect • enter choose • ? details • q quit"
+	if lineWidth < 58 {
+		return "↑/↓ move • enter choose • c commands • d doctor • q"
+	}
+	return "↑/↓ inspect • enter choose • c commands • d doctor • ? details • q quit"
 }
 
 func sectionTitle(title string, width int, tone sectionTone, styles shellStyles) string {

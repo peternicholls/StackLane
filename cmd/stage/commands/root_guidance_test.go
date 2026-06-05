@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/peternicholls/stageserve/core/config"
 	"github.com/peternicholls/stageserve/core/guidance"
+	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
 type fakeGuidedLifecycleRunner struct {
@@ -60,6 +62,13 @@ func TestRootNoArgsPrintsGuidanceWithoutMutatingProject(t *testing.T) {
 	stackHome := t.TempDir()
 	stateDir := filepath.Join(stackHome, ".stageserve-state")
 
+	// Pre-create the state directory to simulate a set-up machine so the cheap
+	// readiness heuristic does not fire and the test exercises the
+	// project_missing_config path.
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatalf("create state dir: %v", err)
+	}
+
 	root := NewRoot("test")
 	buf := &bytes.Buffer{}
 	root.SetOut(buf)
@@ -78,8 +87,13 @@ func TestRootNoArgsPrintsGuidanceWithoutMutatingProject(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(projectDir, ".env.stageserve")); !os.IsNotExist(err) {
 		t.Fatalf("bare stage should not create .env.stageserve, stat err=%v", err)
 	}
-	if _, err := os.Stat(stateDir); !os.IsNotExist(err) {
-		t.Fatalf("bare stage should not create state dir, stat err=%v", err)
+	// State dir was pre-created but bare stage should not write project files inside it.
+	entries, err := os.ReadDir(stateDir)
+	if err != nil {
+		t.Fatalf("read state dir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("bare stage should not write project files into state dir, found: %v", entries)
 	}
 }
 
@@ -98,6 +112,41 @@ func TestRootCLIFlagUsesGuidanceFallback(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "Direct commands:") {
 		t.Fatalf("expected plain guidance output, got:\n%s", buf.String())
+	}
+}
+
+func TestGuidancePlanCommandEmitsInspectablePlanJSON(t *testing.T) {
+	projectDir := t.TempDir()
+	stackHome := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"guidance-plan", "--stack-home", stackHome, "--project-dir", projectDir, "--skip-readiness"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("guidance-plan: %v", err)
+	}
+
+	var view struct {
+		Situation     string `json:"situation"`
+		StatusHeader  string `json:"status_header"`
+		DecisionItems []struct {
+			ID    string `json:"id"`
+			Label string `json:"label"`
+		} `json:"decision_items"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &view); err != nil {
+		t.Fatalf("guidance-plan output is not valid json: %v\n%s", err, buf.String())
+	}
+	if view.Situation != string(guidance.SituationProjectMissingConf) {
+		t.Fatalf("situation=%q want %q", view.Situation, guidance.SituationProjectMissingConf)
+	}
+	if view.StatusHeader != "This folder doesn't have StageServe settings yet." {
+		t.Fatalf("status header=%q", view.StatusHeader)
+	}
+	if len(view.DecisionItems) == 0 || view.DecisionItems[0].ID != "init" {
+		t.Fatalf("decision items=%+v", view.DecisionItems)
 	}
 }
 
@@ -270,5 +319,85 @@ func TestHandleGuidedActionReturnsUtilityForStatusAndLogs(t *testing.T) {
 	}
 	if logsResult.Utility == nil || logsResult.Utility.Title != "demo logs" {
 		t.Fatalf("logs utility=%+v", logsResult.Utility)
+	}
+}
+
+func TestHandleGuidedActionReturnsUtilityForSetup(t *testing.T) {
+	projectDir := t.TempDir()
+	cfg := config.ProjectConfig{
+		Name:            "demo",
+		Slug:            "demo",
+		Dir:             projectDir,
+		StateDir:        filepath.Join(t.TempDir(), "state"),
+		StackKind:       "20i",
+		StackHome:       t.TempDir(),
+		Hostname:        "demo.test",
+		SiteSuffix:      "test",
+		DocRoot:         filepath.Join(projectDir, "public_html"),
+		DocRootRelative: "public_html",
+		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
+	}
+	oldBuilder := buildGuidedSetupResult
+	buildGuidedSetupResult = func(config.ProjectConfig) onboarding.CommandResult {
+		return onboarding.BuildResult([]onboarding.StepResult{{
+			ID:      "docker.daemon",
+			Label:   "Docker daemon",
+			Status:  onboarding.StatusNeedsAction,
+			Message: "Docker daemon is not reachable",
+		}}, nil, nil)
+	}
+	defer func() {
+		buildGuidedSetupResult = oldBuilder
+	}()
+
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "setup"})
+	if err != nil {
+		t.Fatalf("setup action: %v", err)
+	}
+	if result.Utility == nil || result.Utility.Title != "Setup report" {
+		t.Fatalf("setup utility=%+v", result.Utility)
+	}
+	if !strings.Contains(result.Utility.Body, "Docker daemon") {
+		t.Fatalf("setup report missing expected check:\n%s", result.Utility.Body)
+	}
+}
+
+func TestHandleGuidedActionReturnsUtilityForDoctor(t *testing.T) {
+	projectDir := t.TempDir()
+	cfg := config.ProjectConfig{
+		Name:            "demo",
+		Slug:            "demo",
+		Dir:             projectDir,
+		StateDir:        filepath.Join(t.TempDir(), "state"),
+		StackKind:       "20i",
+		StackHome:       t.TempDir(),
+		Hostname:        "demo.test",
+		SiteSuffix:      "test",
+		DocRoot:         filepath.Join(projectDir, "public_html"),
+		DocRootRelative: "public_html",
+		SharedGateway:   config.SharedGateway{HTTPSPort: 443},
+	}
+	oldBuilder := buildGuidedDoctorResult
+	buildGuidedDoctorResult = func(config.ProjectConfig) onboarding.CommandResult {
+		return onboarding.BuildResult([]onboarding.StepResult{{
+			ID:      "port.443",
+			Label:   "Port 443",
+			Status:  onboarding.StatusNeedsAction,
+			Message: "port 443 is already in use",
+		}}, nil, nil)
+	}
+	defer func() {
+		buildGuidedDoctorResult = oldBuilder
+	}()
+
+	result, err := handleGuidedAction(context.Background(), cfg, nil, guidance.TUICapability{}, guidance.GuidedAction{ID: "doctor"})
+	if err != nil {
+		t.Fatalf("doctor action: %v", err)
+	}
+	if result.Utility == nil || result.Utility.Title != "Doctor report" {
+		t.Fatalf("doctor utility=%+v", result.Utility)
+	}
+	if !strings.Contains(result.Utility.Body, "StageServe Doctor") || !strings.Contains(result.Utility.Body, "Port 443") {
+		t.Fatalf("doctor report missing expected content:\n%s", result.Utility.Body)
 	}
 }

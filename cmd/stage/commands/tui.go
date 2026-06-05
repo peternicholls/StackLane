@@ -21,6 +21,9 @@ import (
 	obsstatus "github.com/peternicholls/stageserve/observability/status"
 )
 
+var buildGuidedSetupResult = buildMachineReadinessResultForConfig
+var buildGuidedDoctorResult = buildMachineReadinessResultForConfig
+
 type guidedLifecycleRunner interface {
 	Up(context.Context, config.ProjectConfig) error
 	Attach(context.Context, config.ProjectConfig) error
@@ -76,7 +79,7 @@ func (r guidedRuntimeRunner) Logs(ctx context.Context, cfg config.ProjectConfig,
 	return body, nil
 }
 
-func runGuidedTUI(ctx context.Context, cfg config.ProjectConfig, plan guidance.NextActionPlan, capability guidance.TUICapability, output io.Writer) error {
+func runGuidedTUI(ctx context.Context, cfg config.ProjectConfig, plan guidance.NextActionPlan, capability guidance.TUICapability, output io.Writer, opts ...guidance.ShellOption) error {
 	orch, err := buildOrchestrator(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to build orchestrator: %w", err)
@@ -85,11 +88,44 @@ func runGuidedTUI(ctx context.Context, cfg config.ProjectConfig, plan guidance.N
 	handler := func(action guidance.GuidedAction) (guidance.ActionResult, error) {
 		return handleGuidedAction(ctx, cfg, runner, capability, action)
 	}
-	return guidance.RunShell(plan, capability, os.Stdin, output, guidance.WithActionHandler(handler))
+	shellOpts := append([]guidance.ShellOption{guidance.WithActionHandler(handler)}, opts...)
+	return guidance.RunShell(plan, capability, os.Stdin, output, shellOpts...)
 }
 
 func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner, capability guidance.TUICapability, action guidance.GuidedAction) (guidance.ActionResult, error) {
 	switch action.ID {
+	case "setup":
+		result := buildGuidedSetupResult(cfg)
+		body, err := renderMachineReadinessReport("StageServe Setup", result)
+		if err != nil {
+			return guidance.ActionResult{}, err
+		}
+		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		return guidance.ActionResult{
+			Plan: nextPlan,
+			Utility: &guidance.UtilitySurface{
+				Title:           "Setup report",
+				Body:            strings.TrimSpace(body),
+				Footer:          "press any key to return • q quit",
+				DismissOnAnyKey: true,
+			},
+		}, nil
+	case "doctor":
+		result := buildGuidedDoctorResult(cfg)
+		body, err := renderMachineReadinessReport("StageServe Doctor", result)
+		if err != nil {
+			return guidance.ActionResult{}, err
+		}
+		nextPlan := guidance.Plan(collectGuidedContext(ctx, reloadGuidedConfig(cfg), capability))
+		return guidance.ActionResult{
+			Plan: nextPlan,
+			Utility: &guidance.UtilitySurface{
+				Title:           "Doctor report",
+				Body:            strings.TrimSpace(body),
+				Footer:          "press any key to return • q quit",
+				DismissOnAnyKey: true,
+			},
+		}, nil
 	case "init", "init_here", "overwrite_init":
 		settings := projectEnvSettingsFromGuidedAction(cfg, action)
 		force := action.ID == "overwrite_init"
@@ -150,6 +186,18 @@ func handleGuidedAction(ctx context.Context, cfg config.ProjectConfig, runner gu
 	default:
 		return guidance.ActionResult{Plan: guidance.Plan(collectGuidedContext(ctx, cfg, capability)), Message: fmt.Sprintf("%s is not available in guided mode yet.", action.Label)}, nil
 	}
+}
+
+func renderMachineReadinessReport(title string, result onboarding.CommandResult) (string, error) {
+	var output bytes.Buffer
+	projector := onboarding.NewProjector(onboarding.OutputModeText, &output, onboarding.ProjectorOptions{
+		Title:    title,
+		Detailed: true,
+	})
+	if err := projector.Project(result); err != nil {
+		return "", err
+	}
+	return output.String(), nil
 }
 
 func executeGuidedAction(actionID string, ctx context.Context, cfg config.ProjectConfig, runner guidedLifecycleRunner) error {

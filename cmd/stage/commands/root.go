@@ -91,6 +91,7 @@ func NewRoot(version string) *cobra.Command {
 	root.AddCommand(NewSetup(flags))
 	root.AddCommand(NewDoctor(flags))
 	root.AddCommand(NewInit(flags))
+	root.AddCommand(NewGuidancePlan(flags))
 	root.AddCommand(NewVersion(version))
 	return root
 }
@@ -106,7 +107,7 @@ func runRootGuidance(cmd *cobra.Command, flags *SharedFlags, interaction *rootIn
 		plan := guidance.Plan(guidance.ContextFromError(cwd, capability, err))
 		return guidance.RenderText(cmd.OutOrStdout(), plan)
 	}
-	context := collectGuidedContext(cmd.Context(), cfg, capability)
+	context := collectRootGuidedContext(cmd.Context(), cfg, capability)
 	plan := guidance.Plan(context)
 	if capability.AllowsTUI() {
 		return runGuidedTUI(cmd.Context(), cfg, plan, capability, cmd.OutOrStdout())
