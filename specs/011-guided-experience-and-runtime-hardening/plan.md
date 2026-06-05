@@ -96,7 +96,7 @@ Outputs:
 - Shared presentation parity (`T020`-`T024`) before day-2 surface expansion.
 - Running-project expansion and async confirmation/progress (`T025`-`T037`).
 - Dedicated TUI design polish (`T038`-`T040`).
-- Docs/help + validation at merge gate and follow-up closure (`T041`-`T049`).
+- Docs/help + validation at merge gate and follow-up closure (`T041`-`T050`).
 
 ## Complexity Tracking
 

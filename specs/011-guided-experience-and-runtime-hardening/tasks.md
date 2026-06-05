@@ -16,11 +16,11 @@ description: "Tasks for guided experience and runtime hardening"
 
 ## Phase 1: Setup (Spec Artifacts And Workflow Inputs)
 
-**Goal**: Keep planning artifacts aligned before implementation starts.
+**Goal**: Preserve planning-artifact alignment as maintenance context; these tasks are satisfied before code implementation begins.
 
-- [ ] T001 Align merge-gate and follow-up boundaries in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/spec.md and /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/plan.md.
-- [ ] T002 Update verification command matrix and known-gap handling in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T003 Record task-to-requirement traceability notes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/contracts/guided-runtime-hardening-contract.md.
+- [x] T001 Align merge-gate and follow-up boundaries in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/spec.md and /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/plan.md.
+- [x] T002 Update verification command matrix and known-gap handling in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [x] T003 Record task-to-requirement traceability notes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/contracts/guided-runtime-hardening-contract.md.
 
 ## Phase 2: Foundational (Blocking Runtime And Contract Prerequisites)
 
@@ -126,17 +126,16 @@ description: "Tasks for guided experience and runtime hardening"
 
 **Goal**: Close docs/help parity and execute merge-gate/follow-up validation gates.
 
-- [ ] T041 Update merge-gate docs/help surfaces in /Users/peternicholls/Dev/stageserve/README.md, /Users/peternicholls/Dev/stageserve/docs/installer-onboarding.md, and /Users/peternicholls/Dev/stageserve/docs/runtime-contract.md.
-- [ ] T041a Audit and rewrite first-path README and installer onboarding sections so StageServe actions remain primary and Docker/gateway details move to advanced or troubleshooting sections in /Users/peternicholls/Dev/stageserve/README.md and /Users/peternicholls/Dev/stageserve/docs/installer-onboarding.md.
-- [ ] T041b Audit guided labels and direct-command recovery rendering so friendly StageServe labels remain primary and command equivalents remain secondary in /Users/peternicholls/Dev/stageserve/core/guidance/ and /Users/peternicholls/Dev/stageserve/cmd/stage/commands/.
-- [ ] T042 Update sensitive-value guidance in /Users/peternicholls/Dev/stageserve/.env.stageserve.example.
-- [ ] T043 Run merge-gate focused startup and root-routing validation command set and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T044 Run merge-gate focused status/inspection and teardown validation command set and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T045 Run merge-gate manual failure/recovery, non-TTY, and JSON-safety validation set and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T046 Update follow-up docs/help for recovery/day-2 UX expansion in /Users/peternicholls/Dev/stageserve/README.md and /Users/peternicholls/Dev/stageserve/docs/runtime-contract.md.
-- [ ] T047 Run follow-up focused automated validation and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T048 Run follow-up manual TTY validation and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
-- [ ] T049 Record intentionally deferred work and residual risks in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [ ] T041 Audit and rewrite merge-gate docs/help surfaces so StageServe actions remain primary and Docker/gateway details move to advanced or troubleshooting sections in /Users/peternicholls/Dev/stageserve/README.md, /Users/peternicholls/Dev/stageserve/docs/installer-onboarding.md, and /Users/peternicholls/Dev/stageserve/docs/runtime-contract.md.
+- [ ] T042 Audit guided labels and direct-command recovery rendering so friendly StageServe labels remain primary and command equivalents remain secondary in /Users/peternicholls/Dev/stageserve/core/guidance/ and /Users/peternicholls/Dev/stageserve/cmd/stage/commands/.
+- [ ] T043 Update sensitive-value guidance in /Users/peternicholls/Dev/stageserve/.env.stageserve.example.
+- [ ] T044 Run merge-gate focused startup and root-routing validation command set and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [ ] T045 Run merge-gate focused status/inspection and teardown validation command set and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [ ] T046 Run merge-gate manual failure/recovery, non-TTY, and JSON-safety validation set and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [ ] T047 Update follow-up docs/help for recovery/day-2 UX expansion in /Users/peternicholls/Dev/stageserve/README.md and /Users/peternicholls/Dev/stageserve/docs/runtime-contract.md.
+- [ ] T048 Run follow-up focused automated validation and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [ ] T049 Run follow-up manual TTY validation and record outcomes in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
+- [ ] T050 Record intentionally deferred work and residual risks in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md.
 
 ## Dependencies & Execution Order
 
@@ -168,7 +167,7 @@ description: "Tasks for guided experience and runtime hardening"
 ```bash
 # Parallel checks after implementation:
 Task: T013 core/lifecycle missing-asset tests
-Task: T014 root machine-not-ready reachability tests
+Task: T014 root routing reachability tests across missing assets, missing config, stopped-project defaults, and ordered recovery states
 ```
 
 ### User Story 3
@@ -193,7 +192,7 @@ Task: T037 add narrow-width/keymap tests
 
 1. Complete Phase 1 and Phase 2.
 2. Complete US1, US2, and US3 (Phases 3-5).
-3. Complete merge-gate docs/validation tasks (T041-T045 in Phase 9).
+3. Complete merge-gate docs/validation tasks (T041-T046 in Phase 9).
 4. Stop and verify merge-gate readiness.
 
 ### Incremental Follow-up
