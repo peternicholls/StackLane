@@ -7,7 +7,7 @@ import (
 
 // RenderText writes the plain text fallback for a next-action plan.
 func RenderText(w io.Writer, plan NextActionPlan) error {
-	if _, err := fmt.Fprintf(w, "StageServe\n\n%s\n", plan.StatusHeader); err != nil {
+	if _, err := fmt.Fprintf(w, "StageServe\n%s\n\n%s\n", severityLabel(plan.Situation), plan.StatusHeader); err != nil {
 		return err
 	}
 	if plan.Summary != "" {

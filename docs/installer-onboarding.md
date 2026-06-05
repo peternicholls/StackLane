@@ -15,10 +15,11 @@ The installer:
 1. Detects your OS and CPU architecture.
 2. Downloads the matching `stage_<version>_<OS>_<arch>` release asset.
 3. Verifies the matching SHA-256 checksum.
-4. Installs `stage` into `~/.local/bin` by default.
-5. Warns when the install directory is not on `PATH`.
-6. Hands interactive terminals to bare `stage`.
-7. Prints explicit `stage setup`, `stage init`, and `stage up` steps for non-interactive installs.
+4. Downloads and extracts `stageserve-runtime_<version>.tar.gz` into `$HOME/docker/stageserve` by default.
+5. Installs `stage` into `~/.local/bin` by default.
+6. Warns when the install directory is not on `PATH`.
+7. Hands interactive terminals to bare `stage`.
+8. Prints explicit `stage setup`, `stage init`, and `stage up` steps for non-interactive installs.
 
 Non-interactive install:
 
@@ -30,6 +31,12 @@ Custom install directory:
 
 ```bash
 STAGESERVE_INSTALL_DIR="$HOME/bin" curl -fsSL https://raw.githubusercontent.com/peternicholls/StageServe/master/install.sh | bash
+```
+
+Custom runtime asset home:
+
+```bash
+STAGESERVE_STACK_HOME="$HOME/docker/stageserve" curl -fsSL https://raw.githubusercontent.com/peternicholls/StageServe/master/install.sh | bash
 ```
 
 ## Guided First Run

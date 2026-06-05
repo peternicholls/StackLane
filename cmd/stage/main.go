@@ -29,7 +29,7 @@ func main() {
 			}
 			os.Exit(exitCoder.ExitCode())
 		}
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, commands.RenderCommandError(err))
 		os.Exit(1)
 	}
 }

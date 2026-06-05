@@ -14,7 +14,7 @@ func DetectCapability(stdin, stdout, stderr *os.File, notUIFlag, cliFlag bool) T
 	capability := TUICapability{
 		NotUIFlag:     notUIFlag,
 		CLIFlag:       cliFlag,
-		NoTUIShellEnv: envTruthy("STAGESERVE_NO_TUI"),
+		NoTUIShellEnv: ShellEnvTruthy("STAGESERVE_NO_TUI"),
 		NoColor:       os.Getenv("NO_COLOR") != "",
 		Term:          os.Getenv("TERM"),
 	}
@@ -35,7 +35,7 @@ func isTerminal(file *os.File) bool {
 	return isatty.IsTerminal(file.Fd()) || isatty.IsCygwinTerminal(file.Fd())
 }
 
-func envTruthy(key string) bool {
+func ShellEnvTruthy(key string) bool {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
 		return false

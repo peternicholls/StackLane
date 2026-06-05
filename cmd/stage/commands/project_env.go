@@ -106,7 +106,6 @@ func explicitProjectOverrides(cfg config.ProjectConfig, flags *SharedFlags) []st
 	add("PHP_VERSION", flags.PHPVersion)
 	add("MYSQL_DATABASE", flags.MySQLDatabase)
 	add("MYSQL_USER", flags.MySQLUser)
-	add("MYSQL_PASSWORD", flags.MySQLPassword)
 	add("MYSQL_PORT", flags.MySQLPort)
 	add("PMA_PORT", flags.PMAPort)
 	add("HOST_PORT", flags.HostPort)

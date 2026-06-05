@@ -131,11 +131,13 @@ func CheckRequiredFile(stepID, label, path string) StepResult {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			remediation := requiredFileRemediation(stepID, path)
 			return StepResult{
-				ID:      stepID,
-				Label:   label,
-				Status:  StatusNeedsAction,
-				Message: fmt.Sprintf("required file is missing at %s", path),
+				ID:          stepID,
+				Label:       label,
+				Status:      StatusNeedsAction,
+				Message:     fmt.Sprintf("required file is missing at %s", path),
+				Remediation: remediation,
 			}
 		}
 		return StepResult{
@@ -160,6 +162,15 @@ func CheckRequiredFile(stepID, label, path string) StepResult {
 		Label:   label,
 		Status:  StatusReady,
 		Message: fmt.Sprintf("found %s", path),
+	}
+}
+
+func requiredFileRemediation(stepID, path string) *string {
+	switch stepID {
+	case "stack.shared_file", "stack.project_file":
+		return remediationPtr(fmt.Sprintf("Reinstall StageServe or restore the bundled runtime file at %s, then run stage doctor", path))
+	default:
+		return nil
 	}
 }
 

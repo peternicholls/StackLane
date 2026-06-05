@@ -8,7 +8,9 @@
 #
 # Environment overrides (for testing):
 #   STAGESERVE_INSTALL_DIR   — destination directory (default: $HOME/.local/bin)
+#   STAGESERVE_STACK_HOME    — StageServe runtime asset home (default: $HOME/docker/stageserve)
 #   STAGESERVE_TEST_ASSET_PATH — bypass download; copy this path as the binary
+#   STAGESERVE_TEST_BUNDLE_PATH — bypass bundle download; extract this .tar.gz
 #   NONINTERACTIVE          — suppress prompts and TUI handoff (set to 1)
 #
 # Test-mode flags (internal — used by smoke tests):
@@ -23,6 +25,7 @@ set -euo pipefail
 STAGESERVE_VERSION="${STAGESERVE_VERSION:-latest}"
 STAGESERVE_REPO="peternicholls/StageServe"
 STAGESERVE_INSTALL_DIR="${STAGESERVE_INSTALL_DIR:-$HOME/.local/bin}"
+STAGESERVE_STACK_HOME="${STAGESERVE_STACK_HOME:-$HOME/docker/stageserve}"
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 
 _test_mode=0
@@ -70,6 +73,11 @@ detect_arch() {
 asset_name() {
   local version="$1"
   echo "stage_${version}_$(detect_os)_$(detect_arch)"
+}
+
+bundle_name() {
+  local version="$1"
+  echo "stageserve-runtime_${version}.tar.gz"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -178,7 +186,6 @@ download_binary() {
   info "Downloading $name ..."
   local tmpdir
   tmpdir=$(mktemp -d)
-  trap 'rm -rf "$tmpdir"' RETURN
 
   local tmpbin="$tmpdir/$name"
   local tmpsha="$tmpdir/$name.sha256"
@@ -190,6 +197,30 @@ download_binary() {
 
   cp "$tmpbin" "$dest"
   chmod +x "$dest"
+  rm -rf "$tmpdir"
+}
+
+provision_runtime_assets() {
+  local tmpdir bundle source
+  tmpdir=$(mktemp -d)
+
+  if [[ -n "${STAGESERVE_TEST_BUNDLE_PATH:-}" ]]; then
+    source="$STAGESERVE_TEST_BUNDLE_PATH"
+  else
+    resolve_version
+    bundle=$(bundle_name "$STAGESERVE_VERSION")
+    source="$tmpdir/$bundle"
+    info "Downloading $bundle ..."
+    curl -fsSL "https://github.com/$STAGESERVE_REPO/releases/download/$STAGESERVE_VERSION/$bundle" -o "$source"
+  fi
+
+  mkdir -p "$STAGESERVE_STACK_HOME"
+  tar -xzf "$source" -C "$STAGESERVE_STACK_HOME"
+
+  [[ -f "$STAGESERVE_STACK_HOME/stacks/20i/docker-compose.shared.yml" ]] || die "Runtime bundle missing stacks/20i/docker-compose.shared.yml"
+  [[ -f "$STAGESERVE_STACK_HOME/stacks/20i/docker-compose.20i.yml" ]] || die "Runtime bundle missing stacks/20i/docker-compose.20i.yml"
+  ok "runtime assets installed to $STAGESERVE_STACK_HOME"
+  rm -rf "$tmpdir"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -238,6 +269,7 @@ main() {
   ensure_install_dir
   local dest="$STAGESERVE_INSTALL_DIR/stage"
   download_binary "$dest"
+  provision_runtime_assets
   check_path_warning
   print_next_steps
 }

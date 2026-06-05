@@ -33,7 +33,7 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.StatusHeader = "This folder doesn't have StageServe settings yet."
 		plan.Summary = "StageServe can create a small .env.stageserve file for this project."
 		plan.DecisionItems = []GuidedAction{
-			action("init", "Create project settings", "Write .env.stageserve with the values shown here.", "stage init", true),
+			action("init", "Set up this directory as a project", "Write .env.stageserve with the values shown here.", "stage init", true),
 			action("edit_config", "Edit before writing", "Change the project name, web folder, or local address first.", "stage init", false),
 		}
 		plan.DirectCommands = []string{"stage init"}
@@ -77,23 +77,25 @@ func Plan(ctx GuidedContext) NextActionPlan {
 		plan.Summary = "StageServe can walk through the safest checks first, then you can decide what to do next."
 		plan.WorkItems = recoveryWorkItems()
 		plan.DecisionItems = []GuidedAction{
-			action("status", "Step 1: check this project's status", "Read-only. Nothing on your computer will be changed.", "stage status", false),
-			action("logs", "Step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
-			action("up", "Step 3: try running this project again", "Restart with the current settings.", "stage up", true),
-			action("down", "Step 4: stop this project first", "Stop the project, then try again.", "stage down", true),
+			action("doctor", "Step 1: run diagnostics", "Read-only. Check machine and runtime readiness before changing anything.", "stage doctor", false),
+			action("status", "Step 2: check this project's status", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("logs", "Step 3: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
+			action("up", "Step 4: try running this project again", "Restart with the current settings.", "stage up", true),
+			action("down", "Step 5: stop this project first", "Stop the project, then try again.", "stage down", true),
 		}
-		plan.DirectCommands = []string{"stage status", "stage logs", "stage down", "stage up"}
+		plan.DirectCommands = []string{"stage doctor", "stage status", "stage logs", "stage down", "stage up"}
 	case SituationUnknownError:
 		plan.StatusHeader = "StageServe couldn't safely choose a next step."
 		plan.Summary = "Here is what StageServe can try, in order of risk."
 		plan.WorkItems = recoveryWorkItems()
 		plan.DecisionItems = []GuidedAction{
-			action("status", "Step 1: check this project's status", "Read-only. Nothing on your computer will be changed.", "stage status", false),
-			action("logs", "Step 2: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
-			action("up", "Step 3: try running this project again", "Restart with the current settings.", "stage up", true),
-			action("down", "Step 4: stop this project first, then retry", "Stop the project, then try again.", "stage down", true),
+			action("doctor", "Step 1: run diagnostics", "Read-only. Check machine and runtime readiness before changing anything.", "stage doctor", false),
+			action("status", "Step 2: check this project's status", "Read-only. Nothing on your computer will be changed.", "stage status", false),
+			action("logs", "Step 3: look at the latest project log", "Read-only. This shows the latest log output for the project.", "stage logs", false),
+			action("up", "Step 4: try running this project again", "Restart with the current settings.", "stage up", true),
+			action("down", "Step 5: stop this project first, then retry", "Stop the project, then try again.", "stage down", true),
 		}
-		plan.DirectCommands = []string{"stage status", "stage logs", "stage down", "stage up"}
+		plan.DirectCommands = []string{"stage doctor", "stage status", "stage logs", "stage down", "stage up"}
 	}
 	return plan
 }
@@ -158,10 +160,11 @@ func displayProjectStatus(ctx GuidedContext) string {
 
 func recoveryWorkItems() []WorkItem {
 	return []WorkItem{
-		{Label: "Step 1: check this project's status", Status: "read-only", Description: "Shows what StageServe currently knows about this project.", DirectCommand: "stage status"},
-		{Label: "Step 2: look at the latest project log", Status: "read-only", Description: "Shows the latest log output without changing anything.", DirectCommand: "stage logs"},
-		{Label: "Step 3: stop this project", Status: "confirmed change", Description: "Stops the project and frees up its local URL after confirmation.", DirectCommand: "stage down"},
-		{Label: "Step 4: run this project again", Status: "uses current settings", Description: "Starts the project again with the settings shown above.", DirectCommand: "stage up"},
+		{Label: "Step 1: run diagnostics", Status: "read-only", Description: "Checks machine and runtime readiness before changing anything.", DirectCommand: "stage doctor"},
+		{Label: "Step 2: check this project's status", Status: "read-only", Description: "Shows what StageServe currently knows about this project.", DirectCommand: "stage status"},
+		{Label: "Step 3: look at the latest project log", Status: "read-only", Description: "Shows the latest log output without changing anything.", DirectCommand: "stage logs"},
+		{Label: "Step 4: stop this project", Status: "confirmed change", Description: "Stops the project and frees up its local URL after confirmation.", DirectCommand: "stage down"},
+		{Label: "Step 5: run this project again", Status: "uses current settings", Description: "Starts the project again with the settings shown above.", DirectCommand: "stage up"},
 	}
 }
 

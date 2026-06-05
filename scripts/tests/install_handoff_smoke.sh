@@ -16,6 +16,16 @@ FAIL=0
 pass() { printf 'PASS: %s\n' "$1"; PASS=$((PASS+1)); }
 fail() { printf 'FAIL: %s\n' "$1"; FAIL=$((FAIL+1)); }
 
+make_runtime_bundle() {
+  local tmpdir="$1"
+  local root="$tmpdir/runtime"
+  mkdir -p "$root/stacks/20i"
+  printf 'services: {}\n' > "$root/stacks/20i/docker-compose.shared.yml"
+  printf 'services: {}\n' > "$root/stacks/20i/docker-compose.20i.yml"
+  tar -czf "$tmpdir/runtime.tar.gz" -C "$root" stacks
+  printf '%s\n' "$tmpdir/runtime.tar.gz"
+}
+
 contains_all() {
   local haystack="$1"
   shift
@@ -32,7 +42,9 @@ if command -v script >/dev/null 2>&1; then
   tmpdir=$(mktemp -d)
   out=$(env \
     STAGESERVE_INSTALL_DIR="$tmpdir" \
+    STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
     STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+    STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
     script -q /dev/null bash "$INSTALL_SH" --test-mode 2>&1) && true
   rm -rf "$tmpdir"
   clean_out=$(printf '%s' "$out" | tr -d '\r')
@@ -49,7 +61,9 @@ fi
 tmpdir=$(mktemp -d)
 out=$(NONINTERACTIVE=1 \
   STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
   STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
   bash "$INSTALL_SH" --test-mode 2>&1) && true
 rm -rf "$tmpdir"
 if contains_all "$out" "stage setup" "stage init" "stage up" "stage doctor"; then
@@ -62,7 +76,9 @@ fi
 # Test 3: Non-TTY path prints the same explicit direct-command path.
 tmpdir=$(mktemp -d)
 out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
   STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
   bash "$INSTALL_SH" --test-mode --no-tty 2>&1) && true
 rm -rf "$tmpdir"
 if contains_all "$out" "stage setup" "stage init" "stage up" "stage doctor"; then

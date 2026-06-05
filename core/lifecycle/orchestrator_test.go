@@ -43,6 +43,15 @@ func newCfg(t *testing.T) config.ProjectConfig {
 	stateDir := t.TempDir()
 	dir := t.TempDir()
 	stack := t.TempDir()
+	stackAssets := filepath.Join(stack, "stacks", "20i")
+	if err := os.MkdirAll(stackAssets, 0o755); err != nil {
+		t.Fatalf("mkdir stack assets: %v", err)
+	}
+	for _, name := range []string{"docker-compose.20i.yml", "docker-compose.shared.yml"} {
+		if err := os.WriteFile(filepath.Join(stackAssets, name), []byte("services: {}\n"), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
 	return config.ProjectConfig{
 		Slug:               "demo",
 		Name:               "demo",
@@ -67,6 +76,62 @@ func newCfg(t *testing.T) config.ProjectConfig {
 			HTTPSPort:          443,
 			ConfigFile:         stateDir + "/shared/gateway.conf",
 		},
+	}
+}
+
+func TestOrchestrator_UpFailsBeforeDockerWhenRuntimeAssetMissing(t *testing.T) {
+	cfg := newCfg(t)
+	if err := os.Remove(cfg.SharedFile); err != nil {
+		t.Fatalf("remove shared file: %v", err)
+	}
+	dc := mocks.NewDocker()
+	composer := mocks.NewComposer()
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
+	})
+
+	err := orch.Up(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected missing runtime asset error")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok {
+		t.Fatalf("error not StepError: %v", err)
+	}
+	if se.Step != "runtime-asset-shared" {
+		t.Fatalf("step=%q want runtime-asset-shared", se.Step)
+	}
+	if !strings.Contains(se.Remedy, "Reinstall StageServe") || !strings.Contains(se.Remedy, cfg.SharedFile) {
+		t.Fatalf("remedy=%q", se.Remedy)
+	}
+	if dc.Networks["stage-shared"] || len(composer.UpCalls) != 0 {
+		t.Fatalf("runtime preflight should run before Docker/compose side effects")
+	}
+}
+
+func TestOrchestrator_UpFailsBeforeDockerWhenProjectRuntimeAssetMissing(t *testing.T) {
+	cfg := newCfg(t)
+	if err := os.Remove(cfg.StackFile); err != nil {
+		t.Fatalf("remove project file: %v", err)
+	}
+	composer := mocks.NewComposer()
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: mocks.NewGateway(), State: mocks.NewState(), Ports: mocks.NewPorts(ports.Allocation{}),
+	})
+
+	err := orch.Up(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected missing project runtime asset error")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok || se.Step != "runtime-asset-project" {
+		t.Fatalf("step error=%+v ok=%v", se, ok)
+	}
+	if !strings.Contains(se.Remedy, cfg.StackFile) {
+		t.Fatalf("remedy=%q", se.Remedy)
+	}
+	if len(composer.UpCalls) != 0 {
+		t.Fatalf("compose up should not run before project runtime asset preflight")
 	}
 }
 
@@ -467,6 +532,73 @@ func TestOrchestrator_DownMarksProjectStoppedAndRemovesEnvFile(t *testing.T) {
 	}
 	if len(gw.Routes) != 0 {
 		t.Fatalf("gateway routes should be cleared, got %+v", gw.Routes)
+	}
+}
+
+func TestOrchestrator_AttachFailsOnRegistryReadError(t *testing.T) {
+	cfg := newCfg(t)
+	st := mocks.NewState()
+	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateDown}); err != nil {
+		t.Fatalf("save state: %v", err)
+	}
+	st.RegistryErr = errors.New("registry unreadable")
+	dc := mocks.NewDocker()
+	dc.Containers = []docker.Container{{
+		ID: "web-1", Service: "apache", Labels: map[string]string{"com.docker.compose.project": cfg.ComposeProjectName},
+	}}
+	composer := mocks.NewComposer()
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: dc, Compose: composer, Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
+	})
+
+	err := orch.Attach(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected registry error")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok || se.Step != "registry" {
+		t.Fatalf("step error=%+v ok=%v", se, ok)
+	}
+	if !strings.Contains(se.Remedy, "stage attach") {
+		t.Fatalf("remedy=%q", se.Remedy)
+	}
+	if len(composer.UpCalls) != 0 {
+		t.Fatalf("gateway reload should not run after registry failure")
+	}
+}
+
+func TestOrchestrator_DownAllReportsPartialFailures(t *testing.T) {
+	cfg := newCfg(t)
+	other := newCfg(t)
+	other.Slug = "other"
+	other.Name = "other"
+	other.ComposeProjectName = "stage-other"
+	st := mocks.NewState()
+	if err := st.Save(state.Record{Project: cfg, AttachmentState: state.StateAttached}); err != nil {
+		t.Fatalf("save state: %v", err)
+	}
+	if err := st.Save(state.Record{Project: other, AttachmentState: state.StateAttached}); err != nil {
+		t.Fatalf("save other state: %v", err)
+	}
+	composer := mocks.NewComposer()
+	composer.DownErr = errors.New("compose refused")
+	orch := lifecycle.New(lifecycle.Deps{
+		Docker: mocks.NewDocker(), Compose: composer, Gateway: mocks.NewGateway(), State: st, Ports: mocks.NewPorts(ports.Allocation{}),
+	})
+
+	err := orch.DownAll(context.Background(), cfg, false)
+	if err == nil {
+		t.Fatal("expected partial failure")
+	}
+	se, ok := lifecycle.AsStepError(err)
+	if !ok || se.Step != "down-all" {
+		t.Fatalf("step error=%+v ok=%v", se, ok)
+	}
+	if !strings.Contains(se.Error(), "compose-down") || !strings.Contains(se.Remedy, "stage status --all") {
+		t.Fatalf("error/remedy missing detail: %v", se)
+	}
+	if len(composer.DownCalls) != 2 {
+		t.Fatalf("down calls=%d want 2", len(composer.DownCalls))
 	}
 }
 

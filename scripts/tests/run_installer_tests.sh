@@ -11,6 +11,7 @@ SUITES=(
   "$SCRIPTS_DIR/install_handoff_smoke.sh"
   "$SCRIPTS_DIR/install_checksum_smoke.sh"
   "$SCRIPTS_DIR/install_install_smoke.sh"
+  "$SCRIPTS_DIR/install_runtime_bundle_smoke.sh"
 )
 
 TOTAL_PASS=0

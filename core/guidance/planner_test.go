@@ -183,19 +183,35 @@ func TestRenderTextUsesPlainLanguageWhileKeepingDirectCommands(t *testing.T) {
 	}
 }
 
+func TestRenderTextUsesSeverityWithoutANSI(t *testing.T) {
+	buf := &bytes.Buffer{}
+	ctx := baseContext()
+	ctx.MachineReadiness = MachineReadinessSummary{Checked: true, Blocked: true, NextFixLabel: "Restore runtime file", NextCommand: "stage setup"}
+	if err := RenderText(buf, Plan(ctx)); err != nil {
+		t.Fatalf("render text: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "StageServe\nNeeds attention\n") {
+		t.Fatalf("severity header missing:\n%s", out)
+	}
+	if strings.Contains(out, "\x1b[") {
+		t.Fatalf("text output contains ANSI escape sequences:\n%s", out)
+	}
+}
+
 func TestPlanUnknownErrorExposesOrderedRecoverySteps(t *testing.T) {
 	plan := Plan(ContextFromError("/tmp/demo", TUICapability{}, os.ErrInvalid))
 
 	if plan.Situation != SituationUnknownError {
 		t.Fatalf("situation=%s want %s", plan.Situation, SituationUnknownError)
 	}
-	if len(plan.WorkItems) != 4 {
+	if len(plan.WorkItems) != 5 {
 		t.Fatalf("work items=%+v", plan.WorkItems)
 	}
-	if plan.WorkItems[0].DirectCommand != "stage status" || plan.WorkItems[1].DirectCommand != "stage logs" {
+	if plan.WorkItems[0].DirectCommand != "stage doctor" || plan.WorkItems[1].DirectCommand != "stage status" || plan.WorkItems[2].DirectCommand != "stage logs" {
 		t.Fatalf("recovery order=%+v", plan.WorkItems)
 	}
-	if len(plan.DecisionItems) != 4 || plan.DecisionItems[0].ID != "status" || plan.DecisionItems[1].ID != "logs" {
+	if len(plan.DecisionItems) != 5 || plan.DecisionItems[0].ID != "doctor" || plan.DecisionItems[1].ID != "status" || plan.DecisionItems[2].ID != "logs" {
 		t.Fatalf("decision items=%+v", plan.DecisionItems)
 	}
 }
@@ -451,7 +467,7 @@ func TestShellConfirmationRequiresExplicitConfirm(t *testing.T) {
 	if !next.confirming {
 		t.Fatal("expected confirmation state")
 	}
-	if view := next.View(); !strings.Contains(view, "Create project settings") || !strings.Contains(view, "enter confirm") {
+	if view := next.View(); !strings.Contains(view, "Set up this directory as a project") || !strings.Contains(view, "enter confirm") {
 		t.Fatalf("confirmation view missing expected copy:\n%s", view)
 	}
 
@@ -494,7 +510,12 @@ func TestShellDriftRecoveryStopConfirmationUsesStopCopy(t *testing.T) {
 	ctx := baseContext()
 	ctx.Warnings = []string{"Project settings do not match the recorded project path."}
 	model := newShellModel(Plan(ctx), true)
-	model.cursor = 3
+	for index, action := range model.plan.DecisionItems {
+		if action.ID == "down" {
+			model.cursor = index
+			break
+		}
+	}
 
 	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd != nil {
@@ -505,7 +526,7 @@ func TestShellDriftRecoveryStopConfirmationUsesStopCopy(t *testing.T) {
 		t.Fatal("expected confirmation state")
 	}
 	view := next.View()
-	for _, want := range []string{"Step 4: stop this project first", "StageServe will stop this project.", "Your files will not be touched.", "http://demo.test will no longer respond until you run it again."} {
+	for _, want := range []string{"Step 5: stop this project first", "StageServe will stop this project.", "Your files will not be touched.", "http://demo.test will no longer respond until you run it again."} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("confirmation view missing %q:\n%s", want, view)
 		}

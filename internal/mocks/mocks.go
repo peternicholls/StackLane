@@ -190,6 +190,7 @@ type State struct {
 	Records     map[string]state.Record
 	StateDirVal string
 	SaveErr     error
+	RegistryErr error
 }
 
 func NewState() *State {
@@ -224,6 +225,9 @@ func (m *State) Remove(slug string) error {
 }
 
 func (m *State) Registry() ([]state.RegistryRow, error) {
+	if m.RegistryErr != nil {
+		return nil, m.RegistryErr
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	rows := []state.RegistryRow{}

@@ -16,7 +16,6 @@ type CLIFlags struct {
 	PHPVersion      string
 	MySQLDatabase   string
 	MySQLUser       string
-	MySQLPassword   string
 	MySQLPort       string
 	PMAPort         string
 	HostPort        string

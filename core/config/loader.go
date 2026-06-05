@@ -267,9 +267,6 @@ func (l *Loader) Load(projectDir string, flags CLIFlags) (ProjectConfig, error) 
 	if flags.MySQLUser != "" {
 		merged["MYSQL_USER"] = flags.MySQLUser
 	}
-	if flags.MySQLPassword != "" {
-		merged["MYSQL_PASSWORD"] = flags.MySQLPassword
-	}
 	if flags.MySQLPort != "" {
 		merged["MYSQL_PORT"] = flags.MySQLPort
 	}

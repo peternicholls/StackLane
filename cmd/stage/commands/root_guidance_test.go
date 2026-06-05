@@ -89,7 +89,7 @@ func TestRootNoArgsPrintsGuidanceWithoutMutatingProject(t *testing.T) {
 		t.Fatalf("root guidance: %v", err)
 	}
 	out := buf.String()
-	for _, want := range []string{"StageServe", "This folder doesn't have StageServe settings yet.", "stage init"} {
+	for _, want := range []string{"StageServe", "This folder doesn't have StageServe settings yet.", "Set up this directory as a project", "stage init"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
 		}
@@ -104,6 +104,31 @@ func TestRootNoArgsPrintsGuidanceWithoutMutatingProject(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("bare stage should not write project files into state dir, found: %v", entries)
+	}
+}
+
+func TestRootNoArgsMissingRuntimeAssetsShowsRecovery(t *testing.T) {
+	projectDir := t.TempDir()
+	stackHome := t.TempDir()
+	stateDir := filepath.Join(stackHome, ".stageserve-state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatalf("create state dir: %v", err)
+	}
+
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--stack-home", stackHome, "--project-dir", projectDir, "--notui"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("root guidance: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{"Your computer isn't ready yet.", "Restore shared runtime file", "Restore project runtime file", "stage setup"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
 	}
 }
 
@@ -122,6 +147,28 @@ func TestRootCLIFlagUsesGuidanceFallback(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "Direct commands:") {
 		t.Fatalf("expected plain guidance output, got:\n%s", buf.String())
+	}
+}
+
+func TestRootNoColorGuidanceFallbackHasNoANSI(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	projectDir := t.TempDir()
+	stackHome := t.TempDir()
+	root := NewRoot("test")
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--stack-home", stackHome, "--project-dir", projectDir, "--cli"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("root guidance: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "StageServe\nNeeds attention\n") {
+		t.Fatalf("severity output missing:\n%s", out)
+	}
+	if strings.Contains(out, "\x1b[") {
+		t.Fatalf("NO_COLOR root guidance contains ANSI escape sequences:\n%s", out)
 	}
 }
 

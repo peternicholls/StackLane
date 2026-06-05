@@ -21,6 +21,7 @@ Define the behavioral contract for spec 011 across merge-gate hardening and foll
   - `cfg.StackFile`
 - Missing files must produce StageServe-native remedies (not raw compose path errors).
 - Installer path for 011 must provision required runtime assets via bundled artifact.
+- Release installers consume a `stageserve-runtime_<version>.tar.gz` bundle that extracts `stacks/20i/docker-compose.shared.yml` and `stacks/20i/docker-compose.20i.yml` under `STAGESERVE_STACK_HOME` (default: `$HOME/docker/stageserve`). The installed binary remains `STAGESERVE_INSTALL_DIR/stage`.
 
 ## 3. Lifecycle Error Contract (Merge Gate)
 

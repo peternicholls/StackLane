@@ -16,6 +16,16 @@ FAIL=0
 pass() { printf 'PASS: %s\n' "$1"; PASS=$((PASS+1)); }
 fail() { printf 'FAIL: %s — %s\n' "$1" "$2"; FAIL=$((FAIL+1)); }
 
+make_runtime_bundle() {
+  local tmpdir="$1"
+  local root="$tmpdir/runtime"
+  mkdir -p "$root/stacks/20i"
+  printf 'services: {}\n' > "$root/stacks/20i/docker-compose.shared.yml"
+  printf 'services: {}\n' > "$root/stacks/20i/docker-compose.20i.yml"
+  tar -czf "$tmpdir/runtime.tar.gz" -C "$root" stacks
+  printf '%s\n' "$tmpdir/runtime.tar.gz"
+}
+
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
 # Run installer with a throw-away dir and a dummy binary.
@@ -35,7 +45,9 @@ run_installer() {
 tmpdir=$(mktemp -d)
 install_target="$tmpdir/nested/install"
 out=$(STAGESERVE_INSTALL_DIR="$install_target" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 && -d "$install_target" ]]; then
@@ -48,7 +60,9 @@ rm -rf "$tmpdir"
 # ── Test 2: Binary is placed at STAGESERVE_INSTALL_DIR/stage ───────────────
 tmpdir=$(mktemp -d)
 out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 && -f "$tmpdir/stage" ]]; then
@@ -61,7 +75,9 @@ rm -rf "$tmpdir"
 # ── Test 3: Installed binary has execute permission ───────────────────────────
 tmpdir=$(mktemp -d)
 out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 && -x "$tmpdir/stage" ]]; then
@@ -76,7 +92,9 @@ tmpdir=$(mktemp -d)
 custom="$tmpdir/custom-bin"
 mkdir -p "$custom"
 out=$(STAGESERVE_INSTALL_DIR="$custom" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 && -f "$custom/stage" ]]; then
@@ -89,7 +107,9 @@ rm -rf "$tmpdir"
 # ── Test 5: Installer exits 0 on successful install ──────────────────────────
 tmpdir=$(mktemp -d)
 out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && rc=0 || rc=$?
 if [[ $rc -eq 0 ]]; then
@@ -102,11 +122,15 @@ rm -rf "$tmpdir"
 # ── Test 6: Installer is idempotent — running twice succeeds ─────────────────
 tmpdir=$(mktemp -d)
 out1=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
        STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
        NONINTERACTIVE=1 \
        bash "$INSTALL_SH" --test-mode 2>&1) && rc1=0 || rc1=$?
 out2=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
        STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
        NONINTERACTIVE=1 \
        bash "$INSTALL_SH" --test-mode 2>&1) && rc2=0 || rc2=$?
 if [[ $rc1 -eq 0 && $rc2 -eq 0 && -x "$tmpdir/stage" ]]; then
@@ -122,7 +146,9 @@ tmpdir=$(mktemp -d)
 unique_dir="$tmpdir/zz_not_in_path_$$"
 mkdir -p "$unique_dir"
 out=$(STAGESERVE_INSTALL_DIR="$unique_dir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       PATH="/usr/bin:/bin" \
       bash "$INSTALL_SH" --test-mode 2>&1) && true
@@ -136,7 +162,9 @@ rm -rf "$tmpdir"
 # ── Test 8: No PATH warning when install dir is already in PATH ───────────────
 tmpdir=$(mktemp -d)
 out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       PATH="$tmpdir:/usr/bin:/bin" \
       bash "$INSTALL_SH" --test-mode 2>&1) && true
@@ -150,7 +178,9 @@ rm -rf "$tmpdir"
 # ── Test 9: NONINTERACTIVE=1 suppresses TUI launch prompt ────────────────────
 tmpdir=$(mktemp -d)
 out=$(STAGESERVE_INSTALL_DIR="$tmpdir" \
+  STAGESERVE_STACK_HOME="$tmpdir/stack-home" \
       STAGESERVE_TEST_ASSET_PATH="/usr/bin/true" \
+  STAGESERVE_TEST_BUNDLE_PATH="$(make_runtime_bundle "$tmpdir")" \
       NONINTERACTIVE=1 \
       bash "$INSTALL_SH" --test-mode 2>&1) && true
 rm -rf "$tmpdir"

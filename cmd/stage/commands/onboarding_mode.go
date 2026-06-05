@@ -2,11 +2,11 @@ package commands
 
 import (
 	"os"
-	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/peternicholls/stageserve/core/guidance"
 	"github.com/peternicholls/stageserve/core/onboarding"
 )
 
@@ -44,14 +44,5 @@ func plainTextOutputRequested(notUI, cli, legacyNoTUI bool) bool {
 }
 
 func tuiDisabledByEnv() bool {
-	v := strings.TrimSpace(os.Getenv("STAGESERVE_NO_TUI"))
-	if v == "" {
-		return false
-	}
-	switch strings.ToLower(v) {
-	case "0", "false", "no", "off":
-		return false
-	default:
-		return true
-	}
+	return guidance.ShellEnvTruthy("STAGESERVE_NO_TUI")
 }

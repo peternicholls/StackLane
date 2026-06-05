@@ -49,6 +49,9 @@ func New(d Deps) *Orchestrator { return &Orchestrator{D: d} }
 // Up runs the documented 11-step flow.
 func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	cfg = resolveSharedGatewayPorts(cfg)
+	if err := ValidateRuntimeAssets(cfg); err != nil {
+		return err
+	}
 
 	// Step 1: ensure shared network exists.
 	if err := o.ensureSharedNetwork(ctx, cfg); err != nil {
@@ -122,6 +125,11 @@ func (o *Orchestrator) Up(ctx context.Context, cfg config.ProjectConfig) error {
 	}
 
 	// Step 8: regenerate gateway config, reload gateway.
+	registry, err = o.D.State.Registry()
+	if err != nil {
+		o.rollbackProject(ctx, cfg)
+		return Wrap("registry", cfg.Slug, err, "Inspect the state directory for unreadable JSON files, then retry `stage up`.")
+	}
 	currentRoutes := routesFromRegistry(registry)
 	nextRoutes := routesWithProject(currentRoutes, cfg)
 	if err := o.ensureSharedGatewayTLS(cfg, nextRoutes); err != nil {
@@ -176,6 +184,45 @@ func runtimeProfiles(cfg config.ProjectConfig) []string {
 	return []string{cfg.Profile}
 }
 
+// ValidateRuntimeAssets verifies the product-owned compose files before any
+// Docker or compose side effect begins.
+func ValidateRuntimeAssets(cfg config.ProjectConfig) error {
+	for _, required := range []struct {
+		step  string
+		label string
+		path  string
+	}{
+		{step: "runtime-asset-shared", label: "shared runtime compose file", path: cfg.SharedFile},
+		{step: "runtime-asset-project", label: "project runtime compose file", path: cfg.StackFile},
+	} {
+		if err := validateRuntimeAsset(required.path); err != nil {
+			return Wrap(required.step, cfg.Slug, err, runtimeAssetRemedy(cfg, required.label, required.path))
+		}
+	}
+	return nil
+}
+
+func validateRuntimeAsset(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("required runtime asset path is empty")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("required runtime asset is missing at %s", path)
+		}
+		return fmt.Errorf("cannot access required runtime asset %s: %w", path, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("required runtime asset path is a directory: %s", path)
+	}
+	return nil
+}
+
+func runtimeAssetRemedy(cfg config.ProjectConfig, label, path string) string {
+	return fmt.Sprintf("Reinstall StageServe or restore the bundled %s at %s, then run `stage doctor`.", label, path)
+}
+
 // Down stops the project, removes project-owned runtime state, and clears any active route.
 func (o *Orchestrator) Down(ctx context.Context, cfg config.ProjectConfig, removeVolumes bool) error {
 	cfg = resolveSharedGatewayPorts(cfg)
@@ -210,20 +257,27 @@ func (o *Orchestrator) DownAll(ctx context.Context, cfg config.ProjectConfig, re
 		return Wrap("registry", "", err, "Inspect the state directory for unreadable JSON files.")
 	}
 	projects := make([]config.ProjectConfig, 0, len(registry))
+	var failures []string
 	for _, row := range registry {
 		rec, err := o.D.State.Load(row.Slug)
 		if err != nil {
-			return Wrap("load-state", row.Slug, err, "Inspect the recorded state for this project.")
+			failures = append(failures, fmt.Sprintf("%s load-state: %v", row.Slug, err))
+			continue
 		}
 		projects = append(projects, rec.Project)
 		if err := o.stopProject(ctx, rec.Project, removeVolumes); err != nil {
-			return Wrap("compose-down", row.Slug, err, "Inspect docker compose output above.")
+			failures = append(failures, fmt.Sprintf("%s compose-down: %v", row.Slug, err))
+			continue
 		}
 		rec.AttachmentState = state.StateDown
 		rec.Runtime = state.RuntimeIdentity{}
 		if err := o.D.State.Save(rec); err != nil {
-			return Wrap("save-state", row.Slug, err, "Inspect permissions on the state directory.")
+			failures = append(failures, fmt.Sprintf("%s save-state: %v", row.Slug, err))
+			continue
 		}
+	}
+	if len(failures) > 0 {
+		return Wrap("down-all", "", errors.New(strings.Join(failures, "; ")), "Some projects may already be stopped. Run `stage status --all`, inspect the listed project errors, then retry `stage down --all`.")
 	}
 	if err := o.syncSharedGateway(ctx, cfg, ""); err != nil {
 		return Wrap("gateway-reload", "", err, sharedComposeRemedy(cfg, "up -d gateway", "."))
@@ -258,18 +312,24 @@ func (o *Orchestrator) Attach(ctx context.Context, cfg config.ProjectConfig) err
 	}
 	rec.AttachmentState = state.StateAttached
 	if err := o.D.State.Save(rec); err != nil {
-		return Wrap("save-state", cfg.Slug, err, "")
+		return Wrap("save-state", cfg.Slug, err, "Inspect permissions on the state directory, then retry `stage attach`.")
 	}
-	registry, _ := o.D.State.Registry()
+	registry, err := o.D.State.Registry()
+	if err != nil {
+		return Wrap("registry", cfg.Slug, err, "Inspect the state directory for unreadable JSON files, then retry `stage attach`.")
+	}
 	currentRoutes := routesFromRegistry(registry)
 	nextRoutes := routesWithProject(currentRoutes, cfg)
 	if err := o.ensureSharedGatewayTLS(cfg, nextRoutes); err != nil {
-		return Wrap("tls-cert", cfg.Slug, err, "")
+		return Wrap("tls-cert", cfg.Slug, err, "Install mkcert and trust the local CA with `mkcert -install`, then retry.")
 	}
 	if err := o.prepareSharedGatewayConfig(cfg, nextRoutes, cfg.Slug); err != nil {
-		return Wrap("gateway-config", cfg.Slug, err, "")
+		return Wrap("gateway-config", cfg.Slug, err, "Inspect the gateway config path under the state directory.")
 	}
-	return o.reloadSharedGateway(ctx, cfg)
+	if err := o.reloadSharedGateway(ctx, cfg); err != nil {
+		return Wrap("gateway-reload", cfg.Slug, err, sharedComposeRemedy(cfg, "up -d --force-recreate gateway", "."))
+	}
+	return nil
 }
 
 // Detach stops the project, removes its runtime state, and clears its route.

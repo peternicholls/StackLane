@@ -28,7 +28,6 @@ type SharedFlags struct {
 	PHPVersion      string
 	MySQLDatabase   string
 	MySQLUser       string
-	MySQLPassword   string
 	MySQLPort       string
 	PMAPort         string
 	HostPort        string
@@ -71,7 +70,6 @@ func NewRoot(version string) *cobra.Command {
 	pf.StringVar(&flags.PHPVersion, "php-version", "", "PHP version (e.g. 8.5)")
 	pf.StringVar(&flags.MySQLDatabase, "mysql-database", "", "MySQL database name")
 	pf.StringVar(&flags.MySQLUser, "mysql-user", "", "MySQL user")
-	pf.StringVar(&flags.MySQLPassword, "mysql-password", "", "MySQL password")
 	pf.StringVar(&flags.MySQLPort, "mysql-port", "", "MySQL host port")
 	pf.StringVar(&flags.PMAPort, "pma-port", "", "phpMyAdmin host port")
 	pf.StringVar(&flags.HostPort, "host-port", "", "HTTP host port (advanced)")
@@ -128,7 +126,6 @@ func loadConfig(flags *SharedFlags) (config.ProjectConfig, error) {
 		PHPVersion:      flags.PHPVersion,
 		MySQLDatabase:   flags.MySQLDatabase,
 		MySQLUser:       flags.MySQLUser,
-		MySQLPassword:   flags.MySQLPassword,
 		MySQLPort:       flags.MySQLPort,
 		PMAPort:         flags.PMAPort,
 		HostPort:        flags.HostPort,
