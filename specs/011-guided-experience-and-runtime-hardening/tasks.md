@@ -140,9 +140,9 @@ Non-negotiable design rules for implementation tasks:
 
 **Goal**: Apply a dedicated visual polish pass after behavior is working.
 
-- [ ] T038 Refine spacing, section rhythm, and hierarchy in guided shell views in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go against `docs/design/terminal-visual-style-guide.md`; enforce surface header, verdict-first order, visible defaults, one dominant focus section, secondary `More…`, and contextual footer help.
-- [ ] T039 Normalize colour semantics, component reuse, and fallback rendering across guided states in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/core/guidance/text.go; map every colour to a named semantic role and remove any decorative or one-off styling.
-- [ ] T040 Validate responsive behavior at narrow/normal/wide terminal widths and record evidence in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md; include screenshots or captured text for colour and `NO_COLOR=1`, plus notes on wrapping, alignment, and footer discoverability.
+- [x] T038 Refine spacing, section rhythm, and hierarchy in guided shell views in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go against `docs/design/terminal-visual-style-guide.md`; enforce surface header, verdict-first order, visible defaults, one dominant focus section, secondary `More…`, and contextual footer help.
+- [x] T039 Normalize colour semantics, component reuse, and fallback rendering across guided states in /Users/peternicholls/Dev/stageserve/core/guidance/shell.go and /Users/peternicholls/Dev/stageserve/core/guidance/text.go; map every colour to a named semantic role and remove any decorative or one-off styling.
+- [x] T040 Validate responsive behavior at narrow/normal/wide terminal widths and record evidence in /Users/peternicholls/Dev/stageserve/specs/011-guided-experience-and-runtime-hardening/quickstart.md; include screenshots or captured text for colour and `NO_COLOR=1`, plus notes on wrapping, alignment, and footer discoverability.
 
 ## Phase 9: Polish & Cross-Cutting Validation
 

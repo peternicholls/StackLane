@@ -146,6 +146,25 @@ go test ./core/guidance ./cmd/stage/commands ./core/lifecycle ./infra/compose ./
 
 Add any package-targeted suites introduced by follow-up implementation.
 
+### B4. TUI Design Polish Evidence
+
+Phase 8 focused validation:
+
+```bash
+go test ./core/guidance
+```
+
+Recorded result on 2026-06-05: pass.
+
+Validated render evidence:
+
+- Hierarchy: guided shell output keeps `◆ StageServe`, the surface label, a verdict line such as `This project is ready to run.`, `Key facts`, one dominant `What you can do` focus section, secondary `More...`, and contextual footer help.
+- Narrow width: `TestShellNarrowViewStacksKeyFacts` renders key facts as stacked rows at width 48, including `Site name`, `Local URL`, and short footer help `↑/↓ move • enter choose • c commands • d doctor • q`.
+- Loading state: `TestShellLifecycleActionShowsProgressWithinLatencyBudget` verifies first visible feedback within 250 ms and captured text `Starting this project...`, `Current step`, `In progress`, `esc cancel`, and cancellation guidance.
+- No-colour parity: `TestShellViewRendersCoreSurfaces` and `TestRenderTextUsesSeverityWithoutANSI` assert no ANSI escapes and preserve the same verdict, facts, choices, direct command equivalents, and next-step hierarchy.
+- Colour semantics: `core/guidance/styles.go` maps every guidance colour to a named semantic role: ready, needs action, error, primary action, supporting accent, primary structure, supporting text, and dim evidence. Confirmation borders reuse those roles rather than one-off colours.
+- Fallback boundary: plain text output now places command equivalents under `More:` with `Direct commands:`, `Plain text output: stage --cli`, and `Advanced and troubleshooting: stage doctor` so direct commands remain secondary and copy-pasteable.
+
 ## Known Validation Gaps
 
 - If environment limitations prevent real Docker daemon end-to-end validation for any required scenario, record the exact gap and command attempted in spec closeout notes.
