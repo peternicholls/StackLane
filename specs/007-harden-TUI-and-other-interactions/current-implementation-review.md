@@ -138,7 +138,34 @@ The following are not blockers for writing this documentation, but they matter f
 - `stage init` does not expose a `--tui` flag and cannot force TUI mode the same way `stage setup` can.
 - `ValidateDocroot` checks containment but not existence.
 - `stage setup` checks readiness but does not currently run the one-time DNS bootstrap itself; it reports readiness and remediation.
-- `stage doctor` checks Docker/DNS/mkcert/state/ports, but the implementation does not yet include a distinct gateway-specific readiness check despite docs saying it does.
+- `stage doctor` checks Docker/DNS/mkcert/state/ports. The active runtime contract now matches that implemented scope; a distinct gateway-specific readiness check remains follow-on work rather than current behavior.
+
+## Planner And TUI Implementation Notes
+
+Planner and TUI work should apply the guided contract's plain-language label map before rendering either the interactive shell or the text fallback.
+
+Use this mapping as the implementation note for first-level action labels:
+
+| Internal Action | Guided Label | Direct Command |
+|---|---|---|
+| `setup` | `Set up this computer` | `stage setup` |
+| `init` | `Create project settings` | `stage init` |
+| `up` | `Run this project` | `stage up` |
+| `attach` | `Add this project to StageServe` | `stage attach` |
+| `status` | `Check project status` | `stage status` |
+| `logs` | `View project logs` | `stage logs` |
+| `down` | `Stop this project` | `stage down` |
+| `detach` | `Remove this project from StageServe` | `stage detach` |
+| `doctor` | `Troubleshoot this problem` | `stage doctor` |
+| `edit_config` | `Edit project settings` | `.env.stageserve` |
+| `show_commands` | `Show commands` | none |
+| `advanced` | `Advanced troubleshooting` | none |
+
+Implementation rule:
+
+- first-level planner and shell labels stay in guided language
+- direct command names stay visible through show-commands, direct help, or advanced/troubleshooting views
+- terms such as attach, detach, daemon, gateway, compose, container, runtime, registry, and state stay out of first-level labels unless there is no clearer StageServe-level wording
 
 ## Overall Assessment
 

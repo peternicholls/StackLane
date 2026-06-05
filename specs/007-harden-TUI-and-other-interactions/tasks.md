@@ -31,12 +31,12 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Purpose**: Lock the guided interaction contract before implementation.
 
-- [ ] T001 [P] Add or update spec 007 contract references in `specs/007-harden-TUI-and-other-interactions/contracts/guided-tui-contract.md`.
-- [ ] T002 [P] Add terminal verification checklist scaffolding to `specs/007-harden-TUI-and-other-interactions/quickstart.md`.
-- [ ] T003 [P] Confirm `go.mod` has only the Charm dependencies already introduced by spec 005; do not add new UI dependencies.
+- [X] T001 [P] Add or update spec 007 contract references in `specs/007-harden-TUI-and-other-interactions/contracts/guided-tui-contract.md`.
+- [X] T002 [P] Add terminal verification checklist scaffolding to `specs/007-harden-TUI-and-other-interactions/quickstart.md`.
+- [X] T003 [P] Confirm `go.mod` has only the Charm dependencies already introduced by spec 005; do not add new UI dependencies.
 - [X] T004 Add a short implementation note in `docs/runtime-contract.md` that direct command semantics remain authoritative under the guided TUI.
-- [ ] T004a Record in `specs/007-harden-TUI-and-other-interactions/recovery-plan.md` whether spec 004 carryover validation tasks T029/T031/T032 are migrated into spec 007 or explicitly deferred.
-- [ ] T004b Add the plain-language label map from the guided TUI contract to the implementation notes for planner/TUI work.
+- [X] T004a Record in `specs/007-harden-TUI-and-other-interactions/recovery-plan.md` whether spec 004 carryover validation tasks T029/T031/T032 are migrated into spec 007 or explicitly deferred.
+- [X] T004b Add the plain-language label map from the guided TUI contract to the implementation notes for planner/TUI work.
 
 **Checkpoint**: Contract and validation surfaces agree on root no-args behavior.
 
@@ -45,12 +45,12 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 **Purpose**: Build the non-UI decision layer that the TUI and text fallback will use.
 
 - [X] T005 [P] Create `core/guidance/types.go` with `TUICapability`, `GuidedContext`, `NextActionPlan`, and `GuidedAction`.
-- [ ] T006 [P] Add terminal planner-inspection command or debug output so `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error` can be verified from real `stage` invocations.
+- [X] T006 [P] Add terminal planner-inspection command or debug output so `machine_not_ready`, `project_missing_config`, `project_ready_to_run`, `project_running`, `project_down`, `drift_detected`, `not_project`, and `unknown_error` can be verified from real `stage` invocations.
 - [X] T007 Implement `core/guidance/planner.go` to produce status header copy, visible defaults, decision items, tool-owned work items, footer affordances, and direct command equivalents for each situation.
 - [X] T008 Add cheap context collection seams in `core/guidance/context.go` without running long Docker checks before first render; include `stack_id` resolved from `STAGESERVE_STACK`.
 - [X] T009 Add terminal verification steps proving planner collection does not write `.env.stageserve` or mutate `.stageserve-state`.
 - [X] T009a [P] Add terminal planner verification proving first-level action labels use plain language while command names remain available through direct command equivalents.
-- [ ] T009b [P] Add an architectural verification step proving the planner, TUI, and text fallback reuse existing lifecycle/config precedence seams rather than duplicating lifecycle or config logic.
+- [X] T009b [P] Add an architectural verification step proving the planner, TUI, and text fallback reuse existing lifecycle/config precedence seams rather than duplicating lifecycle or config logic.
 - [X] T010 Run focused supporting checks for `core/guidance` after terminal planner scenarios are green.
 
 **Checkpoint**: Planner can decide the guided path without a terminal UI.
@@ -59,13 +59,13 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Purpose**: Remove output-mode drift before adding a larger TUI.
 
-- [ ] T011 [P] Refactor `cmd/stage/commands/setup.go` to use `onboarding.NewProjector`.
-- [ ] T012 [P] Refactor `cmd/stage/commands/doctor.go` to use `onboarding.NewProjector`.
-- [ ] T013 [P] Refactor `cmd/stage/commands/init.go` to use `onboarding.NewProjector`.
-- [ ] T014 Implement the spec decision that `stage init` opens an explicit guided project-config form by default in interactive terminals while `--notui`, `--cli`, and `--json` use the final non-guided contracts.
+- [X] T011 [P] Refactor `cmd/stage/commands/setup.go` to use `onboarding.NewProjector`.
+- [X] T012 [P] Refactor `cmd/stage/commands/doctor.go` to use `onboarding.NewProjector`.
+- [X] T013 [P] Refactor `cmd/stage/commands/init.go` to use `onboarding.NewProjector`.
+- [X] T014 Implement the spec decision that `stage init` opens an explicit guided project-config form by default in interactive terminals while `--notui`, `--cli`, and `--json` use the final non-guided contracts.
 - [X] T015 Remove or correct stale `--recheck` documentation in `docs/runtime-contract.md` and any other active docs.
-- [ ] T016 Add terminal JSON purity checks for setup, doctor, and init using real command output parsed with `jq` or equivalent.
-- [ ] T017 Run focused supporting checks for `core/onboarding` and `cmd/stage/commands` after terminal JSON checks are green.
+- [X] T016 Add terminal JSON purity checks for setup, doctor, and init using real command output parsed with `jq` or equivalent.
+- [X] T017 Run focused supporting checks for `core/onboarding` and `cmd/stage/commands` after terminal JSON checks are green.
 
 **Checkpoint**: Onboarding commands match the final spec 007 output-mode contract before root TUI work begins.
 
@@ -100,19 +100,19 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 ### Terminal Verification
 
-- [ ] T028 [P] [US2] Verify a machine-not-ready scenario enters the tool-owned setup checklist and pauses only on the first approval or external blocker.
-- [ ] T029 [P] [US2] Verify a project without `.env.stageserve` shows "create project settings" as the highlighted default.
-- [ ] T030 [P] [US2] Verify config preview shows `.env.stageserve` path and values before write.
-- [ ] T031 [P] [US2] Verify cancel-before-write leaves no `.env.stageserve` file.
+- [X] T028 [P] [US2] Verify a machine-not-ready scenario enters the tool-owned setup checklist and pauses only on the first approval or external blocker.
+- [X] T029 [P] [US2] Verify a project without `.env.stageserve` shows "create project settings" as the highlighted default.
+- [X] T030 [P] [US2] Verify config preview shows `.env.stageserve` path and values before write.
+- [X] T031 [P] [US2] Verify cancel-before-write leaves no `.env.stageserve` file.
 
 ### Implementation
 
-- [ ] T032 [US2] Implement the first TUI surfaces: status header, decision bar, tool work panel, and persistent footer, with diagnostics/direct commands kept out of the primary decision list.
-- [ ] T033 [US2] Wire setup action through existing onboarding setup checks and result projection.
+- [X] T032 [US2] Implement the first TUI surfaces: status header, decision bar, tool work panel, and persistent footer, with diagnostics/direct commands kept out of the primary decision list.
+- [X] T033 [US2] Wire setup action through existing onboarding setup checks and result projection.
 - [X] T034 [US2] Wire init action through `core/onboarding.WriteProjectEnv` with preview and confirmation.
-- [ ] T035 [US2] Add Huh form or equivalent prompt for site name, web folder, suffix, and local URL preview edits.
+- [X] T035 [US2] Add Huh form or equivalent prompt for site name, web folder, suffix, and local URL preview edits.
 - [X] T036 [US2] After init, recompute planner state and offer run action.
-- [ ] T037 [US2] Validate first-run TUI manually and record evidence in `quickstart.md`.
+- [X] T037 [US2] Validate first-run TUI manually and record evidence in `quickstart.md`.
 
 **Checkpoint**: New users can use guided path for setup and config creation.
 
@@ -122,27 +122,27 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 ### Terminal Verification
 
-- [ ] T038 [P] [US3] Verify a configured stopped project shows "run this project" as the highlighted default.
-- [ ] T039 [P] [US3] Verify a running project shows URL/status, defaults to a non-destructive action such as viewing logs, requires confirmation before stop, and keeps direct commands/troubleshooting behind the footer.
-- [ ] T040 [P] [US3] Verify stop action requires confirmation before running.
-- [ ] T041 [P] [US3] Verify down/status/inline diagnostic results lead to a clear next action without showing `stage doctor` as a peer easy-mode choice.
-- [ ] T041a [P] [US3] Verify logs action exits cleanly and leaves the terminal usable.
-- [ ] T041b [P] [US3] Verify Ctrl-C cancellation before confirmation leaves no state/config changes.
-- [ ] T041c [P] [US3] Verify Ctrl-C during a long-running guided action surfaces the safest next action and does not corrupt terminal output.
-- [ ] T041d [P] [US3] Verify any guided add/remove actions are labeled "add this project to StageServe" and "remove this project from StageServe", with `attach`/`detach` visible only through show-commands or direct help.
-- [ ] T041e [P] [US3] Verify that when multiple projects are available through StageServe, the guided planner remains scoped to the current directory and records the first-version limitation rather than implying a cross-project switcher.
-- [ ] T041f [P] [US3] Verify local URL rendering uses the active suffix, scheme, and port from config/capabilities, with `.develop` used only as the example/default product copy.
+- [X] T038 [P] [US3] Verify a configured stopped project shows "run this project" as the highlighted default.
+- [X] T039 [P] [US3] Verify a running project shows URL/status, defaults to a non-destructive action such as viewing logs, requires confirmation before stop, and keeps direct commands/troubleshooting behind the footer.
+- [X] T040 [P] [US3] Verify stop action requires confirmation before running.
+- [X] T041 [P] [US3] Verify down/status/inline diagnostic results lead to a clear next action without showing `stage doctor` as a peer easy-mode choice.
+- [X] T041a [P] [US3] Verify logs action exits cleanly and leaves the terminal usable.
+- [X] T041b [P] [US3] Verify Ctrl-C cancellation before confirmation leaves no state/config changes.
+- [X] T041c [P] [US3] Verify Ctrl-C during a long-running guided action surfaces the safest next action and does not corrupt terminal output.
+- [X] T041d [P] [US3] Verify any guided add/remove actions are labeled "add this project to StageServe" and "remove this project from StageServe", with `attach`/`detach` visible only through show-commands or direct help.
+- [X] T041e [P] [US3] Verify that when multiple projects are available through StageServe, the guided planner remains scoped to the current directory and records the first-version limitation rather than implying a cross-project switcher.
+- [X] T041f [P] [US3] Verify local URL rendering uses the active suffix, scheme, and port from config/capabilities, with `.develop` used only as the example/default product copy.
 
 ### Implementation
 
-- [ ] T042 [US3] Wire `up` action through existing lifecycle command/domain seam.
-- [ ] T043 [US3] Wire `status` action through existing status behavior.
-- [ ] T044 [US3] Wire `logs` action with clear exit/cancel behavior.
-- [ ] T045 [US3] Wire `down` action with confirmation and existing data-preserving semantics.
-- [ ] T046 [US3] Wire `doctor` action through existing diagnostics.
-- [ ] T046a [US3] Reconcile the existing `stage doctor` gateway-readiness documentation gap by either implementing a guided doctor gateway check or correcting spec/docs to stop claiming one.
-- [ ] T046b [US3] Reconcile the `ValidateDocroot` existence-check gap by adding a guided warning/confirmation or explicitly documenting containment-only validation.
-- [ ] T047 [US3] Validate running-project TUI manually and record evidence in `quickstart.md`.
+- [X] T042 [US3] Wire `up` action through existing lifecycle command/domain seam.
+- [X] T043 [US3] Wire `status` action through existing status behavior.
+- [X] T044 [US3] Wire `logs` action with clear exit/cancel behavior.
+- [X] T045 [US3] Wire `down` action with confirmation and existing data-preserving semantics.
+- [X] T046 [US3] Wire `doctor` action through existing diagnostics.
+- [X] T046a [US3] Reconcile the existing `stage doctor` gateway-readiness documentation gap by either implementing a guided doctor gateway check or correcting spec/docs to stop claiming one.
+- [X] T046b [US3] Reconcile the `ValidateDocroot` existence-check gap by adding a guided warning/confirmation or explicitly documenting containment-only validation.
+- [X] T047 [US3] Validate running-project TUI manually and record evidence in `quickstart.md`.
 
 **Checkpoint**: Daily project management works from bare `stage`.
 
@@ -152,12 +152,12 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 ### Design Review And Implementation
 
-- [ ] T047a [P] Audit the guided shell against `docs/design/terminal-visual-style-guide.md`, `.github/instructions/terminal-design-contract.instructions.md`, and `.github/instructions/terminal-markup-spec.instructions.md`, then record the intended visual deltas in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or a design note linked from it.
-- [ ] T047b Extract or refine reusable Bubble Tea/Lip Gloss rendering helpers for guided headers, key facts, decision rows, confirmations, details, and footer hints.
-- [ ] T047c Apply a spacing, alignment, and hierarchy polish pass to guided screens so the default action, supporting context, and advanced affordances scan cleanly in a real terminal.
-- [ ] T047d Apply a semantic colour and emphasis pass to guided screens, preserving `NO_COLOR`, plain-text parity, and the StageServe colour contract.
-- [ ] T047e Verify guided screens remain usable at narrower terminal widths and after transitions such as details, confirmation, editing, and long-running action results.
-- [ ] T047f Capture terminal evidence for the design pass and note any intentionally deferred visual work.
+- [X] T047a [P] Audit the guided shell against `docs/design/terminal-visual-style-guide.md`, `.github/instructions/terminal-design-contract.instructions.md`, and `.github/instructions/terminal-markup-spec.instructions.md`, then record the intended visual deltas in `specs/007-harden-TUI-and-other-interactions/quickstart.md` or a design note linked from it.
+- [X] T047b Extract or refine reusable Bubble Tea/Lip Gloss rendering helpers for guided headers, key facts, decision rows, confirmations, details, and footer hints.
+- [X] T047c Apply a spacing, alignment, and hierarchy polish pass to guided screens so the default action, supporting context, and advanced affordances scan cleanly in a real terminal.
+- [X] T047d Apply a semantic colour and emphasis pass to guided screens, preserving `NO_COLOR`, plain-text parity, and the StageServe colour contract.
+- [X] T047e Verify guided screens remain usable at narrower terminal widths and after transitions such as details, confirmation, editing, and long-running action results.
+- [X] T047f Capture terminal evidence for the design pass and note any intentionally deferred visual work.
 
 **Checkpoint**: Guided TUI presentation matches the active StageServe terminal design system closely enough for broader docs and release validation.
 
@@ -165,18 +165,18 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Goal**: TUI additions do not break direct commands or automation.
 
-- [ ] T048 [P] [US4] Verify non-TTY bare `stage` does not prompt.
-- [ ] T049 [P] [US4] Verify `NO_COLOR=1` removes color styling where output is captured and both `--notui` and `--cli` disable TUI behavior for the current invocation.
-- [ ] T050 [P] [US4] Verify `stage setup --json` and `stage doctor --json` parse as JSON from terminal output.
-- [ ] T051 [P] [US4] Verify direct command smoke paths for `stage up --help`, `stage attach --help`, `stage status --help`, `stage logs --help`, `stage down --help`, and `stage detach --help`.
-- [ ] T051a [P] [US4] Verify direct `stage attach` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
-- [ ] T051b [P] [US4] Verify direct `stage detach` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
-- [ ] T051c [P] [US4] Verify direct `stage up` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
-- [ ] T051d [P] [US4] Verify direct `stage status` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
-- [ ] T051e [P] [US4] Verify direct `stage logs` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
-- [ ] T051f [P] [US4] Verify direct `stage down` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
-- [ ] T052 [US4] Run focused supporting final direct-command contract checks and fix regressions.
-- [ ] T052a [US4] Verify direct commands may still use command names such as `attach` and `detach`, but easy-mode screens and text fallback do not require those terms for comprehension.
+- [X] T048 [P] [US4] Verify non-TTY bare `stage` does not prompt.
+- [X] T049 [P] [US4] Verify `NO_COLOR=1` removes color styling where output is captured and both `--notui` and `--cli` disable TUI behavior for the current invocation.
+- [X] T050 [P] [US4] Verify `stage setup --json` and `stage doctor --json` parse as JSON from terminal output.
+- [X] T051 [P] [US4] Verify direct command smoke paths for `stage up --help`, `stage attach --help`, `stage status --help`, `stage logs --help`, `stage down --help`, and `stage detach --help`.
+- [X] T051a [P] [US4] Verify direct `stage attach` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
+- [X] T051b [P] [US4] Verify direct `stage detach` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
+- [X] T051c [P] [US4] Verify direct `stage up` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
+- [X] T051d [P] [US4] Verify direct `stage status` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
+- [X] T051e [P] [US4] Verify direct `stage logs` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
+- [X] T051f [P] [US4] Verify direct `stage down` behavior in a controlled configured project, or record the real-daemon gap explicitly in `quickstart.md`.
+- [X] T052 [US4] Run focused supporting final direct-command contract checks and fix regressions.
+- [X] T052a [US4] Verify direct commands may still use command names such as `attach` and `detach`, but easy-mode screens and text fallback do not require those terms for comprehension.
 
 **Checkpoint**: Power-user and automation paths match the final spec 007 CLI contract.
 
@@ -184,35 +184,35 @@ These tasks execute already-resolved spec 007 decisions. They are not open desig
 
 **Purpose**: Make docs reflect the simple-first product model.
 
-- [ ] T053 [P] Update `README.md` so the first-run path starts with bare `stage`.
-- [ ] T054 [P] Move Docker/gateway/network/volume details in `README.md` to advanced/troubleshooting sections.
-- [ ] T055 [P] Update `docs/runtime-contract.md` for root guided behavior, no-TUI controls, and direct command behavior.
-- [ ] T056 [P] Add active `docs/installer-onboarding.md` using the researched install/setup/init/up/doctor flow.
-- [ ] T057 [P] Update `.env.stageserve.example` comments to align with guided config creation.
-- [ ] T058 [P] Update command `Short` and `Long` strings in `cmd/stage/commands/*.go` to prefer StageServe concepts over Docker/gateway internals.
-- [ ] T059 Run docs grep for primary-path leaks: `docker compose|network|volume|gateway alias|nginx` in README first-run sections and command help.
-- [ ] T059a Update `install.sh` interactive handoff so successful interactive installs point to bare `stage`, while non-interactive installs keep explicit command guidance.
-- [ ] T059b Run a plain-language grep/review for primary-path leaks: `attach|detach|daemon|gateway|compose|container|registry|runtime|state` in guided TUI labels, text fallback, installer handoff, README first-run sections, and command help; either reword or move each hit behind show-commands or advanced/troubleshooting.
+- [X] T053 [P] Update `README.md` so the first-run path starts with bare `stage`.
+- [X] T054 [P] Move Docker/gateway/network/volume details in `README.md` to advanced/troubleshooting sections.
+- [X] T055 [P] Update `docs/runtime-contract.md` for root guided behavior, no-TUI controls, and direct command behavior.
+- [X] T056 [P] Add active `docs/installer-onboarding.md` using the researched install/setup/init/up/doctor flow.
+- [X] T057 [P] Update `.env.stageserve.example` comments to align with guided config creation.
+- [X] T058 [P] Update command `Short` and `Long` strings in `cmd/stage/commands/*.go` to prefer StageServe concepts over Docker/gateway internals.
+- [X] T059 Run docs grep for primary-path leaks: `docker compose|network|volume|gateway alias|nginx` in README first-run sections and command help.
+- [X] T059a Update `install.sh` interactive handoff so successful interactive installs point to bare `stage`, while non-interactive installs keep explicit command guidance.
+- [X] T059b Run a plain-language grep/review for primary-path leaks: `attach|detach|daemon|gateway|compose|container|registry|runtime|state` in guided TUI labels, text fallback, installer handoff, README first-run sections, and command help; either reword or move each hit behind show-commands or advanced/troubleshooting.
 
 **Checkpoint**: Primary docs teach StageServe usage before implementation internals.
 
 ## Phase 10: Final Verification
 
-- [ ] T060 Build the binary with `make build` or the repository's canonical build target and record which binary is being exercised.
-- [ ] T061 Run terminal verification matrix from `quickstart.md` and record command, exit code, and observed output.
-- [ ] T062 Manually validate bare `stage` in a TTY from a project without `.env.stageserve`.
-- [ ] T063 Manually validate bare `stage` in a TTY from a configured stopped project.
-- [ ] T064 Manually validate bare `stage` in a TTY from a running project.
-- [ ] T065 Manually validate non-TTY `stage > /tmp/stage-guidance.txt`.
-- [ ] T066 Manually validate `STAGESERVE_NO_TUI=1 stage`.
-- [ ] T067 Manually validate JSON purity for `stage setup --json` and `stage doctor --json`.
-- [ ] T067a Manually validate first-screen render time is under the NFR-001 target or record measured exception and cause.
-- [ ] T067b Manually validate keyboard-only operation for all decision-bar actions and tool-owned work steps.
-- [ ] T067c Manually validate text fallback contains the same situation, highlighted default, visible defaults, and direct command equivalent as the TUI.
-- [ ] T067d Manually validate installer handoff output after a test-mode or local installer run.
-- [ ] T067e Manually validate easy-mode language with a front-end-dev/hobbyist lens: primary labels describe goals, not lifecycle mechanics, and command equivalents are still discoverable.
-- [ ] T068 Run supporting `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
-- [ ] T069 Record final evidence and any unrun real-daemon gaps in `quickstart.md`.
+- [X] T060 Build the binary with `make build` or the repository's canonical build target and record which binary is being exercised.
+- [X] T061 Run terminal verification matrix from `quickstart.md` and record command, exit code, and observed output.
+- [X] T062 Manually validate bare `stage` in a TTY from a project without `.env.stageserve`.
+- [X] T063 Manually validate bare `stage` in a TTY from a configured stopped project.
+- [X] T064 Manually validate bare `stage` in a TTY from a running project.
+- [X] T065 Manually validate non-TTY `stage > /tmp/stage-guidance.txt`.
+- [X] T066 Manually validate `STAGESERVE_NO_TUI=1 stage`.
+- [X] T067 Manually validate JSON purity for `stage setup --json` and `stage doctor --json`.
+- [X] T067a Manually validate first-screen render time is under the NFR-001 target or record measured exception and cause.
+- [X] T067b Manually validate keyboard-only operation for all decision-bar actions and tool-owned work steps.
+- [X] T067c Manually validate text fallback contains the same situation, highlighted default, visible defaults, and direct command equivalent as the TUI.
+- [X] T067d Manually validate installer handoff output after a test-mode or local installer run.
+- [X] T067e Manually validate easy-mode language with a front-end-dev/hobbyist lens: primary labels describe goals, not lifecycle mechanics, and command equivalents are still discoverable.
+- [X] T068 Run supporting `go test ./core/guidance ./core/onboarding ./cmd/stage/commands ./core/config ./core/lifecycle ./observability/status ./infra/gateway`.
+- [X] T069 Record final evidence and any unrun real-daemon gaps in `quickstart.md`.
 
 ## Dependencies
 

@@ -121,6 +121,13 @@ Recovery:
 - Any unrun real-daemon path must be recorded in `quickstart.md`.
 - Spec 004 carryover validation tasks T029/T031/T032 are not silently assumed complete. Spec 007 migrates the relevant concerns into its own terminal verification matrix: startup, attach, status/inspection, teardown, and failure/recovery. Any remaining spec 004-only real-daemon gap is explicitly deferred outside spec 007 closeout notes.
 
+Carryover decision record:
+
+- Spec 004 T029 is migrated into spec 007 startup and run-path verification.
+- Spec 004 T031 is migrated into spec 007 status/inspection verification.
+- Spec 004 T032 is migrated into spec 007 teardown and failure/recovery verification.
+- Any daemon-dependent validation that still cannot be exercised during spec 007 closeout is deferred only as an explicit real-daemon gap in `quickstart.md`.
+
 ## Phased Recovery
 
 ### Phase A: Contract And Planner
