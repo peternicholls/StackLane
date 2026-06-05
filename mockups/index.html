@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StageServe UI Mockups</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app">
+        <nav class="nav">
+            <div class="nav-brand">
+                <span class="brand-mark">◆</span>
+                <span>
+                    <strong>StageServe</strong>
+                    <small>TUI design mockups</small>
+                </span>
+            </div>
+            <div class="nav-tabs" id="navTabs">
+                <!-- Populated by JS -->
+            </div>
+            <div class="nav-controls">
+                <label class="theme-toggle">
+                    <input type="checkbox" id="lightModeToggle">
+                    <span class="toggle-track"></span>
+                    Light mode
+                </label>
+                <label class="size-toggle">
+                    Width:
+                    <select id="widthSelect">
+                        <option value="52">Narrow (52)</option>
+                        <option value="80">Standard (80)</option>
+                        <option value="96">Wide (96)</option>
+                        <option value="120" selected>Ultra-wide (120)</option>
+                    </select>
+                </label>
+            </div>
+        </nav>
+        <main class="main" id="mainContent">
+            <!-- Screens rendered here -->
+        </main>
+    </div>
+    <script src="screens.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
